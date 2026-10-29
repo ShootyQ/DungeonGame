@@ -8,21 +8,21 @@ var faces: Array = []
 
 static func create_default_d6_sword() -> DieData:
 	var die = DieData.new()
-	die.name = "Rusty D6 Sword"
+	die.name = "D6 Adventurer Sword"
 	die.icon_path = "res://assets/items/item_sword_starter.svg"
 	die.die_type = "d6"
 	die.faces = [
 		{
 			"roll": 1,
-			"title": "MISS",
-			"desc": "Stumble! 0 Damage",
-			"damage": 0,
+			"title": "STRIKE",
+			"desc": "1 Damage",
+			"damage": 1,
 			"knockback": false,
 			"icon": "res://assets/ui/die_face_1.svg"
 		},
 		{
 			"roll": 2,
-			"title": "SLASH",
+			"title": "LIGHT SLASH",
 			"desc": "2 Damage",
 			"damage": 2,
 			"knockback": false,
@@ -38,7 +38,7 @@ static func create_default_d6_sword() -> DieData:
 		},
 		{
 			"roll": 4,
-			"title": "SLASH",
+			"title": "HEAVY SLASH",
 			"desc": "4 Damage",
 			"damage": 4,
 			"knockback": false,
@@ -46,18 +46,18 @@ static func create_default_d6_sword() -> DieData:
 		},
 		{
 			"roll": 5,
-			"title": "HEAVY",
-			"desc": "6 Damage",
-			"damage": 6,
+			"title": "CRUSH",
+			"desc": "5 Damage",
+			"damage": 5,
 			"knockback": false,
 			"icon": "res://assets/ui/die_face_5.svg"
 		},
 		{
 			"roll": 6,
-			"title": "CRIT!",
-			"desc": "9 Damage + Knockback",
-			"damage": 9,
-			"knockback": true,
+			"title": "CRITICAL",
+			"desc": "6 Damage",
+			"damage": 6,
+			"knockback": false,
 			"icon": "res://assets/ui/die_face_6.svg"
 		}
 	]

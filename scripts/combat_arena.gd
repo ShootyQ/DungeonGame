@@ -573,40 +573,24 @@ func _spawn_units() -> void:
 			exp_hp_label.text = "❤️ %d / %d" % [new_hp, m_hp]
 	)
 	
-	# Initial Hero Equipment (Starter 1H Sword + Shield + Helm + Cuirass)
+	# Initial Hero Equipment: Pure starter 6-sided die weapon (No other gear - slow-burn progression!)
 	equipped_gear = {
-		"helmet": ItemData.create_helmet(),
+		"helmet": null,
 		"necklace": null,
-		"chestplate": ItemData.create_chestplate(),
+		"chestplate": null,
 		"hand_1": ItemData.create_starter_sword(),
-		"hand_2": ItemData.create_shield(),
+		"hand_2": null,
 		"gloves": null,
 		"pants": null,
 		"boots": null,
 		"ring_1": null,
 		"ring_2": null
 	}
-	
-	# Seed Stash with Weapons (1H & 2H), Off-hand, Armor & Jewelry
-	inventory_items.append(ItemData.create_warhammer()) # 2H Weapon
-	inventory_items.append(ItemData.create_swift_dagger()) # 1H Weapon
-	inventory_items.append(ItemData.create_executioner_axe()) # 2H Weapon
-	inventory_items.append(ItemData.create_chaos_staff()) # 2H Weapon
-	inventory_items.append(ItemData.create_spiked_morningstar()) # 1H Weapon
-	inventory_items.append(ItemData.create_tome()) # Off-Hand Tome (+2 DMG)
-	inventory_items.append(ItemData.create_parry_dagger()) # Off-Hand Parry Dagger (+1 Arm, +1 DMG)
-	inventory_items.append(ItemData.create_gloves()) # Gloves (+4 HP, +1 DMG)
-	inventory_items.append(ItemData.create_pants()) # Pants (+8 HP, +1 Arm)
-	inventory_items.append(ItemData.create_boots()) # Boots (+4 HP, +1 DMG)
-	inventory_items.append(ItemData.create_necklace()) # Necklace (+10 HP)
-	inventory_items.append(ItemData.create_ring_fury()) # Ring 1 (+2 DMG)
-	inventory_items.append(ItemData.create_ring_protection()) # Ring 2 (+1 Arm)
-	
+	inventory_items.clear()
 	_recalculate_gear_stats()
 	
 	# Legacy backpack sync
 	backpack_weapons.append(start_sword_die.duplicate_die())
-	backpack_weapons.append(DieData.create_warhammer())
 	
 	# Populate procedural enemies
 	for e in dungeon_data.get("enemies", []):
@@ -747,8 +731,8 @@ func _setup_hud() -> void:
 	combat_hud.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	combat_hud.offset_left = 16
 	combat_hud.offset_right = -16
-	combat_hud.offset_top = 10
-	combat_hud.offset_bottom = 86
+	combat_hud.offset_top = 8
+	combat_hud.offset_bottom = 106
 	var c_style = StyleBoxFlat.new()
 	c_style.bg_color = Color(0.08, 0.10, 0.15, 0.96)
 	c_style.border_color = Color(0.22, 0.74, 0.97)
@@ -766,34 +750,54 @@ func _setup_hud() -> void:
 	combat_hbox.add_theme_constant_override("separation", 18)
 	combat_hud.add_child(combat_hbox)
 	
-	# Player Loaded Die in Combat (Clickable to open Dice Inspector!)
+	# Big Pulse Roll Showcase Panel
+	var roll_card = PanelContainer.new()
+	roll_card.custom_minimum_size = Vector2(240, 84)
+	var rc_style = StyleBoxFlat.new()
+	rc_style.bg_color = Color(0.06, 0.08, 0.13, 0.98)
+	rc_style.border_color = Color(0.98, 0.82, 0.2, 0.9)
+	rc_style.set_border_width_all(2)
+	rc_style.set_corner_radius_all(8)
+	rc_style.content_margin_left = 10
+	rc_style.content_margin_right = 14
+	rc_style.content_margin_top = 6
+	rc_style.content_margin_bottom = 6
+	roll_card.add_theme_stylebox_override("panel", rc_style)
+	combat_hbox.add_child(roll_card)
+
+	var rc_hbox = HBoxContainer.new()
+	rc_hbox.add_theme_constant_override("separation", 12)
+	rc_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	roll_card.add_child(rc_hbox)
+
+	# 68x68 Hero Die Icon with tooltip and click to open bag
 	player_die_icon = TextureRect.new()
-	player_die_icon.custom_minimum_size = Vector2(56, 56)
-	player_die_icon.pivot_offset = Vector2(28, 28)
+	player_die_icon.custom_minimum_size = Vector2(68, 68)
+	player_die_icon.pivot_offset = Vector2(34, 34)
 	player_die_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	player_die_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	player_die_icon.mouse_filter = Control.MOUSE_FILTER_PASS
-	player_die_icon.tooltip_text = "Click to inspect your Dice Rack!"
+	player_die_icon.tooltip_text = "Your Active Pulse Roll! Click to inspect Dice Bag (B)"
 	player_die_icon.gui_input.connect(func(ev):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 			_toggle_backpack()
 	)
-	combat_hbox.add_child(player_die_icon)
-	
+	rc_hbox.add_child(player_die_icon)
+
 	var die_vbox = VBoxContainer.new()
 	die_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	combat_hbox.add_child(die_vbox)
-	
+	rc_hbox.add_child(die_vbox)
+
 	player_die_title = Label.new()
-	player_die_title.text = "SLASH (4 DMG)"
-	player_die_title.add_theme_font_size_override("font_size", 16)
-	player_die_title.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+	player_die_title.text = "⚔️ 4 DMG"
+	player_die_title.add_theme_font_size_override("font_size", 22)
+	player_die_title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
 	die_vbox.add_child(player_die_title)
-	
+
 	player_die_desc = Label.new()
-	player_die_desc.text = "Pre-loaded face ready!"
+	player_die_desc.text = "SLASH • [L-Click Strike]"
 	player_die_desc.add_theme_font_size_override("font_size", 12)
-	player_die_desc.add_theme_color_override("font_color", Color(0.4, 0.85, 0.6))
+	player_die_desc.add_theme_color_override("font_color", Color(0.38, 0.78, 0.95))
 	die_vbox.add_child(player_die_desc)
 	
 	# Center: Pulse Timer & Phase
@@ -834,12 +838,12 @@ func _setup_hud() -> void:
 	pulse_center_vbox.add_child(timer_bar)
 	
 	last_action_label = Label.new()
-	last_action_label.text = "🎯 Threat Intel: Inspect incoming monster intents!"
-	last_action_label.add_theme_font_size_override("font_size", 12)
-	last_action_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+	last_action_label.text = "⚔️ Strike: None [L-Click]   •   🦶 Move: Hold [R-Click / WASD]"
+	last_action_label.add_theme_font_size_override("font_size", 13)
+	last_action_label.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
 	pulse_center_vbox.add_child(last_action_label)
 	
-	# Right: Threat Intel & Buttons
+	# Right: Threat Intel & Action Buttons
 	var action_vbox = VBoxContainer.new()
 	action_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	combat_hbox.add_child(action_vbox)
@@ -852,11 +856,6 @@ func _setup_hud() -> void:
 	commit_button.text = "⚡ COMMIT (SPACE)"
 	commit_button.pressed.connect(_on_commit_pressed)
 	btn_hbox.add_child(commit_button)
-	
-	aim_mode_button = Button.new()
-	aim_mode_button.text = "🎯 Aim: AUTO (Q)"
-	aim_mode_button.pressed.connect(_toggle_combat_targeting_mode)
-	btn_hbox.add_child(aim_mode_button)
 	
 	var bag_btn = Button.new()
 	bag_btn.text = "🎒 Dice / Bag (B)"
@@ -2879,63 +2878,57 @@ func _select_combat_move_dir(dir: Vector2i) -> void:
 func _update_combat_plan_hud() -> void:
 	if not is_instance_valid(last_action_label):
 		return
-	var move_str = "(%d, %d)" % [player_move_target.x, player_move_target.y] if player_move_target != Vector2i(-1, -1) else "Hold [WASD]"
-	var strike_str = "(%d, %d)" % [player_attack_target.x, player_attack_target.y] if player_attack_target != Vector2i(-1, -1) else "None [R-Click/Aim]"
-	last_action_label.text = "🦶 Move: %s   •   ⚔️ Strike: %s   [Q: Aim Mode]" % [move_str, strike_str]
+	var strike_str = "⚔️ Strike: None [Left-Click Tile/Enemy]"
+	if player_attack_target != Vector2i(-1, -1):
+		strike_str = "⚔️ Strike: (%d, %d)" % [player_attack_target.x, player_attack_target.y]
+		for enemy in active_combat_enemies:
+			if is_instance_valid(enemy) and enemy.is_alive and enemy.grid_pos == player_attack_target:
+				strike_str = "⚔️ Strike: %s (%d, %d)" % [enemy.unit_name, player_attack_target.x, player_attack_target.y]
+				break
+
+	var move_str = "🦶 Move: Hold [Right-Click / WASD]"
+	if player_move_target != Vector2i(-1, -1):
+		move_str = "🦶 Move: (%d, %d)" % [player_move_target.x, player_move_target.y]
+
+	last_action_label.text = "%s   •   %s" % [strike_str, move_str]
 
 func _handle_combat_left_click(pos: Vector2i) -> void:
-	# 1. Direct Click on Living Enemy -> Target Strike
+	# LEFT-CLICK IS STRICTLY FOR DAMAGE / ATTACKING!
+	var label = "tile (%d, %d)" % [pos.x, pos.y]
 	for enemy in active_combat_enemies:
 		if is_instance_valid(enemy) and enemy.is_alive and enemy.grid_pos == pos:
-			_toggle_attack_target(pos, enemy.unit_name)
-			return
+			label = enemy.unit_name
+			break
+	_toggle_attack_target(pos, label)
 
-	# 2. Click on Projected Destination of a Moving/Charging Enemy -> Intercept Strike!
-	for enemy in active_combat_enemies:
-		if is_instance_valid(enemy) and enemy.is_alive and enemy.intent_type in ["MOVE", "CHARGE"]:
-			if enemy.target_grid_pos == pos or (enemy.intent_type == "CHARGE" and enemy.telegraphed_tiles.has(pos)):
-				_toggle_attack_target(pos, "intercept strike on %s" % enemy.unit_name)
-				return
-
-	# 3. Click on Player -> Clear Move (Hold Position)
-	if pos == player.grid_pos:
+func _handle_combat_right_click(pos: Vector2i) -> void:
+	# RIGHT-CLICK IS STRICTLY FOR MOVEMENT / STEPPING!
+	if pos == player.grid_pos or player_move_target == pos:
 		player_move_target = Vector2i(-1, -1)
 		move_indicator.visible = false
 		_log("[color=#94a3b8]Holding position.[/color]")
 		_update_combat_plan_hud()
 		return
-
-	# 4. If Shift key is held OR Strike Aim Mode is active -> Strike target on ANY tile!
-	if Input.is_key_pressed(KEY_SHIFT) or combat_targeting_mode == "STRIKE":
-		_toggle_attack_target(pos, "tile (%d, %d)" % [pos.x, pos.y])
-		return
-
-	# 5. Empty Floor Tile
-	if grid[pos.y][pos.x] == 0:
-		var diff = (pos - player.grid_pos).abs()
-		var is_adjacent = (diff.x <= 1 and diff.y <= 1)
-		if is_adjacent:
-			if player_move_target == pos:
-				# Already set as move destination -> promote/toggle attack strike!
-				_toggle_attack_target(pos, "tile (%d, %d)" % [pos.x, pos.y])
-			elif player_move_target != Vector2i(-1, -1):
-				# Move already selected elsewhere -> this click is for attack strike!
-				_toggle_attack_target(pos, "tile (%d, %d)" % [pos.x, pos.y])
-			else:
-				# First click sets move target
-				player_move_target = pos
-				move_indicator.position = grid_to_world(pos)
-				move_indicator.visible = true
-				_log("[color=#38bdf8]Move target → (%d, %d)[/color]" % [pos.x, pos.y])
+		
+	var diff = (pos - player.grid_pos).abs()
+	var is_adjacent = (diff.x <= 1 and diff.y <= 1)
+	if is_adjacent and is_valid_grid_pos(pos) and grid[pos.y][pos.x] == 0:
+		var is_enemy_tile = false
+		for enemy in active_combat_enemies:
+			if is_instance_valid(enemy) and enemy.is_alive and enemy.grid_pos == pos:
+				is_enemy_tile = true
+				break
+		if is_enemy_tile:
+			_log("[color=#f59e0b]Enemy blocks that tile! Left-Click to attack.[/color]")
 		else:
-			# Non-adjacent tile -> aim prediction strike
-			_toggle_attack_target(pos, "prediction tile (%d, %d)" % [pos.x, pos.y])
-			
+			player_move_target = pos
+			move_indicator.position = grid_to_world(pos)
+			move_indicator.visible = true
+			play_dice_lock_sfx()
+			_log("[color=#38bdf8]Move destination → (%d, %d)[/color]" % [pos.x, pos.y])
+	else:
+		_log("[color=#94a3b8]Right-click adjacent floor tile to step (or use WASD).[/color]")
 	_update_combat_plan_hud()
-
-func _handle_combat_right_click(pos: Vector2i) -> void:
-	# Right-click ALWAYS sets or toggles attack strike target on ANY tile!
-	_toggle_attack_target(pos, "tile (%d, %d)" % [pos.x, pos.y])
 
 func _toggle_attack_target(pos: Vector2i, label: String) -> void:
 	if player_attack_target == pos:
@@ -3344,9 +3337,19 @@ func _update_hud_display() -> void:
 		
 	var p_face = player.loaded_face
 	if not p_face.is_empty():
-		player_die_icon.texture = load(p_face["icon"])
-		player_die_title.text = "🎲 %s  •  💥 %d DMG" % [p_face["title"], p_face["damage"]]
-		player_die_desc.text = p_face["desc"]
+		var final_tex_path = p_face.get("icon", "res://assets/ui/die_face_1.svg")
+		if ResourceLoader.exists(final_tex_path):
+			player_die_icon.texture = load(final_tex_path)
+		var dmg = p_face.get("damage", 1) + (player.dmg_bonus if player else 0)
+		var title_str = p_face.get("title", "STRIKE")
+		player_die_title.text = "⚔️ %d DMG" % dmg
+		player_die_desc.text = "%s • [L-Click Strike]" % title_str
+		if dmg >= 6:
+			player_die_title.add_theme_color_override("font_color", Color(1.0, 0.35, 0.35))
+		elif dmg >= 4:
+			player_die_title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+		else:
+			player_die_title.add_theme_color_override("font_color", Color(0.38, 0.78, 0.95))
 		if player.has_method("update_hero_die_badge"):
 			player.update_hero_die_badge()
 		
