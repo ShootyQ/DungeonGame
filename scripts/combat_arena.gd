@@ -102,32 +102,36 @@ func _setup_dungeon_layout() -> void:
 	for y in range(3, 10):
 		for x in range(3, 10):
 			grid[y][x] = 0
-	grid[10][6] = 2 # Door 1 (leads South into hallway)
+	grid[10][6] = 2 # Double Door 1
+	grid[10][7] = 2
 	
 	# 3. Room 2: Crypt of the Phalanx (South-West) x: 3 to 9, y: 14 to 20
 	for y in range(14, 21):
 		for x in range(3, 10):
 			grid[y][x] = 0
-	grid[13][6] = 2 # Door 2 (leads North into hallway)
+	grid[13][6] = 2 # Double Door 2
+	grid[13][7] = 2
 	
 	# 4. Room 3: Pyromancer's Sanctum (North-Mid) x: 16 to 23, y: 3 to 9
 	for y in range(3, 10):
 		for x in range(16, 24):
 			grid[y][x] = 0
-	grid[10][20] = 2 # Door 3 (leads South into hallway)
+	grid[10][19] = 2 # Double Door 3
+	grid[10][20] = 2
 	
 	# 5. Room 4: Brawler's Arena (South-Mid) x: 16 to 23, y: 14 to 20
 	for y in range(14, 21):
 		for x in range(16, 24):
 			grid[y][x] = 0
-	grid[13][20] = 2 # Door 4 (leads North into hallway)
+	grid[13][19] = 2 # Double Door 4
+	grid[13][20] = 2
 	
 	# 6. Room 5: Grand Boss Vault (Far East) x: 29 to 39, y: 7 to 16
 	for y in range(7, 17):
 		for x in range(29, 40):
 			grid[y][x] = 0
-	grid[11][28] = 2 # Door 5 (leads East from end of hallway)
-	grid[12][28] = 2 # Double Door 5
+	grid[11][28] = 2 # Double Door 5
+	grid[12][28] = 2
 
 func _create_scene_hierarchy() -> void:
 	# Canvas Background
@@ -208,8 +212,12 @@ func _create_doors() -> void:
 	doors.clear()
 	var door_configs = [
 		{"pos": Vector2i(6, 10), "room_id": 1},
+		{"pos": Vector2i(7, 10), "room_id": 1},
 		{"pos": Vector2i(6, 13), "room_id": 2},
+		{"pos": Vector2i(7, 13), "room_id": 2},
+		{"pos": Vector2i(19, 10), "room_id": 3},
 		{"pos": Vector2i(20, 10), "room_id": 3},
+		{"pos": Vector2i(19, 13), "room_id": 4},
 		{"pos": Vector2i(20, 13), "room_id": 4},
 		{"pos": Vector2i(28, 11), "room_id": 5},
 		{"pos": Vector2i(28, 12), "room_id": 5}
@@ -567,7 +575,7 @@ func _process_exploration_movement(delta: float) -> void:
 	for door in doors:
 		if not door["is_open"]:
 			var d_world = grid_to_world(door["pos"])
-			if player.position.distance_to(d_world) < 64.0:
+			if player.position.distance_to(d_world) < 48.0:
 				_open_door(door)
 				
 	# Check proximity to chests
@@ -583,6 +591,15 @@ func _check_door_interaction(door_grid_pos: Vector2i) -> void:
 			_open_door(door)
 			break
 
+func _get_room_breach_entrance_tile(r_id: int, door_pos: Vector2i) -> Vector2i:
+	if r_id == 1 or r_id == 3: # North rooms
+		return Vector2i(door_pos.x, 8)
+	elif r_id == 2 or r_id == 4: # South rooms
+		return Vector2i(door_pos.x, 15)
+	elif r_id == 5: # East Vault
+		return Vector2i(31, door_pos.y)
+	return door_pos
+
 func _open_door(door: Dictionary) -> void:
 	var r_id = door["room_id"]
 	current_combat_room_id = r_id
@@ -595,6 +612,12 @@ func _open_door(door: Dictionary) -> void:
 			grid[d["pos"].y][d["pos"].x] = 0
 			
 	_log("[color=#f59e0b]🚪 Chamber %d breached! Fog fades away![/color]" % r_id)
+	
+	# Hero strides cleanly inside the room past the doorway chokepoint
+	var breach_tile = _get_room_breach_entrance_tile(r_id, door["pos"])
+	player.grid_pos = breach_tile
+	var stride_tween = create_tween()
+	stride_tween.tween_property(player, "position", grid_to_world(breach_tile), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	
 	# Fade Fog of War
 	if fog_overlays.has(r_id):
@@ -684,11 +707,10 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	current_mode = GameMode.COMBAT_COUNTDOWN
 	active_combat_enemies = engaged_monsters
 	
-	# Snap player to nearest grid tile
-	var snap_target = grid_to_world(world_to_grid(player.position))
+	# Smoothly snap player to breach entrance grid tile inside the chamber
+	var snap_target = grid_to_world(player.grid_pos)
 	var snap_tween = create_tween()
-	snap_tween.tween_property(player, "position", snap_target, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	player.grid_pos = world_to_grid(snap_target)
+	snap_tween.tween_property(player, "position", snap_target, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	
 	explore_banner.visible = false
 	countdown_overlay.visible = true
@@ -868,6 +890,29 @@ func _start_planning_phase() -> void:
 	_plan_enemy_intents()
 	_update_hud_display()
 
+func has_line_of_sight(from_pos: Vector2i, to_pos: Vector2i) -> bool:
+	if from_pos == to_pos:
+		return true
+		
+	var p0 = Vector2(from_pos.x + 0.5, from_pos.y + 0.5)
+	var p1 = Vector2(to_pos.x + 0.5, to_pos.y + 0.5)
+	var diff = p1 - p0
+	var dist = diff.length()
+	var step_count = int(ceil(dist * 4.0)) # 4 samples per tile
+	
+	for s in range(1, step_count):
+		var pt = p0 + diff * (float(s) / float(step_count))
+		var g_tile = Vector2i(int(floor(pt.x)), int(floor(pt.y)))
+		if g_tile == from_pos or g_tile == to_pos:
+			continue
+		if not is_valid_grid_pos(g_tile):
+			return false
+		# Any wall or closed door blocks line of sight
+		if grid[g_tile.y][g_tile.x] != 0:
+			return false
+			
+	return true
+
 func _plan_enemy_intents() -> void:
 	for enemy in active_combat_enemies:
 		if not is_instance_valid(enemy) or not enemy.is_alive:
@@ -886,8 +931,9 @@ func _plan_enemy_intents() -> void:
 		var diff = player.grid_pos - enemy.grid_pos
 		var abs_diff = diff.abs()
 		var dist_chebyshev = max(abs_diff.x, abs_diff.y)
+		var has_los = has_line_of_sight(enemy.grid_pos, player.grid_pos)
 		
-		# 1. GOBLIN CHARGER: Straight line 3-tile rush
+		# 1. GOBLIN CHARGER: Straight line 3-tile rush (Requires direct line of sight without walls!)
 		if enemy.unit_type == "charger":
 			var can_charge = false
 			var charge_dir = Vector2i.ZERO
@@ -898,7 +944,7 @@ func _plan_enemy_intents() -> void:
 				charge_dir = Vector2i(0, 1 if diff.y > 0 else -1)
 				can_charge = true
 				
-			if can_charge:
+			if can_charge and has_los:
 				var charge_tiles: Array[Vector2i] = []
 				for step in range(1, 4):
 					var c_tile = enemy.grid_pos + charge_dir * step
@@ -906,42 +952,73 @@ func _plan_enemy_intents() -> void:
 						charge_tiles.append(c_tile)
 						if show_telegraphs:
 							_spawn_danger_indicator(c_tile)
+				enemy.facing_dir = charge_dir
 				enemy.set_intent("CHARGE", enemy.grid_pos + charge_dir * 3, charge_tiles)
 				continue
+			else:
+				var next_step = _find_smart_path_step(enemy.grid_pos, player.grid_pos, enemy)
+				if next_step != enemy.grid_pos and is_valid_grid_pos(next_step) and grid[next_step.y][next_step.x] == 0:
+					enemy.facing_dir = (next_step - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
+					enemy.set_intent("MOVE", next_step)
+				else:
+					enemy.set_intent("NONE", enemy.grid_pos)
+				continue
 				
-		# 2. CULTIST PYROMANCER: 3-Tile Cross / 2x2 Flame Blast
-		if enemy.unit_type == "pyromancer" and dist_chebyshev <= 4:
-			var blast_tiles: Array[Vector2i] = [player.grid_pos]
-			for d in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
-				var b_tile = player.grid_pos + d
-				if is_valid_grid_pos(b_tile) and grid[b_tile.y][b_tile.x] == 0:
-					blast_tiles.append(b_tile)
-			if show_telegraphs:
-				for bt in blast_tiles:
-					_spawn_danger_indicator(bt)
-			enemy.set_intent("BLAST", player.grid_pos, blast_tiles)
-			continue
+		# 2. CULTIST PYROMANCER: 3-Tile Cross Flame Blast (Requires direct line of sight without walls!)
+		if enemy.unit_type == "pyromancer":
+			if dist_chebyshev <= 4 and has_los:
+				var blast_tiles: Array[Vector2i] = [player.grid_pos]
+				for d in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
+					var b_tile = player.grid_pos + d
+					if is_valid_grid_pos(b_tile) and grid[b_tile.y][b_tile.x] == 0:
+						if has_line_of_sight(player.grid_pos, b_tile):
+							blast_tiles.append(b_tile)
+				if show_telegraphs:
+					for bt in blast_tiles:
+						_spawn_danger_indicator(bt)
+				enemy.set_intent("BLAST", player.grid_pos, blast_tiles)
+				continue
+			else:
+				var next_step = _find_smart_path_step(enemy.grid_pos, player.grid_pos, enemy)
+				if next_step != enemy.grid_pos and is_valid_grid_pos(next_step) and grid[next_step.y][next_step.x] == 0:
+					enemy.facing_dir = (next_step - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
+					enemy.set_intent("MOVE", next_step)
+				else:
+					enemy.set_intent("NONE", enemy.grid_pos)
+				continue
 			
 		# 3. ORC BRAWLER: Wide 3-Tile Cleave Sweep
-		if enemy.unit_type == "brawler" and dist_chebyshev <= 1:
-			var sweep_dir = (player.grid_pos - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
-			var sweep_tiles: Array[Vector2i] = [player.grid_pos]
-			if sweep_dir.x != 0:
-				sweep_tiles.append(enemy.grid_pos + Vector2i(sweep_dir.x, 1))
-				sweep_tiles.append(enemy.grid_pos + Vector2i(sweep_dir.x, -1))
-			else:
-				sweep_tiles.append(enemy.grid_pos + Vector2i(1, sweep_dir.y))
-				sweep_tiles.append(enemy.grid_pos + Vector2i(-1, sweep_dir.y))
-				
-			if show_telegraphs:
+		if enemy.unit_type == "brawler":
+			if dist_chebyshev <= 1 and has_los:
+				var sweep_dir = (player.grid_pos - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
+				enemy.facing_dir = sweep_dir
+				var sweep_tiles: Array[Vector2i] = [player.grid_pos]
+				if sweep_dir.x != 0:
+					sweep_tiles.append(enemy.grid_pos + Vector2i(sweep_dir.x, 1))
+					sweep_tiles.append(enemy.grid_pos + Vector2i(sweep_dir.x, -1))
+				else:
+					sweep_tiles.append(enemy.grid_pos + Vector2i(1, sweep_dir.y))
+					sweep_tiles.append(enemy.grid_pos + Vector2i(-1, sweep_dir.y))
+					
+				var valid_sweep: Array[Vector2i] = []
 				for st in sweep_tiles:
 					if is_valid_grid_pos(st) and grid[st.y][st.x] == 0:
-						_spawn_danger_indicator(st)
-			enemy.set_intent("SWEEP", player.grid_pos, sweep_tiles)
-			continue
+						valid_sweep.append(st)
+						if show_telegraphs:
+							_spawn_danger_indicator(st)
+				enemy.set_intent("SWEEP", player.grid_pos, valid_sweep)
+				continue
+			else:
+				var next_step = _find_smart_path_step(enemy.grid_pos, player.grid_pos, enemy)
+				if next_step != enemy.grid_pos and is_valid_grid_pos(next_step) and grid[next_step.y][next_step.x] == 0:
+					enemy.facing_dir = (next_step - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
+					enemy.set_intent("MOVE", next_step)
+				else:
+					enemy.set_intent("NONE", enemy.grid_pos)
+				continue
 			
 		# 4. SKELETON SHIELDBEARER & GRUNTS
-		if dist_chebyshev <= 1:
+		if dist_chebyshev <= 1 and has_los:
 			enemy.facing_dir = (player.grid_pos - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
 			enemy.set_intent("ATTACK", player.grid_pos)
 			if show_telegraphs:
@@ -969,9 +1046,15 @@ func _find_smart_path_step(from_pos: Vector2i, target_pos: Vector2i, current_uni
 			if grid[y][x] != 0:
 				blocked[Vector2i(x, y)] = true
 				
+	# Anti-clash coordination: block where other enemies are AND where they've claimed to move
 	for other in active_combat_enemies:
 		if is_instance_valid(other) and other != current_unit and other.is_alive and other.current_hp > 0:
 			blocked[other.grid_pos] = true
+			if other.intent_type == "MOVE":
+				blocked[other.target_grid_pos] = true
+			elif other.intent_type == "CHARGE":
+				for ct in other.telegraphed_tiles:
+					blocked[ct] = true
 
 	var target_found: bool = false
 	var goal_tile: Vector2i = from_pos
