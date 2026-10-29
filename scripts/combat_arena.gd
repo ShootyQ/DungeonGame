@@ -84,6 +84,12 @@ var music_player: AudioStreamPlayer
 var music_stream: AudioStreamMP3
 var dice_tumble_sounds: Array[AudioStream] = []
 var sfx_dice_lock: AudioStream
+var sfx_pulse_tick: AudioStream
+var sfx_pulse_heartbeat: AudioStream
+var sfx_sword_slash: AudioStream
+var sfx_hammer_slam: AudioStream
+var sfx_shield_parry: AudioStream
+var last_pulse_tick_sec: int = -1
 var music_volume: float = 0.65
 var sfx_volume: float = 0.85
 var is_audio_settings_open: bool = false
@@ -1034,6 +1040,16 @@ func _setup_audio_system() -> void:
 			dice_tumble_sounds.append(load(p))
 	if ResourceLoader.exists("res://assets/audio/dice_slam_lock.wav"):
 		sfx_dice_lock = load("res://assets/audio/dice_slam_lock.wav")
+	if ResourceLoader.exists("res://assets/audio/pulse_tick_urgent.wav"):
+		sfx_pulse_tick = load("res://assets/audio/pulse_tick_urgent.wav")
+	if ResourceLoader.exists("res://assets/audio/pulse_heartbeat_low.wav"):
+		sfx_pulse_heartbeat = load("res://assets/audio/pulse_heartbeat_low.wav")
+	if ResourceLoader.exists("res://assets/audio/sword_slash_flesh.wav"):
+		sfx_sword_slash = load("res://assets/audio/sword_slash_flesh.wav")
+	if ResourceLoader.exists("res://assets/audio/blunt_hammer_slam.wav"):
+		sfx_hammer_slam = load("res://assets/audio/blunt_hammer_slam.wav")
+	if ResourceLoader.exists("res://assets/audio/shield_parry_clink.wav"):
+		sfx_shield_parry = load("res://assets/audio/shield_parry_clink.wav")
 		
 	# Music Player (Plays the fantasy clarinet dungeon music)
 	music_player = AudioStreamPlayer.new()
@@ -1068,6 +1084,26 @@ func play_dice_lock_sfx() -> void:
 	if sfx_dice_lock:
 		play_sfx(sfx_dice_lock, randf_range(0.97, 1.03))
 
+func play_pulse_tick_sfx() -> void:
+	if sfx_pulse_tick:
+		play_sfx(sfx_pulse_tick, randf_range(0.98, 1.02), -2.0)
+
+func play_pulse_heartbeat_sfx() -> void:
+	if sfx_pulse_heartbeat:
+		play_sfx(sfx_pulse_heartbeat, 1.0, 2.0)
+
+func play_sword_slash_sfx() -> void:
+	if sfx_sword_slash:
+		play_sfx(sfx_sword_slash, randf_range(0.95, 1.05))
+
+func play_hammer_slam_sfx() -> void:
+	if sfx_hammer_slam:
+		play_sfx(sfx_hammer_slam, randf_range(0.95, 1.05))
+
+func play_shield_parry_sfx() -> void:
+	if sfx_shield_parry:
+		play_sfx(sfx_shield_parry, randf_range(0.98, 1.02), 1.0)
+
 func set_music_volume(val: float) -> void:
 	music_volume = clamp(val, 0.0, 1.0)
 	if music_player:
@@ -1097,11 +1133,11 @@ func _toggle_audio_settings() -> void:
 func _setup_audio_ui() -> void:
 	audio_settings_modal = PanelContainer.new()
 	audio_settings_modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	audio_settings_modal.custom_minimum_size = Vector2(490, 310)
-	audio_settings_modal.offset_left = -245
-	audio_settings_modal.offset_top = -155
-	audio_settings_modal.offset_right = 245
-	audio_settings_modal.offset_bottom = 155
+	audio_settings_modal.custom_minimum_size = Vector2(540, 360)
+	audio_settings_modal.offset_left = -270
+	audio_settings_modal.offset_top = -180
+	audio_settings_modal.offset_right = 270
+	audio_settings_modal.offset_bottom = 180
 	audio_settings_modal.visible = false
 	
 	var a_style = StyleBoxFlat.new()
@@ -1117,7 +1153,7 @@ func _setup_audio_ui() -> void:
 	hud_root.add_child(audio_settings_modal)
 
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 16)
+	vbox.add_theme_constant_override("separation", 14)
 	audio_settings_modal.add_child(vbox)
 
 	# Header Row
@@ -1201,23 +1237,53 @@ func _setup_audio_ui() -> void:
 	sfx_slider.value_changed.connect(set_sfx_volume)
 	sfx_vbox.add_child(sfx_slider)
 
-	# Quick Action Buttons Row
+	# Quick Action Buttons Row 1: Dice & Pulse
 	var test_hbox = HBoxContainer.new()
-	test_hbox.add_theme_constant_override("separation", 10)
+	test_hbox.add_theme_constant_override("separation", 8)
 	vbox.add_child(test_hbox)
 
 	var test_roll_btn = Button.new()
-	test_roll_btn.text = "🎲 Test Dice Roll"
+	test_roll_btn.text = "🎲 Dice Roll"
 	test_roll_btn.pressed.connect(play_dice_tumble_sfx)
 	test_hbox.add_child(test_roll_btn)
 
 	var test_lock_btn = Button.new()
-	test_lock_btn.text = "⚡ Test Dice Slam"
+	test_lock_btn.text = "⚡ Dice Slam"
 	test_lock_btn.pressed.connect(play_dice_lock_sfx)
 	test_hbox.add_child(test_lock_btn)
 
+	var test_tick_btn = Button.new()
+	test_tick_btn.text = "⏱️ Pulse Tick"
+	test_tick_btn.pressed.connect(play_pulse_tick_sfx)
+	test_hbox.add_child(test_tick_btn)
+
+	var test_sub_btn = Button.new()
+	test_sub_btn.text = "💓 Pulse Boom"
+	test_sub_btn.pressed.connect(play_pulse_heartbeat_sfx)
+	test_hbox.add_child(test_sub_btn)
+
+	# Quick Action Buttons Row 2: Combat & Mute
+	var test_hbox2 = HBoxContainer.new()
+	test_hbox2.add_theme_constant_override("separation", 8)
+	vbox.add_child(test_hbox2)
+
+	var test_slash_btn = Button.new()
+	test_slash_btn.text = "⚔️ Sword Slash"
+	test_slash_btn.pressed.connect(play_sword_slash_sfx)
+	test_hbox2.add_child(test_slash_btn)
+
+	var test_hammer_btn = Button.new()
+	test_hammer_btn.text = "🔨 Hammer Slam"
+	test_hammer_btn.pressed.connect(play_hammer_slam_sfx)
+	test_hbox2.add_child(test_hammer_btn)
+
+	var test_parry_btn = Button.new()
+	test_parry_btn.text = "🛡️ Shield Parry"
+	test_parry_btn.pressed.connect(play_shield_parry_sfx)
+	test_hbox2.add_child(test_parry_btn)
+
 	var mute_btn = Button.new()
-	mute_btn.text = "🔇 Mute / Unmute (M)"
+	mute_btn.text = "🔇 Mute (M)"
 	mute_btn.pressed.connect(func():
 		if music_volume > 0.0 or sfx_volume > 0.0:
 			set_music_volume(0.0)
@@ -1226,7 +1292,7 @@ func _setup_audio_ui() -> void:
 			set_music_volume(0.65)
 			set_sfx_volume(0.85)
 	)
-	test_hbox.add_child(mute_btn)
+	test_hbox2.add_child(mute_btn)
 
 func _toggle_backpack() -> void:
 	is_backpack_open = !is_backpack_open
@@ -1795,6 +1861,12 @@ func _process_combat_pulse(delta: float) -> void:
 				
 		if pulse_timer <= 0.0:
 			_resolve_pulse()
+		else:
+			# Urgent clock ticking when planning timer is running low (<= 2s)
+			var current_sec = int(ceil(pulse_timer))
+			if current_sec <= 2 and current_sec > 0 and current_sec != last_pulse_tick_sec:
+				last_pulse_tick_sec = current_sec
+				play_pulse_tick_sfx()
 
 func _input(event: InputEvent) -> void:
 	if current_mode == GameMode.GAME_OVER:
@@ -1900,6 +1972,7 @@ func _start_planning_phase() -> void:
 		
 	pulse_state = PulseState.PLANNING
 	pulse_timer = PLANNING_TIME
+	last_pulse_tick_sec = -1
 	phase_title.text = "⚡ PULSE: PLANNING (3.0s)"
 	phase_title.add_theme_color_override("font_color", Color(0.22, 0.74, 0.97))
 	commit_button.disabled = false
@@ -2156,6 +2229,9 @@ func _resolve_pulse() -> void:
 	commit_button.disabled = true
 	phase_title.text = "💥 PULSE: SIMULTANEOUS CLASH!"
 	phase_title.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35))
+	
+	# Deep cinematic sub-bass heartbeat pulse impact!
+	play_pulse_heartbeat_sfx()
 	
 	var planned_player_pos = player_move_target if player_move_target != Vector2i(-1, -1) else player.grid_pos
 	
@@ -2701,9 +2777,16 @@ func _play_attack_impact_animation(target_world_pos: Vector2, face: Dictionary, 
 	tween.parallel().tween_property(impact_node, "position:y", final_impact_pos.y, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(impact_node, "rotation", 0.0, 0.12)
 	
-	# Camera shake and slam audio!
+	# Camera shake and dynamic combat sound impact!
 	_shake_camera(5.0 if is_crit else (2.0 if is_blocked else 3.5), 0.15)
-	play_dice_lock_sfx()
+	if is_blocked:
+		play_shield_parry_sfx()
+	elif "HAMMER" in action_title.to_upper() or "BASH" in action_title.to_upper() or "SMASH" in action_title.to_upper() or dmg >= 8:
+		play_hammer_slam_sfx()
+	elif not is_miss:
+		play_sword_slash_sfx()
+	else:
+		play_dice_lock_sfx()
 	
 	# Update HUD Last Action Callout
 	if last_action_label:
