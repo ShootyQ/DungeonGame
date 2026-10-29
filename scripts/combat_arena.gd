@@ -128,6 +128,19 @@ var countdown_number: Label
 var countdown_subtitle: Label
 var log_label: RichTextLabel
 
+# Main Menu, Fullscreen & Header UI
+var main_menu_modal: Control
+var is_main_menu_open: bool = true
+var menu_fs_btn: Button
+var exp_fs_btn: Button
+var combat_fs_btn: Button
+var audio_fs_btn: Button
+var exp_hp_label: Label
+var exp_hp_bar: ProgressBar
+var exp_chambers_label: Label
+var breached_rooms: Array[int] = []
+var cleared_rooms: Array[int] = []
+
 # Cached Die Textures for Animations
 var cached_die_textures: Array[Texture2D] = []
 
@@ -146,6 +159,7 @@ func _ready() -> void:
 	_setup_hud()
 	_setup_backpack_ui()
 	_setup_audio_ui()
+	_setup_main_menu_ui()
 	_enter_exploration_mode()
 
 func _cache_die_textures() -> void:
@@ -630,6 +644,12 @@ func _spawn_units() -> void:
 	player.setup("Knight", true, 35, load("res://assets/sprites/hero.svg"), Vector2i(2, 11), start_sword)
 	player.position = grid_to_world(player.grid_pos)
 	player.died.connect(_on_player_died)
+	player.hp_changed.connect(func(_u, new_hp, m_hp):
+		if is_instance_valid(exp_hp_bar):
+			exp_hp_bar.max_value = m_hp
+			exp_hp_bar.value = new_hp
+			exp_hp_label.text = "❤️ %d / %d" % [new_hp, m_hp]
+	)
 	
 	# Initial Backpack: Starter Sword + Phalanx Warhammer
 	backpack_weapons.append(start_sword.duplicate_die())
@@ -687,53 +707,113 @@ func _setup_hud() -> void:
 	add_child(canvas_layer)
 	
 	hud_root = Control.new()
-	hud_root.size = Vector2(1280, 720)
+	hud_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas_layer.add_child(hud_root)
 	
-	# 1. Exploration Banner (Top)
+	# 1. Polished Exploration Banner (Top)
 	explore_banner = PanelContainer.new()
 	explore_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	explore_banner.offset_left = 20
-	explore_banner.offset_right = -20
-	explore_banner.offset_top = 14
-	explore_banner.offset_bottom = 60
+	explore_banner.offset_left = 16
+	explore_banner.offset_right = -16
+	explore_banner.offset_top = 10
+	explore_banner.offset_bottom = 74
 	var exp_style = StyleBoxFlat.new()
-	exp_style.bg_color = Color(0.09, 0.12, 0.18, 0.9)
-	exp_style.set_corner_radius_all(6)
-	exp_style.content_margin_left = 16
-	exp_style.content_margin_right = 16
+	exp_style.bg_color = Color(0.08, 0.10, 0.16, 0.94)
+	exp_style.border_color = Color(0.22, 0.74, 0.5)
+	exp_style.set_border_width_all(2)
+	exp_style.set_corner_radius_all(8)
+	exp_style.content_margin_left = 14
+	exp_style.content_margin_right = 14
+	exp_style.content_margin_top = 6
+	exp_style.content_margin_bottom = 6
 	explore_banner.add_theme_stylebox_override("panel", exp_style)
 	hud_root.add_child(explore_banner)
 	
 	var exp_hbox = HBoxContainer.new()
+	exp_hbox.add_theme_constant_override("separation", 16)
 	explore_banner.add_child(exp_hbox)
 	
+	# Left: Hero Status & Health Bar
+	var hero_vbox = VBoxContainer.new()
+	hero_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	exp_hbox.add_child(hero_vbox)
+
+	var hero_title = Label.new()
+	hero_title.text = "🛡️ KNIGHT HERO"
+	hero_title.add_theme_font_size_override("font_size", 14)
+	hero_title.add_theme_color_override("font_color", Color(0.35, 0.85, 0.98))
+	hero_vbox.add_child(hero_title)
+
+	var hp_hbox = HBoxContainer.new()
+	hp_hbox.add_theme_constant_override("separation", 6)
+	hero_vbox.add_child(hp_hbox)
+
+	exp_hp_label = Label.new()
+	exp_hp_label.text = "❤️ 30 / 30"
+	exp_hp_label.add_theme_font_size_override("font_size", 12)
+	exp_hp_label.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35))
+	hp_hbox.add_child(exp_hp_label)
+
+	exp_hp_bar = ProgressBar.new()
+	exp_hp_bar.min_value = 0
+	exp_hp_bar.max_value = 30
+	exp_hp_bar.value = 30
+	exp_hp_bar.show_percentage = false
+	exp_hp_bar.custom_minimum_size = Vector2(90, 8)
+	var hp_fill = StyleBoxFlat.new()
+	hp_fill.bg_color = Color(0.2, 0.8, 0.4)
+	hp_fill.set_corner_radius_all(2)
+	exp_hp_bar.add_theme_stylebox_override("fill", hp_fill)
+	hp_hbox.add_child(exp_hp_bar)
+
+	# Center: Dungeon Objective & Chambers Progress
+	var obj_vbox = VBoxContainer.new()
+	obj_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	obj_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	exp_hbox.add_child(obj_vbox)
+
 	var exp_title = Label.new()
-	exp_title.text = "🛡️ EXPLORATION MODE"
-	exp_title.add_theme_font_size_override("font_size", 16)
-	exp_title.add_theme_color_override("font_color", Color(0.3, 0.8, 0.5))
-	exp_hbox.add_child(exp_title)
-	
-	var exp_instr = Label.new()
-	exp_instr.text = "  |  Move with [WASD]. Explore hallway & breach 5 chambers! Press [B] for Backpack & Dice."
-	exp_instr.add_theme_font_size_override("font_size", 14)
-	exp_instr.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
-	exp_hbox.add_child(exp_instr)
-	
-	var exp_spacer = Control.new()
-	exp_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	exp_hbox.add_child(exp_spacer)
-	
+	exp_title.text = "🏰 DUNGEON DEPTHS • EXPLORATION"
+	exp_title.add_theme_font_size_override("font_size", 15)
+	exp_title.add_theme_color_override("font_color", Color(0.3, 0.85, 0.55))
+	obj_vbox.add_child(exp_title)
+
+	exp_chambers_label = Label.new()
+	exp_chambers_label.text = "Chambers Breached: 0 / 5  |  Move with [WASD]  |  Breach chamber doors to engage"
+	exp_chambers_label.add_theme_font_size_override("font_size", 12)
+	exp_chambers_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
+	obj_vbox.add_child(exp_chambers_label)
+
+	# Right: Action Buttons
+	var right_btn_hbox = HBoxContainer.new()
+	right_btn_hbox.add_theme_constant_override("separation", 8)
+	exp_hbox.add_child(right_btn_hbox)
+
 	var exp_bag_btn = Button.new()
-	exp_bag_btn.text = "🎒 Backpack & Dice (B)"
+	exp_bag_btn.text = "🎒 Backpack (B)"
 	exp_bag_btn.pressed.connect(_toggle_backpack)
-	exp_hbox.add_child(exp_bag_btn)
-	
+	right_btn_hbox.add_child(exp_bag_btn)
+
 	var exp_audio_btn = Button.new()
 	exp_audio_btn.text = "🔊 Sound (V)"
 	exp_audio_btn.pressed.connect(_toggle_audio_settings)
-	exp_hbox.add_child(exp_audio_btn)
+	right_btn_hbox.add_child(exp_audio_btn)
+
+	exp_fs_btn = Button.new()
+	var cur_fs = (DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN or DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+	exp_fs_btn.text = "⛶ Windowed (F11)" if cur_fs else "⛶ Fullscreen (F11)"
+	exp_fs_btn.pressed.connect(toggle_fullscreen)
+	right_btn_hbox.add_child(exp_fs_btn)
+
+	var exp_menu_btn = Button.new()
+	exp_menu_btn.text = "☰ Menu (ESC)"
+	exp_menu_btn.pressed.connect(func():
+		is_main_menu_open = !is_main_menu_open
+		if main_menu_modal:
+			main_menu_modal.visible = is_main_menu_open
+	)
+	right_btn_hbox.add_child(exp_menu_btn)
 	
 	# 2. Combat HUD (Top-Wide Dock)
 	combat_hud = PanelContainer.new()
@@ -855,6 +935,11 @@ func _setup_hud() -> void:
 	telegraph_button.text = "👁️ Telegraphs: ON"
 	telegraph_button.pressed.connect(_on_toggle_telegraphs)
 	btn_hbox.add_child(telegraph_button)
+
+	combat_fs_btn = Button.new()
+	combat_fs_btn.text = "⛶ Windowed (F11)" if cur_fs else "⛶ Fullscreen (F11)"
+	combat_fs_btn.pressed.connect(toggle_fullscreen)
+	btn_hbox.add_child(combat_fs_btn)
 	
 	restart_button = Button.new()
 	restart_button.text = "🔄 Restart (R)"
@@ -872,7 +957,7 @@ func _setup_hud() -> void:
 	enemy_intel_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
 	action_vbox.add_child(enemy_intel_label)
 	
-	# 3. Fullscreen Dramatic 3-2-1 Countdown Overlay
+	# 3. Fullscreen Dramatic 3-2-1 Countdown Overlay (Centered Perfectly)
 	countdown_overlay = Control.new()
 	countdown_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	countdown_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -881,17 +966,22 @@ func _setup_hud() -> void:
 	
 	var dim_bg = ColorRect.new()
 	dim_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim_bg.color = Color(0.04, 0.05, 0.08, 0.55)
+	dim_bg.color = Color(0.03, 0.04, 0.07, 0.65)
 	dim_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	countdown_overlay.add_child(dim_bg)
+
+	var center_count = CenterContainer.new()
+	center_count.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	countdown_overlay.add_child(center_count)
 	
 	var count_vbox = VBoxContainer.new()
-	count_vbox.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	count_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	countdown_overlay.add_child(count_vbox)
+	count_vbox.add_theme_constant_override("separation", 12)
+	center_count.add_child(count_vbox)
 	
 	countdown_subtitle = Label.new()
-	countdown_subtitle.text = "⚠️ ENEMY ENGAGED ⚠️"
+	countdown_subtitle.text = "⚔️ ENEMY ENGAGED ⚔️"
 	countdown_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	countdown_subtitle.add_theme_font_size_override("font_size", 24)
 	countdown_subtitle.add_theme_color_override("font_color", Color(0.95, 0.35, 0.2))
@@ -899,8 +989,11 @@ func _setup_hud() -> void:
 	
 	countdown_number = Label.new()
 	countdown_number.text = "3"
+	countdown_number.custom_minimum_size = Vector2(400, 140)
+	countdown_number.pivot_offset = Vector2(200, 70)
 	countdown_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	countdown_number.add_theme_font_size_override("font_size", 96)
+	countdown_number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	countdown_number.add_theme_font_size_override("font_size", 100)
 	countdown_number.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
 	count_vbox.add_child(countdown_number)
 	
@@ -1294,6 +1387,12 @@ func _setup_audio_ui() -> void:
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head_hbox.add_child(sp)
 
+	audio_fs_btn = Button.new()
+	var cur_fs = (DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN or DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+	audio_fs_btn.text = "⛶ Windowed (F11)" if cur_fs else "⛶ Fullscreen (F11)"
+	audio_fs_btn.pressed.connect(toggle_fullscreen)
+	head_hbox.add_child(audio_fs_btn)
+
 	var close_btn = Button.new()
 	close_btn.text = "✕ Close"
 	close_btn.pressed.connect(_toggle_audio_settings)
@@ -1515,6 +1614,163 @@ func _setup_audio_ui() -> void:
 			set_ambience_volume(0.40)
 	)
 	test_hbox4.add_child(mute_btn)
+
+func toggle_fullscreen() -> void:
+	var mode = DisplayServer.window_get_mode()
+	var is_fs = (mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+	if is_fs:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		_log("[color=#38bdf8]⛶ Display: Windowed Mode[/color]")
+		_update_fullscreen_buttons(false)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		_log("[color=#38bdf8]⛶ Display: Fullscreen Mode[/color]")
+		_update_fullscreen_buttons(true)
+
+func _update_fullscreen_buttons(is_fs: bool) -> void:
+	var txt = "⛶ Windowed (F11)" if is_fs else "⛶ Fullscreen (F11)"
+	if is_instance_valid(exp_fs_btn):
+		exp_fs_btn.text = txt
+	if is_instance_valid(combat_fs_btn):
+		combat_fs_btn.text = txt
+	if is_instance_valid(audio_fs_btn):
+		audio_fs_btn.text = txt
+	if is_instance_valid(menu_fs_btn):
+		menu_fs_btn.text = txt
+
+func _toggle_main_menu() -> void:
+	is_main_menu_open = !is_main_menu_open
+	if main_menu_modal:
+		main_menu_modal.visible = is_main_menu_open
+	if is_main_menu_open:
+		play_dice_tumble_sfx()
+
+func _on_enter_dungeon_pressed() -> void:
+	is_main_menu_open = false
+	if main_menu_modal:
+		main_menu_modal.visible = false
+	play_dice_tumble_sfx()
+	_log("[color=#38bdf8]⚔️ Entering dungeon corridors... Explore with [WASD]![/color]")
+
+func _setup_main_menu_ui() -> void:
+	main_menu_modal = Control.new()
+	main_menu_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	main_menu_modal.visible = is_main_menu_open
+	hud_root.add_child(main_menu_modal)
+	
+	# Atmospheric dark backdrop
+	var dark_bg = ColorRect.new()
+	dark_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dark_bg.color = Color(0.04, 0.05, 0.08, 0.92)
+	main_menu_modal.add_child(dark_bg)
+	
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	main_menu_modal.add_child(center)
+	
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(680, 500)
+	var p_style = StyleBoxFlat.new()
+	p_style.bg_color = Color(0.08, 0.10, 0.15, 0.98)
+	p_style.border_color = Color(0.92, 0.65, 0.15)
+	p_style.set_border_width_all(2)
+	p_style.set_corner_radius_all(10)
+	p_style.content_margin_left = 28
+	p_style.content_margin_right = 28
+	p_style.content_margin_top = 22
+	p_style.content_margin_bottom = 22
+	panel.add_theme_stylebox_override("panel", p_style)
+	center.add_child(panel)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	panel.add_child(vbox)
+	
+	# Title Header
+	var title = Label.new()
+	title.text = "⚔️ DUNGEON DICE 🎲"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
+	vbox.add_child(title)
+	
+	var sub = Label.new()
+	sub.text = "A Tactical Pulse-Action Deck-Dice Dungeon Crawler"
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 14)
+	sub.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	vbox.add_child(sub)
+	
+	# Action Buttons
+	var btn_vbox = VBoxContainer.new()
+	btn_vbox.add_theme_constant_override("separation", 10)
+	vbox.add_child(btn_vbox)
+	
+	var enter_btn = Button.new()
+	enter_btn.text = "▶ ENTER DUNGEON (Space / Enter)"
+	enter_btn.custom_minimum_size = Vector2(0, 44)
+	enter_btn.add_theme_font_size_override("font_size", 16)
+	enter_btn.pressed.connect(_on_enter_dungeon_pressed)
+	btn_vbox.add_child(enter_btn)
+	
+	menu_fs_btn = Button.new()
+	var cur_fs = (DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN or DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+	menu_fs_btn.text = "⛶ Windowed (F11)" if cur_fs else "⛶ Fullscreen (F11)"
+	menu_fs_btn.custom_minimum_size = Vector2(0, 38)
+	menu_fs_btn.add_theme_font_size_override("font_size", 14)
+	menu_fs_btn.pressed.connect(toggle_fullscreen)
+	btn_vbox.add_child(menu_fs_btn)
+	
+	var audio_btn = Button.new()
+	audio_btn.text = "🔊 Audio & Volume Settings (V)"
+	audio_btn.custom_minimum_size = Vector2(0, 38)
+	audio_btn.add_theme_font_size_override("font_size", 14)
+	audio_btn.pressed.connect(_toggle_audio_settings)
+	btn_vbox.add_child(audio_btn)
+	
+	var bag_btn = Button.new()
+	bag_btn.text = "🎒 Backpack & Weapon Dice Rack (B)"
+	bag_btn.custom_minimum_size = Vector2(0, 38)
+	bag_btn.add_theme_font_size_override("font_size", 14)
+	bag_btn.pressed.connect(_toggle_backpack)
+	btn_vbox.add_child(bag_btn)
+	
+	# Quick Controls Guide Card
+	var guide_panel = PanelContainer.new()
+	var g_style = StyleBoxFlat.new()
+	g_style.bg_color = Color(0.05, 0.07, 0.10, 0.8)
+	g_style.border_color = Color(0.2, 0.3, 0.45)
+	g_style.set_border_width_all(1)
+	g_style.set_corner_radius_all(6)
+	g_style.content_margin_left = 14
+	g_style.content_margin_right = 14
+	g_style.content_margin_top = 10
+	g_style.content_margin_bottom = 10
+	guide_panel.add_theme_stylebox_override("panel", g_style)
+	vbox.add_child(guide_panel)
+	
+	var guide_vbox = VBoxContainer.new()
+	guide_vbox.add_theme_constant_override("separation", 4)
+	guide_panel.add_child(guide_vbox)
+	
+	var g_title = Label.new()
+	g_title.text = "📜 ADVENTURER'S FIELD GUIDE"
+	g_title.add_theme_font_size_override("font_size", 12)
+	g_title.add_theme_color_override("font_color", Color(0.9, 0.75, 0.2))
+	guide_vbox.add_child(g_title)
+	
+	var tips = [
+		"• [W][A][S][D]: Move hero through dungeon corridors & breach iron doors.",
+		"• [SPACE]: Commit tactical combat moves & attacks before pulses resolve.",
+		"• [B]: Open Backpack to inspect loaded die faces & equip newly claimed weapon dice.",
+		"• [F11]: Toggle fullscreen mode at any time."
+	]
+	for t in tips:
+		var lbl = Label.new()
+		lbl.text = t
+		lbl.add_theme_font_size_override("font_size", 12)
+		lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.92))
+		guide_vbox.add_child(lbl)
 
 func _toggle_backpack() -> void:
 	is_backpack_open = !is_backpack_open
@@ -1805,7 +2061,7 @@ func _process_torch_flicker(_delta: float) -> void:
 		glow.modulate.a = clamp(flicker_alpha, 0.25, 0.65)
 
 func _process_exploration_movement(delta: float) -> void:
-	if is_backpack_open:
+	if is_backpack_open or is_audio_settings_open or is_main_menu_open:
 		return
 		
 	var move_vec = Vector2.ZERO
@@ -1878,6 +2134,10 @@ func _open_door(door: Dictionary) -> void:
 	play_door_creak_sfx()
 	var r_id = door["room_id"]
 	current_combat_room_id = r_id
+	if not breached_rooms.has(r_id):
+		breached_rooms.append(r_id)
+		if is_instance_valid(exp_chambers_label):
+			exp_chambers_label.text = "Chambers Breached: %d / 5  |  Move with [WASD]" % breached_rooms.size()
 	
 	# Open all door tiles associated with this room (supports double doors)
 	for d in doors:
@@ -2012,8 +2272,10 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	
 	var count_seq = create_tween()
 	count_seq.tween_callback(func():
+		countdown_number.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
 		countdown_number.text = "3"
 		countdown_number.scale = Vector2(1.5, 1.5)
+		play_pulse_tick_sfx()
 		var t = create_tween()
 		t.tween_property(countdown_number, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	)
@@ -2022,6 +2284,7 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	count_seq.tween_callback(func():
 		countdown_number.text = "2"
 		countdown_number.scale = Vector2(1.5, 1.5)
+		play_pulse_tick_sfx()
 		var t = create_tween()
 		t.tween_property(countdown_number, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	)
@@ -2030,6 +2293,7 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	count_seq.tween_callback(func():
 		countdown_number.text = "1"
 		countdown_number.scale = Vector2(1.5, 1.5)
+		play_pulse_tick_sfx()
 		var t = create_tween()
 		t.tween_property(countdown_number, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	)
@@ -2038,6 +2302,10 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	count_seq.tween_callback(func():
 		countdown_number.text = "BATTLE!"
 		countdown_number.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4))
+		countdown_number.scale = Vector2(1.5, 1.5)
+		play_dice_lock_sfx()
+		var t = create_tween()
+		t.tween_property(countdown_number, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	)
 	count_seq.tween_interval(0.4)
 	
@@ -2095,6 +2363,27 @@ func _process_combat_pulse(delta: float) -> void:
 				play_pulse_tick_sfx()
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_F11 or (event.keycode == KEY_ENTER and event.alt_pressed):
+			toggle_fullscreen()
+			return
+
+	if is_main_menu_open:
+		if event is InputEventKey and event.pressed:
+			if event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_ESCAPE:
+				_on_enter_dungeon_pressed()
+				return
+			elif event.keycode == KEY_W or event.keycode == KEY_A or event.keycode == KEY_S or event.keycode == KEY_D:
+				_on_enter_dungeon_pressed()
+				return
+			elif event.keycode == KEY_B or event.keycode == KEY_I:
+				_toggle_backpack()
+				return
+			elif event.keycode == KEY_V:
+				_toggle_audio_settings()
+				return
+		return
+
 	if current_mode == GameMode.GAME_OVER:
 		if event is InputEventKey and event.pressed and event.keycode == KEY_R:
 			_on_restart_pressed()
@@ -2124,14 +2413,17 @@ func _input(event: InputEvent) -> void:
 			elif is_backpack_open:
 				_toggle_backpack()
 				return
+			elif current_mode == GameMode.EXPLORATION:
+				_toggle_main_menu()
+				return
 		elif current_mode == GameMode.COMBAT_PULSE and pulse_state == PulseState.PLANNING:
 			if event.keycode == KEY_SPACE:
 				_on_commit_pressed()
 			elif event.keycode == KEY_T:
 				_on_toggle_telegraphs()
 				
-	# If backpack or audio modal is open, don't register clicks on the floor
-	if is_backpack_open or is_audio_settings_open:
+	# If backpack, audio modal or main menu is open, don't register clicks on the floor
+	if is_backpack_open or is_audio_settings_open or is_main_menu_open:
 		return
 				
 	# Board clicks in combat planning mode (board_container handles camera offset automatically!)
@@ -2430,6 +2722,11 @@ func _spawn_danger_indicator(pos: Vector2i) -> void:
 	danger_indicators.append(danger)
 
 func _update_hud_display() -> void:
+	if is_instance_valid(exp_hp_bar) and player:
+		exp_hp_bar.max_value = player.max_hp
+		exp_hp_bar.value = player.current_hp
+		exp_hp_label.text = "❤️ %d / %d" % [player.current_hp, player.max_hp]
+		
 	var p_face = player.loaded_face
 	if not p_face.is_empty():
 		player_die_icon.texture = load(p_face["icon"])
@@ -2728,6 +3025,10 @@ func _process_hazard_tiles() -> void:
 			hazard_tiles.erase(p)
 
 func _on_active_room_cleared() -> void:
+	if not cleared_rooms.has(current_combat_room_id):
+		cleared_rooms.append(current_combat_room_id)
+		if is_instance_valid(exp_chambers_label):
+			exp_chambers_label.text = "Chambers Conquered: %d / 5  |  Move with [WASD]" % cleared_rooms.size()
 	all_enemies = all_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
 	
 	# Spawn chest for the room that was cleared
