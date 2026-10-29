@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Pyromancer's Flame Wand Icon -->
+  <rect x="2" y="2" width="60" height="60" rx="10" fill="#200d16" stroke="#f97316" stroke-width="2"/>
+  <!-- Wand Shaft -->
+  <line x1="14" y1="52" x2="42" y2="22" stroke="#451a03" stroke-width="4" stroke-linecap="round"/>
+  <!-- Glowing Runes on Shaft -->
+  <line x1="22" y1="44" x2="26" y2="40" stroke="#fbbf24" stroke-width="2"/>
+  <line x1="30" y1="36" x2="34" y2="32" stroke="#fbbf24" stroke-width="2"/>
+  <!-- Blazing Crystal Tip -->
+  <polygon points="44,20 54,12 50,24 40,24" fill="#ea580c" stroke="#fbbf24" stroke-width="1.5"/>
+  <circle cx="48" cy="18" r="6" fill="#f97316" opacity="0.85"/>
+  <circle cx="48" cy="18" r="3" fill="#fef08a"/>
+</svg>

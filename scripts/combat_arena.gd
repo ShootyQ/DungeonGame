@@ -67,6 +67,17 @@ var player_die_icon: TextureRect
 var player_die_title: Label
 var player_die_desc: Label
 
+# Backpack & Inventory State
+var backpack_weapons: Array[DieData] = []
+var backpack_relics: Array[Dictionary] = [] # [{name, desc}]
+var is_backpack_open: bool = false
+var backpack_modal: PanelContainer
+var dice_rack_container: HBoxContainer
+var backpack_items_container: VBoxContainer
+var relics_container: HBoxContainer
+var equipped_weapon_title: Label
+var equipped_weapon_stats: Label
+
 # Enemy intel label
 var enemy_intel_label: Label
 var countdown_overlay: Control
@@ -83,6 +94,7 @@ func _ready() -> void:
 	_create_fog_of_war()
 	_spawn_units()
 	_setup_hud()
+	_setup_backpack_ui()
 	_enter_exploration_mode()
 
 func _setup_dungeon_layout() -> void:
@@ -259,13 +271,20 @@ func _create_fog_of_war() -> void:
 func _spawn_units() -> void:
 	all_enemies.clear()
 	active_combat_enemies.clear()
+	backpack_weapons.clear()
+	backpack_relics.clear()
 	
 	# Hero (Starts in Entrance of Hallway)
 	player = CombatUnit.new()
 	unit_container.add_child(player)
-	player.setup("Knight", true, 35, load("res://assets/sprites/hero.svg"), Vector2i(2, 11), DieData.create_default_d6_sword())
+	var start_sword = DieData.create_default_d6_sword()
+	player.setup("Knight", true, 35, load("res://assets/sprites/hero.svg"), Vector2i(2, 11), start_sword)
 	player.position = grid_to_world(player.grid_pos)
 	player.died.connect(_on_player_died)
+	
+	# Initial Backpack: Starter Sword + Phalanx Warhammer
+	backpack_weapons.append(start_sword.duplicate_die())
+	backpack_weapons.append(DieData.create_warhammer())
 	
 	# ROOM 1: Goblin Den (1 Charger + 2 Grunts)
 	var c1 = _create_enemy("Goblin Charger", 16, "res://assets/sprites/monster_charger.svg", Vector2i(6, 5), 1, "charger")
@@ -348,10 +367,19 @@ func _setup_hud() -> void:
 	exp_hbox.add_child(exp_title)
 	
 	var exp_instr = Label.new()
-	exp_instr.text = "  |  Move with [WASD]. Explore hallway & breach 5 dungeon rooms! Watch enemy charges and shields."
+	exp_instr.text = "  |  Move with [WASD]. Explore hallway & breach 5 chambers! Press [B] for Backpack & Dice."
 	exp_instr.add_theme_font_size_override("font_size", 14)
 	exp_instr.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	exp_hbox.add_child(exp_instr)
+	
+	var exp_spacer = Control.new()
+	exp_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	exp_hbox.add_child(exp_spacer)
+	
+	var exp_bag_btn = Button.new()
+	exp_bag_btn.text = "🎒 Backpack & Dice (B)"
+	exp_bag_btn.pressed.connect(_toggle_backpack)
+	exp_hbox.add_child(exp_bag_btn)
 	
 	# 2. Combat HUD (Top-Wide Dock)
 	combat_hud = PanelContainer.new()
@@ -377,11 +405,17 @@ func _setup_hud() -> void:
 	combat_hbox.add_theme_constant_override("separation", 18)
 	combat_hud.add_child(combat_hbox)
 	
-	# Player Loaded Die in Combat
+	# Player Loaded Die in Combat (Clickable to open Dice Inspector!)
 	player_die_icon = TextureRect.new()
 	player_die_icon.custom_minimum_size = Vector2(56, 56)
 	player_die_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	player_die_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	player_die_icon.mouse_filter = Control.MOUSE_FILTER_PASS
+	player_die_icon.tooltip_text = "Click to inspect your Dice Rack!"
+	player_die_icon.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_toggle_backpack()
+	)
 	combat_hbox.add_child(player_die_icon)
 	
 	var die_vbox = VBoxContainer.new()
@@ -450,6 +484,11 @@ func _setup_hud() -> void:
 	commit_button.text = "⚡ COMMIT (SPACE)"
 	commit_button.pressed.connect(_on_commit_pressed)
 	btn_hbox.add_child(commit_button)
+	
+	var bag_btn = Button.new()
+	bag_btn.text = "🎒 Dice / Bag (B)"
+	bag_btn.pressed.connect(_toggle_backpack)
+	btn_hbox.add_child(bag_btn)
 	
 	telegraph_button = Button.new()
 	telegraph_button.text = "👁️ Telegraphs: ON"
@@ -522,6 +561,382 @@ func _setup_hud() -> void:
 	log_label.text = "[color=#38bdf8]Dungeon loaded.[/color] [color=#94a3b8]5 chambers await. Push enemies into walls or each other to stun them![/color]\n"
 	log_panel.add_child(log_label)
 
+func _setup_backpack_ui() -> void:
+	backpack_modal = PanelContainer.new()
+	backpack_modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	backpack_modal.custom_minimum_size = Vector2(920, 580)
+	backpack_modal.offset_left = -460
+	backpack_modal.offset_top = -290
+	backpack_modal.offset_right = 460
+	backpack_modal.offset_bottom = 290
+	backpack_modal.visible = false
+	
+	var b_style = StyleBoxFlat.new()
+	b_style.bg_color = Color(0.07, 0.09, 0.13, 0.98)
+	b_style.border_color = Color(0.92, 0.65, 0.15)
+	b_style.set_border_width_all(2)
+	b_style.set_corner_radius_all(10)
+	b_style.content_margin_left = 20
+	b_style.content_margin_right = 20
+	b_style.content_margin_top = 16
+	b_style.content_margin_bottom = 16
+	backpack_modal.add_theme_stylebox_override("panel", b_style)
+	hud_root.add_child(backpack_modal)
+	
+	var main_vbox = VBoxContainer.new()
+	main_vbox.add_theme_constant_override("separation", 12)
+	backpack_modal.add_child(main_vbox)
+	
+	# Header Row
+	var header_hbox = HBoxContainer.new()
+	main_vbox.add_child(header_hbox)
+	
+	var title = Label.new()
+	title.text = "🎒 ADVENTURER'S BACKPACK & DICE INSPECTOR"
+	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
+	header_hbox.add_child(title)
+	
+	var hint = Label.new()
+	hint.text = "  [Press B, I or ESC to close]"
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75))
+	header_hbox.add_child(hint)
+	
+	var header_spacer = Control.new()
+	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_hbox.add_child(header_spacer)
+	
+	var close_btn = Button.new()
+	close_btn.text = "✕ Close"
+	close_btn.pressed.connect(_toggle_backpack)
+	header_hbox.add_child(close_btn)
+	
+	# Section 1: Active Equipped Weapon & Physical Dice Rack
+	var active_sec_panel = PanelContainer.new()
+	var act_style = StyleBoxFlat.new()
+	act_style.bg_color = Color(0.10, 0.13, 0.19, 0.85)
+	act_style.border_color = Color(0.2, 0.7, 0.95)
+	act_style.set_border_width_all(1)
+	act_style.set_corner_radius_all(6)
+	act_style.content_margin_left = 14
+	act_style.content_margin_right = 14
+	act_style.content_margin_top = 10
+	act_style.content_margin_bottom = 12
+	active_sec_panel.add_theme_stylebox_override("panel", act_style)
+	main_vbox.add_child(active_sec_panel)
+	
+	var act_vbox = VBoxContainer.new()
+	act_vbox.add_theme_constant_override("separation", 8)
+	active_sec_panel.add_child(act_vbox)
+	
+	var act_header_hbox = HBoxContainer.new()
+	act_vbox.add_child(act_header_hbox)
+	
+	equipped_weapon_title = Label.new()
+	equipped_weapon_title.text = "⚔️ EQUIPPED: RUSTY D6 SWORD"
+	equipped_weapon_title.add_theme_font_size_override("font_size", 15)
+	equipped_weapon_title.add_theme_color_override("font_color", Color(0.35, 0.85, 0.98))
+	act_header_hbox.add_child(equipped_weapon_title)
+	
+	var eq_spacer = Control.new()
+	eq_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	act_header_hbox.add_child(eq_spacer)
+	
+	equipped_weapon_stats = Label.new()
+	equipped_weapon_stats.text = "Mean DMG: 4.0 | Faces: 6"
+	equipped_weapon_stats.add_theme_font_size_override("font_size", 13)
+	equipped_weapon_stats.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
+	act_header_hbox.add_child(equipped_weapon_stats)
+	
+	# The 6-Face Visual Rack
+	dice_rack_container = HBoxContainer.new()
+	dice_rack_container.add_theme_constant_override("separation", 8)
+	act_vbox.add_child(dice_rack_container)
+	
+	# Section 2: Weapons in Backpack
+	var bag_label = Label.new()
+	bag_label.text = "📦 WEAPONS IN BACKPACK (Click to swap equipped die)"
+	bag_label.add_theme_font_size_override("font_size", 13)
+	bag_label.add_theme_color_override("font_color", Color(0.95, 0.75, 0.2))
+	main_vbox.add_child(bag_label)
+	
+	var bag_scroll = ScrollContainer.new()
+	bag_scroll.custom_minimum_size = Vector2(0, 140)
+	bag_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_vbox.add_child(bag_scroll)
+	
+	backpack_items_container = VBoxContainer.new()
+	backpack_items_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	backpack_items_container.add_theme_constant_override("separation", 6)
+	bag_scroll.add_child(backpack_items_container)
+	
+	# Section 3: Relics Shelf
+	var relic_header = Label.new()
+	relic_header.text = "🔮 COLLECTED RUNES & RELICS"
+	relic_header.add_theme_font_size_override("font_size", 13)
+	relic_header.add_theme_color_override("font_color", Color(0.7, 0.5, 0.95))
+	main_vbox.add_child(relic_header)
+	
+	relics_container = HBoxContainer.new()
+	relics_container.add_theme_constant_override("separation", 10)
+	main_vbox.add_child(relics_container)
+
+func _toggle_backpack() -> void:
+	is_backpack_open = !is_backpack_open
+	backpack_modal.visible = is_backpack_open
+	if is_backpack_open:
+		_render_backpack_ui()
+
+func _render_backpack_ui() -> void:
+	if not player or not player.die:
+		return
+		
+	# Update active equipped weapon header
+	equipped_weapon_title.text = "⚔️ EQUIPPED WEAPON: %s (%s DIE)" % [player.die.name.to_upper(), player.die.die_type.to_upper()]
+	equipped_weapon_stats.text = "Faces: %d  |  Avg DMG: %.1f  |  Loaded Face: %s (%d DMG)" % [
+		player.die.faces.size(),
+		player.die.get_average_damage(),
+		player.loaded_face.get("title", "NONE"),
+		player.loaded_face.get("damage", 0)
+	]
+	
+	# 1. Populate Physical Dice Rack Shelf
+	for child in dice_rack_container.get_children():
+		dice_rack_container.remove_child(child)
+		child.queue_free()
+		
+	for i in range(player.die.faces.size()):
+		var face = player.die.faces[i]
+		var is_loaded = (face.get("title") == player.loaded_face.get("title") and face.get("damage") == player.loaded_face.get("damage") and face.get("roll") == player.loaded_face.get("roll"))
+		
+		var card = PanelContainer.new()
+		card.custom_minimum_size = Vector2(130, 140)
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		var c_style = StyleBoxFlat.new()
+		c_style.set_corner_radius_all(6)
+		c_style.content_margin_left = 6
+		c_style.content_margin_right = 6
+		c_style.content_margin_top = 6
+		c_style.content_margin_bottom = 6
+		
+		if is_loaded:
+			c_style.bg_color = Color(0.20, 0.16, 0.06, 0.95)
+			c_style.border_color = Color(0.98, 0.82, 0.2)
+			c_style.set_border_width_all(2)
+		else:
+			c_style.bg_color = Color(0.08, 0.10, 0.15, 0.85)
+			c_style.border_color = Color(0.2, 0.3, 0.45)
+			c_style.set_border_width_all(1)
+		card.add_theme_stylebox_override("panel", c_style)
+		dice_rack_container.add_child(card)
+		
+		var cvbox = VBoxContainer.new()
+		cvbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		cvbox.add_theme_constant_override("separation", 3)
+		card.add_child(cvbox)
+		
+		var roll_lbl = Label.new()
+		roll_lbl.text = "FACE %d" % face.get("roll", i + 1)
+		roll_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		roll_lbl.add_theme_font_size_override("font_size", 11)
+		roll_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2) if is_loaded else Color(0.38, 0.74, 0.97))
+		cvbox.add_child(roll_lbl)
+		
+		var icon_rect = TextureRect.new()
+		icon_rect.texture = load(face.get("icon", "res://assets/ui/die_face_1.svg"))
+		icon_rect.custom_minimum_size = Vector2(40, 40)
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		cvbox.add_child(icon_rect)
+		
+		var t_lbl = Label.new()
+		t_lbl.text = face.get("title", "")
+		t_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		t_lbl.add_theme_font_size_override("font_size", 12)
+		t_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+		cvbox.add_child(t_lbl)
+		
+		var d_lbl = Label.new()
+		var dmg = face.get("damage", 0)
+		d_lbl.text = "%d DMG" % dmg if dmg > 0 else "0 DMG"
+		d_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		d_lbl.add_theme_font_size_override("font_size", 12)
+		d_lbl.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4) if dmg > 0 else Color(0.6, 0.6, 0.6))
+		cvbox.add_child(d_lbl)
+		
+		var st_lbl = Label.new()
+		var desc = face.get("desc", "")
+		if face.get("knockback", false):
+			st_lbl.text = "💥 PUSH / SLAM"
+			st_lbl.add_theme_color_override("font_color", Color(0.95, 0.7, 0.2))
+		elif desc.contains("Burn") or desc.contains("Fire"):
+			st_lbl.text = "🔥 BURN AREA"
+			st_lbl.add_theme_color_override("font_color", Color(0.95, 0.4, 0.2))
+		elif desc.contains("Shield"):
+			st_lbl.text = "🛡️ BREAK GUARD"
+			st_lbl.add_theme_color_override("font_color", Color(0.3, 0.8, 0.95))
+		else:
+			st_lbl.text = "NORMAL STRIKE"
+			st_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
+		st_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		st_lbl.add_theme_font_size_override("font_size", 9)
+		cvbox.add_child(st_lbl)
+		
+		if is_loaded:
+			var act_tag = Label.new()
+			act_tag.text = "▶ ACTIVE NEXT"
+			act_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			act_tag.add_theme_font_size_override("font_size", 10)
+			act_tag.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
+			cvbox.add_child(act_tag)
+			
+	# 2. Populate Backpack Weapons List
+	for child in backpack_items_container.get_children():
+		backpack_items_container.remove_child(child)
+		child.queue_free()
+		
+	for w in backpack_weapons:
+		var row = PanelContainer.new()
+		var r_style = StyleBoxFlat.new()
+		var is_current = (w.name == player.die.name)
+		r_style.bg_color = Color(0.12, 0.15, 0.22, 0.8) if is_current else Color(0.08, 0.10, 0.14, 0.7)
+		r_style.border_color = Color(0.3, 0.8, 0.5) if is_current else Color(0.2, 0.25, 0.35)
+		r_style.set_border_width_all(1)
+		r_style.set_corner_radius_all(6)
+		r_style.content_margin_left = 12
+		r_style.content_margin_right = 12
+		r_style.content_margin_top = 6
+		r_style.content_margin_bottom = 6
+		row.add_theme_stylebox_override("panel", r_style)
+		backpack_items_container.add_child(row)
+		
+		var rhbox = HBoxContainer.new()
+		rhbox.add_theme_constant_override("separation", 14)
+		row.add_child(rhbox)
+		
+		var w_icon = TextureRect.new()
+		w_icon.texture = load(w.icon_path)
+		w_icon.custom_minimum_size = Vector2(36, 36)
+		w_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		w_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		rhbox.add_child(w_icon)
+		
+		var w_vbox = VBoxContainer.new()
+		w_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rhbox.add_child(w_vbox)
+		
+		var w_name_lbl = Label.new()
+		w_name_lbl.text = w.name
+		w_name_lbl.add_theme_font_size_override("font_size", 14)
+		w_name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+		w_vbox.add_child(w_name_lbl)
+		
+		var w_sub_lbl = Label.new()
+		w_sub_lbl.text = "Die: %s  |  Avg DMG: %.1f  |  Faces: %d" % [w.die_type.to_upper(), w.get_average_damage(), w.faces.size()]
+		w_sub_lbl.add_theme_font_size_override("font_size", 11)
+		w_sub_lbl.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8))
+		w_vbox.add_child(w_sub_lbl)
+		
+		var mini_hbox = HBoxContainer.new()
+		mini_hbox.add_theme_constant_override("separation", 4)
+		for f in w.faces:
+			var m_tex = TextureRect.new()
+			m_tex.texture = load(f.get("icon", "res://assets/ui/die_face_1.svg"))
+			m_tex.custom_minimum_size = Vector2(20, 20)
+			m_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			m_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			mini_hbox.add_child(m_tex)
+		rhbox.add_child(mini_hbox)
+		
+		if is_current:
+			var eq_tag = Label.new()
+			eq_tag.text = "✓ EQUIPPED"
+			eq_tag.add_theme_font_size_override("font_size", 12)
+			eq_tag.add_theme_color_override("font_color", Color(0.3, 0.85, 0.5))
+			rhbox.add_child(eq_tag)
+		else:
+			var eq_btn = Button.new()
+			eq_btn.text = "⚔️ Equip"
+			eq_btn.pressed.connect(func(): _equip_weapon_from_backpack(w))
+			rhbox.add_child(eq_btn)
+			
+	# 3. Populate Relics Shelf
+	for child in relics_container.get_children():
+		relics_container.remove_child(child)
+		child.queue_free()
+		
+	if backpack_relics.is_empty():
+		var no_r = Label.new()
+		no_r.text = "No relics found yet. Slay chamber guardians and loot chests to earn runes!"
+		no_r.add_theme_font_size_override("font_size", 12)
+		no_r.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
+		relics_container.add_child(no_r)
+	else:
+		for r in backpack_relics:
+			var r_panel = PanelContainer.new()
+			var rp_style = StyleBoxFlat.new()
+			rp_style.bg_color = Color(0.12, 0.10, 0.18, 0.85)
+			rp_style.border_color = Color(0.7, 0.4, 0.9)
+			rp_style.set_border_width_all(1)
+			rp_style.set_corner_radius_all(4)
+			rp_style.content_margin_left = 10
+			rp_style.content_margin_right = 10
+			rp_style.content_margin_top = 4
+			rp_style.content_margin_bottom = 4
+			r_panel.add_theme_stylebox_override("panel", rp_style)
+			relics_container.add_child(r_panel)
+			
+			var r_vbox = VBoxContainer.new()
+			r_panel.add_child(r_vbox)
+			
+			var rn = Label.new()
+			rn.text = r["name"]
+			rn.add_theme_font_size_override("font_size", 12)
+			rn.add_theme_color_override("font_color", Color(0.9, 0.7, 1.0))
+			r_vbox.add_child(rn)
+			
+			var rd = Label.new()
+			rd.text = r["desc"]
+			rd.add_theme_font_size_override("font_size", 10)
+			rd.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+			r_vbox.add_child(rd)
+
+func _equip_weapon_from_backpack(weapon: DieData) -> void:
+	player.die = weapon.duplicate_die()
+	player.roll_next_face()
+	_update_hud_display()
+	_render_backpack_ui()
+	_log("[color=#38bdf8]⚔️ Swapped equipped weapon to [b]%s[/b]! Loaded face: %s[/color]" % [player.die.name, player.loaded_face.get("title", "")])
+	_show_floating_text(player.position, "EQUIPPED: %s" % player.die.name, Color(0.3, 0.8, 0.95))
+
+func _add_weapon_to_backpack(weapon: DieData) -> void:
+	for w in backpack_weapons:
+		if w.name == weapon.name:
+			return
+	backpack_weapons.append(weapon.duplicate_die())
+	if is_backpack_open:
+		_render_backpack_ui()
+
+func _sync_equipped_weapon_to_backpack() -> void:
+	for i in range(backpack_weapons.size()):
+		if backpack_weapons[i].name == player.die.name:
+			backpack_weapons[i] = player.die.duplicate_die()
+			return
+	backpack_weapons.append(player.die.duplicate_die())
+
+func _add_relic(r_name: String, r_desc: String) -> void:
+	for r in backpack_relics:
+		if r["name"] == r_name:
+			return
+	backpack_relics.append({
+		"name": r_name,
+		"desc": r_desc
+	})
+	if is_backpack_open:
+		_render_backpack_ui()
+
 func _process(delta: float) -> void:
 	# Smooth Camera Follow
 	if player and is_instance_valid(player):
@@ -534,6 +949,9 @@ func _process(delta: float) -> void:
 		_process_combat_pulse(delta)
 
 func _process_exploration_movement(delta: float) -> void:
+	if is_backpack_open:
+		return
+		
 	var move_vec = Vector2.ZERO
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
 		move_vec.y -= 1.0
@@ -645,6 +1063,9 @@ func _open_chest(chest: Dictionary) -> void:
 	
 	var reward_type = chest.get("reward", "flame_rune")
 	if reward_type == "flame_rune":
+		# Add Pyromancer's Wand to backpack
+		var wand = DieData.create_pyromancer_wand()
+		_add_weapon_to_backpack(wand)
 		if player and player.die and player.die.faces.size() >= 4:
 			var fire_face = {
 				"roll": 4,
@@ -656,9 +1077,13 @@ func _open_chest(chest: Dictionary) -> void:
 			}
 			player.die.faces[3] = fire_face
 			player.loaded_face = fire_face
-			_update_hud_display()
-			_log("[color=#f97316][b]🔥 TREASURE: Flame Rune! (Face 4 upgraded to 8 DMG + Burn Hazard)[/b][/color]")
+		_sync_equipped_weapon_to_backpack()
+		_add_relic("Flame Rune", "🔥 Upgrades Face 4 to 8 DMG with Fire Hazards + unlocks Pyromancer's Flame Wand!")
+		_update_hud_display()
+		_log("[color=#f97316][b]🔥 TREASURE: Flame Rune etched + Pyromancer's Flame Wand added to Backpack![/b][/color]")
 	elif reward_type == "shield_basher":
+		var warhammer = DieData.create_warhammer()
+		_add_weapon_to_backpack(warhammer)
 		if player and player.die and player.die.faces.size() >= 2:
 			var bash_face = {
 				"roll": 2,
@@ -670,8 +1095,10 @@ func _open_chest(chest: Dictionary) -> void:
 			}
 			player.die.faces[1] = bash_face
 			player.loaded_face = bash_face
-			_update_hud_display()
-			_log("[color=#38bdf8][b]🛡️ TREASURE: Shield Basher! (Face 2 upgraded to 5 DMG + SHIELD BREAK)[/b][/color]")
+		_sync_equipped_weapon_to_backpack()
+		_add_relic("Shield Basher", "🛡️ Upgrades Face 2 to 5 DMG with Shield-Breaking capability.")
+		_update_hud_display()
+		_log("[color=#38bdf8][b]🛡️ TREASURE: Shield Basher etched + Phalanx Warhammer added to Backpack![/b][/color]")
 	elif reward_type == "chaos_blast":
 		if player and player.die and player.die.faces.size() >= 3:
 			var chaos_face = {
@@ -684,9 +1111,13 @@ func _open_chest(chest: Dictionary) -> void:
 			}
 			player.die.faces[2] = chaos_face
 			player.loaded_face = chaos_face
-			_update_hud_display()
-			_log("[color=#a855f7][b]🔮 TREASURE: Chaos Shockwave! (Face 3 upgraded to 7 DMG + HEAVY PUSH)[/b][/color]")
+		_sync_equipped_weapon_to_backpack()
+		_add_relic("Chaos Shockwave", "🔮 Upgrades Face 3 to 7 DMG with a directional shockwave.")
+		_update_hud_display()
+		_log("[color=#a855f7][b]🔮 TREASURE: Chaos Shockwave etched into your weapon die![/b][/color]")
 	elif reward_type == "executioner_edge":
+		var axe = DieData.create_executioner_axe()
+		_add_weapon_to_backpack(axe)
 		if player and player.die and not player.die.faces.is_empty():
 			var exec_face = {
 				"roll": 1,
@@ -698,9 +1129,12 @@ func _open_chest(chest: Dictionary) -> void:
 			}
 			player.die.faces[0] = exec_face
 			player.loaded_face = exec_face
-			_update_hud_display()
-			_log("[color=#eab308][b]⚡ TREASURE: Executioner's Edge! (Face 1 MISS replaced with 10 DMG + WALL SLAM)[/b][/color]")
+		_sync_equipped_weapon_to_backpack()
+		_add_relic("Executioner's Edge", "⚡ Replaces Face 1 MISS with a 10 DMG Wall Slam + unlocks Executioner's Greataxe!")
+		_update_hud_display()
+		_log("[color=#eab308][b]⚡ TREASURE: Executioner's Edge + Greataxe added to Backpack![/b][/color]")
 	elif reward_type == "dungeon_crown":
+		_add_relic("Crown of the Dungeon Master", "👑 Legendary victory relic! All chambers purged.")
 		_log("[color=#22c55e][b]👑 RELIC OF VICTORY: You claimed the Dungeon Crown! All chambers conquered![/b][/color]")
 
 func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
@@ -809,11 +1243,21 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_R:
 			_on_restart_pressed()
+		elif event.keycode == KEY_B or event.keycode == KEY_I:
+			_toggle_backpack()
+			return
+		elif event.keycode == KEY_ESCAPE and is_backpack_open:
+			_toggle_backpack()
+			return
 		elif current_mode == GameMode.COMBAT_PULSE and pulse_state == PulseState.PLANNING:
 			if event.keycode == KEY_SPACE:
 				_on_commit_pressed()
 			elif event.keycode == KEY_T:
 				_on_toggle_telegraphs()
+				
+	# If backpack is open, don't register clicks on the floor
+	if is_backpack_open:
+		return
 				
 	# Board clicks in combat planning mode (board_container handles camera offset automatically!)
 	if current_mode == GameMode.COMBAT_PULSE and pulse_state == PulseState.PLANNING and event is InputEventMouseButton and event.pressed:

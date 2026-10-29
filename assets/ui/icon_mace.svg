@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Phalanx Warhammer / Mace Icon -->
+  <rect x="2" y="2" width="60" height="60" rx="10" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+  <!-- Steel Shaft -->
+  <line x1="16" y1="52" x2="44" y2="20" stroke="#475569" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Flanged Mace Head -->
+  <circle cx="44" cy="20" r="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+  <polygon points="44,8 47,16 41,16" fill="#94a3b8"/>
+  <polygon points="56,20 48,23 48,17" fill="#94a3b8"/>
+  <polygon points="44,32 41,24 47,24" fill="#94a3b8"/>
+  <polygon points="32,20 40,17 40,23" fill="#94a3b8"/>
+  <circle cx="44" cy="20" r="3.5" fill="#38bdf8"/>
+</svg>
