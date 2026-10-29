@@ -11,6 +11,12 @@ var desc: String = ""
 var hp_bonus: int = 0
 var armor_bonus: int = 0
 var dmg_bonus: int = 0
+var str_bonus: int = 0
+var dex_bonus: int = 0
+var int_bonus: int = 0
+var trait_id: String = "" # "honed_edge", "serrated", "titans_grip", "vampiric", "ember_core", "phalanx_guard"
+var trait_name: String = ""
+var trait_desc: String = ""
 var die: DieData = null
 var face_data: Dictionary = {}
 
@@ -26,6 +32,12 @@ func duplicate_item() -> ItemData:
 	it.hp_bonus = self.hp_bonus
 	it.armor_bonus = self.armor_bonus
 	it.dmg_bonus = self.dmg_bonus
+	it.str_bonus = self.str_bonus
+	it.dex_bonus = self.dex_bonus
+	it.int_bonus = self.int_bonus
+	it.trait_id = self.trait_id
+	it.trait_name = self.trait_name
+	it.trait_desc = self.trait_desc
 	if self.die:
 		it.die = self.die.duplicate_die()
 	it.face_data = self.face_data.duplicate(true)
@@ -39,6 +51,14 @@ func get_stat_summary() -> String:
 		parts.append("+%d Armor" % armor_bonus)
 	if dmg_bonus > 0:
 		parts.append("+%d DMG" % dmg_bonus)
+	if str_bonus > 0:
+		parts.append("+%d STR" % str_bonus)
+	if dex_bonus > 0:
+		parts.append("+%d DEX" % dex_bonus)
+	if int_bonus > 0:
+		parts.append("+%d INT" % int_bonus)
+	if trait_name != "":
+		parts.append("Trait: %s" % trait_name)
 	if hands == 2:
 		parts.append("2-Handed")
 	elif hands == 1 and item_type == "weapon":
@@ -300,4 +320,64 @@ static func create_face_item(face: Dictionary) -> ItemData:
 	it.desc = face.get("desc", "%d Damage" % face.get("damage", 1))
 	it.dmg_bonus = face.get("damage", 1)
 	it.face_data = face.duplicate(true)
+	return it
+
+# Procedural Weapon Chassis Drops with Traits
+static func generate_random_weapon(floor_depth: int = 1) -> ItemData:
+	var it = ItemData.new()
+	var weapon_archetypes = [
+		{"name": "Knight's Arming Sword", "hands": 1, "icon": "res://assets/items/item_sword_starter.svg", "str": 1, "dex": 0, "int": 0},
+		{"name": "Executioner's Greatsword", "hands": 2, "icon": "res://assets/items/item_axe_executioner.svg", "str": 2, "dex": 0, "int": 0},
+		{"name": "Shadow Dirk", "hands": 1, "icon": "res://assets/items/item_dagger_parry.svg", "str": 0, "dex": 2, "int": 0},
+		{"name": "Phalanx Battleaxe", "hands": 1, "icon": "res://assets/items/item_axe_executioner.svg", "str": 1, "dex": 1, "int": 0},
+		{"name": "Crusher Warhammer", "hands": 2, "icon": "res://assets/items/item_warhammer_phalanx.svg", "str": 3, "dex": 0, "int": 0},
+		{"name": "Pyromancer's Scepter", "hands": 1, "icon": "res://assets/items/item_wand_pyro.svg", "str": 0, "dex": 0, "int": 2}
+	]
+	var arch = weapon_archetypes.pick_random()
+	it.id = "chassis_%s_%d" % [arch["name"].to_lower().replace(" ", "_"), randi() % 1000]
+	it.name = arch["name"]
+	it.slot = "hand_1"
+	it.hands = arch["hands"]
+	it.item_type = "weapon"
+	it.icon_path = arch["icon"]
+	it.str_bonus = arch["str"]
+	it.dex_bonus = arch["dex"]
+	it.int_bonus = arch["int"]
+
+	# Chassis Traits
+	var traits = [
+		{"id": "honed_edge", "name": "Honed Edge", "desc": "+1 DMG to all socketed faces"},
+		{"id": "serrated", "name": "Serrated Crossguard", "desc": "All attacks inflict +1 Bleed"},
+		{"id": "titans_grip", "name": "Titan's Grip", "desc": "Faces with 5+ DMG knock back targets"},
+		{"id": "vampiric", "name": "Vampiric Thirst", "desc": "Critical strikes restore +2 HP"},
+		{"id": "ember_core", "name": "Ember Core", "desc": "All attacks ignite targets for +1 Burn"},
+		{"id": "phalanx_guard", "name": "Phalanx Guard", "desc": "+2 Guard Armor after every attack"}
+	]
+	var t = traits.pick_random()
+	it.trait_id = t["id"]
+	it.trait_name = t["name"]
+	it.trait_desc = t["desc"]
+	it.desc = "%s. Chassis Trait: %s (%s)." % [arch["name"], t["name"], t["desc"]]
+
+	# Generate 6 procedural faces for this weapon chassis
+	it.die = DieData.new()
+	it.die.die_name = it.name
+	it.die.color_code = "#f59e0b"
+	it.die.faces = []
+	for slot_idx in range(6):
+		var face = DieData.generate_random_face(floor_depth)
+		face["roll"] = slot_idx + 1
+		it.die.faces.append(face)
+
+	return it
+
+# Collectible Estate / Mansion Trophies
+static func create_estate_trophy(p_id: String, p_name: String, p_desc: String) -> ItemData:
+	var it = ItemData.new()
+	it.id = p_id
+	it.name = p_name
+	it.slot = "trophy"
+	it.item_type = "trophy"
+	it.icon_path = "res://assets/items/item_crown_victory.svg"
+	it.desc = p_desc + " (Collectible House Decor for your future Estate/Mansion!)"
 	return it

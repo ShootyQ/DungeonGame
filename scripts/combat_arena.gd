@@ -105,9 +105,17 @@ var room_torches: Dictionary = {} # room_id -> Array[{sconce, glow}]
 
 # Character Sheet UI Nodes
 var char_title_label: Label
+var char_level_label: Label
+var char_exp_bar: ProgressBar
+var char_exp_label: Label
 var char_hp_label: Label
 var char_armor_label: Label
 var char_dmg_label: Label
+var char_str_label: Label
+var char_dex_label: Label
+var char_int_label: Label
+var char_stat_points_container: HBoxContainer
+var active_weapon_trait_label: Label
 var char_paper_doll_container: VBoxContainer
 var inventory_stash_container: GridContainer
 var inventory_scroll: ScrollContainer
@@ -1057,7 +1065,56 @@ func _setup_backpack_ui() -> void:
 	prof_sub.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
 	prof_txt.add_child(prof_sub)
 	
-	# Total Attributes Bar
+	# Level & EXP Progression Bar
+	var level_panel = PanelContainer.new()
+	var lvl_p_style = StyleBoxFlat.new()
+	lvl_p_style.bg_color = Color(0.06, 0.09, 0.14, 0.95)
+	lvl_p_style.border_color = Color(0.98, 0.82, 0.2)
+	lvl_p_style.set_border_width_all(1)
+	lvl_p_style.set_corner_radius_all(6)
+	lvl_p_style.content_margin_left = 10
+	lvl_p_style.content_margin_right = 10
+	lvl_p_style.content_margin_top = 6
+	lvl_p_style.content_margin_bottom = 6
+	level_panel.add_theme_stylebox_override("panel", lvl_p_style)
+	left_vbox.add_child(level_panel)
+
+	var level_vbox = VBoxContainer.new()
+	level_vbox.add_theme_constant_override("separation", 3)
+	level_panel.add_child(level_vbox)
+
+	var level_head_hbox = HBoxContainer.new()
+	char_level_label = Label.new()
+	char_level_label.text = "⭐ LEVEL 1 PALADIN"
+	char_level_label.add_theme_font_size_override("font_size", 12)
+	char_level_label.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+	level_head_hbox.add_child(char_level_label)
+
+	var lvl_spacer = Control.new()
+	lvl_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	level_head_hbox.add_child(lvl_spacer)
+
+	char_exp_label = Label.new()
+	char_exp_label.text = "0 / 100 EXP"
+	char_exp_label.add_theme_font_size_override("font_size", 10)
+	char_exp_label.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	level_head_hbox.add_child(char_exp_label)
+	level_vbox.add_child(level_head_hbox)
+
+	char_exp_bar = ProgressBar.new()
+	char_exp_bar.custom_minimum_size = Vector2(0, 8)
+	char_exp_bar.show_percentage = false
+	var exp_bg = StyleBoxFlat.new()
+	exp_bg.bg_color = Color(0.12, 0.15, 0.22)
+	exp_bg.set_corner_radius_all(4)
+	var exp_fill = StyleBoxFlat.new()
+	exp_fill.bg_color = Color(0.2, 0.75, 0.95)
+	exp_fill.set_corner_radius_all(4)
+	char_exp_bar.add_theme_stylebox_override("background", exp_bg)
+	char_exp_bar.add_theme_stylebox_override("fill", exp_fill)
+	level_vbox.add_child(char_exp_bar)
+
+	# Total Attributes & Core Stats Panel
 	var stats_panel = PanelContainer.new()
 	var sp_style = StyleBoxFlat.new()
 	sp_style.bg_color = Color(0.06, 0.08, 0.12, 0.95)
@@ -1071,10 +1128,14 @@ func _setup_backpack_ui() -> void:
 	stats_panel.add_theme_stylebox_override("panel", sp_style)
 	left_vbox.add_child(stats_panel)
 	
+	var stats_vbox = VBoxContainer.new()
+	stats_vbox.add_theme_constant_override("separation", 4)
+	stats_panel.add_child(stats_vbox)
+
 	var stats_hbox = HBoxContainer.new()
 	stats_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	stats_hbox.add_theme_constant_override("separation", 16)
-	stats_panel.add_child(stats_hbox)
+	stats_vbox.add_child(stats_hbox)
 	
 	char_hp_label = Label.new()
 	char_hp_label.text = "❤️ HP: 35"
@@ -1093,6 +1154,36 @@ func _setup_backpack_ui() -> void:
 	char_dmg_label.add_theme_font_size_override("font_size", 12)
 	char_dmg_label.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
 	stats_hbox.add_child(char_dmg_label)
+
+	# Row 2: Core Attributes (STR, DEX, INT)
+	var attrs_hbox = HBoxContainer.new()
+	attrs_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	attrs_hbox.add_theme_constant_override("separation", 14)
+	stats_vbox.add_child(attrs_hbox)
+
+	char_str_label = Label.new()
+	char_str_label.text = "💪 STR: 10"
+	char_str_label.add_theme_font_size_override("font_size", 11)
+	char_str_label.add_theme_color_override("font_color", Color(0.95, 0.45, 0.35))
+	attrs_hbox.add_child(char_str_label)
+
+	char_dex_label = Label.new()
+	char_dex_label.text = "🏃 DEX: 10"
+	char_dex_label.add_theme_font_size_override("font_size", 11)
+	char_dex_label.add_theme_color_override("font_color", Color(0.35, 0.85, 0.55))
+	attrs_hbox.add_child(char_dex_label)
+
+	char_int_label = Label.new()
+	char_int_label.text = "🧠 INT: 10"
+	char_int_label.add_theme_font_size_override("font_size", 11)
+	char_int_label.add_theme_color_override("font_color", Color(0.45, 0.75, 1.0))
+	attrs_hbox.add_child(char_int_label)
+
+	# Stat Points Allocation Row (Appears when unspent_stat_points > 0)
+	char_stat_points_container = HBoxContainer.new()
+	char_stat_points_container.alignment = BoxContainer.ALIGNMENT_CENTER
+	char_stat_points_container.add_theme_constant_override("separation", 6)
+	stats_vbox.add_child(char_stat_points_container)
 	
 	# Paper Doll Scroll Container (10 Slots Layout)
 	var pd_scroll = ScrollContainer.new()
@@ -1153,6 +1244,13 @@ func _setup_backpack_ui() -> void:
 	dice_rack_container = HBoxContainer.new()
 	dice_rack_container.add_theme_constant_override("separation", 6)
 	act_vbox.add_child(dice_rack_container)
+
+	# Active Weapon Chassis Trait Banner
+	active_weapon_trait_label = Label.new()
+	active_weapon_trait_label.text = "⚡ CHASSIS TRAIT: Standard (No trait)"
+	active_weapon_trait_label.add_theme_font_size_override("font_size", 11)
+	active_weapon_trait_label.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+	act_vbox.add_child(active_weapon_trait_label)
 	
 	# Section 2: Stash & Armory Filter Tabs
 	var stash_header_hbox = HBoxContainer.new()
@@ -1166,7 +1264,7 @@ func _setup_backpack_ui() -> void:
 	stash_header_hbox.add_child(stash_lbl)
 	
 	filter_tab_buttons.clear()
-	var tabs = ["All", "Faces", "Weapons", "Off-Hand", "Armor", "Jewelry"]
+	var tabs = ["All", "Faces", "Weapons", "Off-Hand", "Armor", "Jewelry", "Trophies"]
 	for tab_name in tabs:
 		var tab_btn = Button.new()
 		tab_btn.text = tab_name
@@ -1867,10 +1965,85 @@ func _render_backpack_ui() -> void:
 	if not player:
 		return
 		
-	# 1. Update Hero stats
+	# 1. Update Hero stats & Attributes
+	if is_instance_valid(char_level_label):
+		char_level_label.text = "⭐ LEVEL %d PALADIN" % player.level
+	if is_instance_valid(char_exp_bar):
+		char_exp_bar.max_value = player.exp_to_level
+		char_exp_bar.value = player.current_exp
+	if is_instance_valid(char_exp_label):
+		char_exp_label.text = "%d / %d EXP" % [player.current_exp, player.exp_to_level]
+
 	char_hp_label.text = "❤️ HP: %d / %d" % [player.current_hp, player.max_hp]
 	char_armor_label.text = "🛡️ ARMOR: %d" % player.armor
 	char_dmg_label.text = "⚔️ BONUS DMG: +%d" % player.dmg_bonus
+
+	if is_instance_valid(char_str_label):
+		var str_txt = "💪 STR: %d" % player.get_total_str()
+		if player.bonus_str > 0:
+			str_txt += " (%d+%d)" % [player.stat_str, player.bonus_str]
+		char_str_label.text = str_txt
+
+	if is_instance_valid(char_dex_label):
+		var dex_txt = "🏃 DEX: %d (Crit: %.1f%%)" % [player.get_total_dex(), player.get_crit_chance() * 100.0]
+		if player.bonus_dex > 0:
+			dex_txt = "🏃 DEX: %d (%d+%d) • Crit: %.1f%%" % [player.get_total_dex(), player.stat_dex, player.bonus_dex, player.get_crit_chance() * 100.0]
+		char_dex_label.text = dex_txt
+
+	if is_instance_valid(char_int_label):
+		var int_txt = "🧠 INT: %d" % player.get_total_int()
+		if player.bonus_int > 0:
+			int_txt += " (%d+%d)" % [player.stat_int, player.bonus_int]
+		char_int_label.text = int_txt
+
+	# Render Stat Point Allocation Buttons if unspent points available
+	if is_instance_valid(char_stat_points_container):
+		for c in char_stat_points_container.get_children():
+			char_stat_points_container.remove_child(c)
+			c.queue_free()
+
+		if player.unspent_stat_points > 0:
+			var pt_lbl = Label.new()
+			pt_lbl.text = "⭐ %d Point%s:" % [player.unspent_stat_points, "s" if player.unspent_stat_points > 1 else ""]
+			pt_lbl.add_theme_font_size_override("font_size", 10)
+			pt_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
+			char_stat_points_container.add_child(pt_lbl)
+
+			var str_btn = Button.new()
+			str_btn.text = "+ STR"
+			str_btn.add_theme_font_size_override("font_size", 10)
+			str_btn.pressed.connect(func():
+				if player.unspent_stat_points > 0:
+					player.stat_str += 1
+					player.unspent_stat_points -= 1
+					_recalculate_equipped_stats()
+					_render_backpack_ui()
+			)
+			char_stat_points_container.add_child(str_btn)
+
+			var dex_btn = Button.new()
+			dex_btn.text = "+ DEX"
+			dex_btn.add_theme_font_size_override("font_size", 10)
+			dex_btn.pressed.connect(func():
+				if player.unspent_stat_points > 0:
+					player.stat_dex += 1
+					player.unspent_stat_points -= 1
+					_recalculate_equipped_stats()
+					_render_backpack_ui()
+			)
+			char_stat_points_container.add_child(dex_btn)
+
+			var int_btn = Button.new()
+			int_btn.text = "+ INT"
+			int_btn.add_theme_font_size_override("font_size", 10)
+			int_btn.pressed.connect(func():
+				if player.unspent_stat_points > 0:
+					player.stat_int += 1
+					player.unspent_stat_points -= 1
+					_recalculate_equipped_stats()
+					_render_backpack_ui()
+			)
+			char_stat_points_container.add_child(int_btn)
 	
 	# 2. Render Paper Doll (10 Slots Layout)
 	_render_paper_doll_slots()
@@ -2024,6 +2197,14 @@ func _render_active_weapon_dice_rack() -> void:
 	var hand_tag = ("2-HANDED" if (main_w and main_w.hands == 2) else "1-HANDED") if main_w != null else "1-HANDED"
 	
 	equipped_weapon_title.text = "⚔️ MAIN HAND: %s (%s)" % [weapon_name.to_upper(), hand_tag]
+	if is_instance_valid(active_weapon_trait_label):
+		if main_w != null and main_w.trait_name != "":
+			active_weapon_trait_label.text = "⚡ CHASSIS TRAIT: %s (%s)" % [main_w.trait_name, main_w.trait_desc]
+			active_weapon_trait_label.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+		else:
+			active_weapon_trait_label.text = "⚡ CHASSIS TRAIT: Standard Adventurer Frame (No innate traits)"
+			active_weapon_trait_label.add_theme_color_override("font_color", Color(0.55, 0.60, 0.70))
+
 	if player and player.die:
 		equipped_weapon_stats.text = "Faces: %d  |  Avg DMG: %.1f  |  Loaded Face: %s (%d DMG)" % [
 			player.die.faces.size(),
@@ -2140,6 +2321,9 @@ func _render_backpack_inventory_cards() -> void:
 			"Jewelry":
 				if it.item_type == "jewelry":
 					filtered_items.append(it)
+			"Trophies":
+				if it.item_type == "trophy":
+					filtered_items.append(it)
 					
 	if filtered_items.is_empty():
 		var empty_lbl = Label.new()
@@ -2190,9 +2374,16 @@ func _render_backpack_inventory_cards() -> void:
 			tag = " [1H]"
 		elif it.item_type == "face":
 			tag = " [DIE FACE]"
+		elif it.item_type == "trophy":
+			tag = " [ESTATE TROPHY]"
 		name_lbl.text = it.name + tag
 		name_lbl.add_theme_font_size_override("font_size", 12)
-		name_lbl.add_theme_color_override("font_color", Color(0.98, 0.90, 0.45) if it.item_type == "face" else Color(0.95, 0.95, 0.98))
+		if it.item_type == "face":
+			name_lbl.add_theme_color_override("font_color", Color(0.98, 0.90, 0.45))
+		elif it.item_type == "trophy":
+			name_lbl.add_theme_color_override("font_color", Color(0.95, 0.75, 0.2))
+		else:
+			name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
 		vbox.add_child(name_lbl)
 		
 		var stat_lbl = Label.new()
@@ -2205,6 +2396,10 @@ func _render_backpack_inventory_cards() -> void:
 		if it.item_type == "face":
 			action_btn.text = "🔧 Socket"
 			action_btn.pressed.connect(func(): _prompt_socket_face(it))
+		elif it.item_type == "trophy":
+			action_btn.text = "🏛️ Stored"
+			action_btn.disabled = true
+			action_btn.tooltip_text = "Collectible Estate Decor. Ready to furnish your future mansion!"
 		else:
 			action_btn.text = "⚔️ Equip"
 			action_btn.pressed.connect(func(): _equip_item_from_inventory(it))
@@ -2350,6 +2545,9 @@ func _recalculate_gear_stats() -> void:
 	var gear_hp = 0
 	var total_armor = 0
 	var total_dmg = 0
+	var total_str = 0
+	var total_dex = 0
+	var total_int = 0
 	
 	for slot_name in equipped_gear.keys():
 		var it: ItemData = equipped_gear[slot_name]
@@ -2357,9 +2555,17 @@ func _recalculate_gear_stats() -> void:
 			gear_hp += it.hp_bonus
 			total_armor += it.armor_bonus
 			total_dmg += it.dmg_bonus
+			total_str += it.str_bonus
+			total_dex += it.dex_bonus
+			total_int += it.int_bonus
 
+	player.bonus_str = total_str
+	player.bonus_dex = total_dex
+	player.bonus_int = total_int
+
+	var str_hp = maxi(0, player.get_total_str() - 10) * 5
 	var old_max = player.max_hp
-	var new_max = BASE_HP + gear_hp
+	var new_max = BASE_HP + (player.level - 1) * 5 + gear_hp + str_hp
 	var hp_delta = new_max - old_max
 	
 	player.max_hp = new_max
@@ -2369,7 +2575,7 @@ func _recalculate_gear_stats() -> void:
 		player.current_hp = mini(player.max_hp, player.current_hp)
 	
 	player.armor = total_armor
-	player.dmg_bonus = total_dmg
+	player.dmg_bonus = total_dmg + player.get_stat_dmg_bonus()
 	
 	# Update active weapon in hand_1
 	var main_w: ItemData = equipped_gear.get("hand_1", null)
@@ -2387,8 +2593,13 @@ func _recalculate_gear_stats() -> void:
 		exp_hp_label.text = "❤️ %d / %d" % [player.current_hp, player.max_hp]
 	if char_hp_label:
 		char_hp_label.text = "❤️ HP: %d / %d" % [player.current_hp, player.max_hp]
+	if char_armor_label:
 		char_armor_label.text = "🛡️ ARMOR: %d" % player.armor
+	if char_dmg_label:
 		char_dmg_label.text = "⚔️ BONUS DMG: +%d" % player.dmg_bonus
+
+func _recalculate_equipped_stats() -> void:
+	_recalculate_gear_stats()
 
 func _equip_weapon_from_backpack(weapon: DieData) -> void:
 	# Legacy adapter: find or create item and equip to hand_1
@@ -2671,12 +2882,34 @@ func _open_chest(chest: Dictionary) -> void:
 		_add_relic("Crown of the Dungeon Master", "👑 Legendary victory relic! All chambers purged.")
 		_log("[color=#22c55e][b]👑 RELIC OF VICTORY: You claimed the Dungeon Crown! All chambers conquered![/b][/color]")
 	else:
-		# Procedural Die Face Loot Drop
-		var drop_face = DieData.generate_random_face(current_combat_room_id)
-		var face_item = ItemData.create_face_item(drop_face)
-		inventory_items.append(face_item)
-		_log("[color=#facc15]💎 LOOT DROP: Acquired Die Face [b]%s[/b] (%s)! Press [B] to socket it.[/color]" % [face_item.name, drop_face.get("desc", "")])
-		_show_floating_text(grid_to_world(chest["pos"]), "+ FACE: %s" % drop_face.get("title", "Die Face"), Color(0.98, 0.85, 0.2))
+		var r_loot = randf()
+		if r_loot < 0.25:
+			# Rare Weapon Chassis Drop with Unique Trait
+			var weapon_item = ItemData.generate_random_weapon(current_combat_room_id)
+			inventory_items.append(weapon_item)
+			_log("[color=#38bdf8]⚔️ WEAPON DROP: Found [b]%s[/b]! Chassis Trait: [b]%s[/b] (%s). Equip via Backpack [B].[/color]" % [weapon_item.name, weapon_item.trait_name, weapon_item.trait_desc])
+			_show_floating_text(grid_to_world(chest["pos"]), "⚔️ %s" % weapon_item.name, Color(0.38, 0.74, 0.97))
+		elif r_loot < 0.40:
+			# Rare Estate Collectible Trophy for future housing!
+			var trophies = [
+				{"id": "trophy_gargoyle", "name": "Abyssal Gargoyle Sconce", "desc": "Hand-carved obsidian gargoyle bracket with eternal blue flame."},
+				{"id": "trophy_banner", "name": "Phalanx Battle Standard", "desc": "Tattered heraldic standard of the ancient Iron Phalanx legion."},
+				{"id": "trophy_urn", "name": "Pyromancer's Ember Urn", "desc": "Smoldering ceremonial censer radiating welcoming hearth warmth."},
+				{"id": "trophy_throne", "name": "Gilded Skull of the Warlord", "desc": "Polished runic skull trophy taken from the deep dungeon throne."}
+			]
+			var t_cfg = trophies.pick_random()
+			var trophy_item = ItemData.create_estate_trophy(t_cfg["id"], t_cfg["name"], t_cfg["desc"])
+			inventory_items.append(trophy_item)
+			_log("[color=#eab308]🏆 ESTATE TROPHY: Claimed [b]%s[/b]! Collectible decor stored for your future house/estate.[/color]" % trophy_item.name)
+			_show_floating_text(grid_to_world(chest["pos"]), "🏆 %s" % trophy_item.name, Color(0.98, 0.82, 0.2))
+		else:
+			# Procedural Die Face Loot Drop
+			var drop_face = DieData.generate_random_face(current_combat_room_id)
+			var face_item = ItemData.create_face_item(drop_face)
+			inventory_items.append(face_item)
+			_log("[color=#facc15]💎 LOOT DROP: Acquired Die Face [b]%s[/b] (%s)! Press [B] to socket it.[/color]" % [face_item.name, drop_face.get("desc", "")])
+			_show_floating_text(grid_to_world(chest["pos"]), "+ FACE: %s" % drop_face.get("title", "Die Face"), Color(0.98, 0.85, 0.2))
+		
 		_sync_equipped_weapon_to_backpack()
 		_render_backpack_inventory_cards()
 		_update_hud_display()
@@ -3505,6 +3738,22 @@ func _resolve_pulse() -> void:
 		var base_dmg = face.get("damage", 0)
 		var dmg = base_dmg + (player.dmg_bonus if base_dmg > 0 else 0)
 		var is_knockback = face.get("knockback", false)
+
+		# Active Weapon Chassis Trait check
+		var main_w: ItemData = equipped_gear.get("hand_1", null)
+		var chassis_trait = main_w.trait_id if main_w != null else ""
+		if chassis_trait == "honed_edge" and dmg > 0:
+			dmg += 1
+		elif chassis_trait == "titans_grip" and dmg >= 5:
+			is_knockback = true
+
+		# Critical Hit calculation based on DEX
+		var is_crit = false
+		if dmg > 0 and randf() < player.get_crit_chance():
+			is_crit = true
+			dmg = int(float(dmg) * 1.5) + 2
+			_show_floating_text(player.position, "CRITICAL HIT!", Color(1.0, 0.45, 0.2))
+			_log("[color=#f97316][b]⚡ CRITICAL HIT! Strike amplified to %d DMG![/b][/color]" % dmg)
 		
 		var hit_enemy: CombatUnit = null
 		for enemy in active_combat_enemies:
@@ -3538,20 +3787,23 @@ func _resolve_pulse() -> void:
 				var attack_dir = (hit_enemy.position - player.position).normalized()
 				if attack_blocked:
 					_spawn_shield_barrier_vfx(hit_enemy.position)
-				elif is_knockback or dmg >= 8:
+				elif is_knockback or dmg >= 8 or is_crit:
 					_spawn_shockwave(hit_enemy.position, Color(0.96, 0.72, 0.2))
 				else:
 					_spawn_slash_vfx(hit_enemy.position, attack_dir)
 					
 				if not attack_blocked:
 					var ability = face.get("ability", "none")
-					var ability_tier = face.get("ability_tier", 1)
+					var ability_tier = face.get("ability_tier", 1) + player.get_status_potency_bonus()
 					var bypass_armor = (ability == "pierce")
 					hit_enemy.take_damage(dmg, attack_dir, bypass_armor)
 
-					if player.dmg_bonus > 0 and base_dmg > 0:
-						_log("[color=#22c55e]Hero struck %s for %d damage! (%d base + %d gear bonus)[/color]" % [hit_enemy.unit_name, dmg, base_dmg, player.dmg_bonus])
-						_show_floating_text(hit_enemy.position, "-%d DMG (+%d Gear)" % [dmg, player.dmg_bonus], Color(0.95, 0.85, 0.2))
+					if is_crit:
+						_log("[color=#f97316]Hero CRITICALLY struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
+						_show_floating_text(hit_enemy.position, "-%d CRIT!" % dmg, Color(1.0, 0.4, 0.2))
+					elif player.dmg_bonus > 0 and base_dmg > 0:
+						_log("[color=#22c55e]Hero struck %s for %d damage! (%d base + %d gear/STR bonus)[/color]" % [hit_enemy.unit_name, dmg, base_dmg, player.dmg_bonus])
+						_show_floating_text(hit_enemy.position, "-%d DMG (+%d)" % [dmg, player.dmg_bonus], Color(0.95, 0.85, 0.2))
 					else:
 						_log("[color=#22c55e]Hero struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
 						_show_floating_text(hit_enemy.position, "-%d DMG" % dmg, Color(0.95, 0.85, 0.2))
@@ -3570,17 +3822,32 @@ func _resolve_pulse() -> void:
 						_show_floating_text(hit_enemy.position + Vector2(0, -22), "IGNITED!", Color(1.0, 0.5, 0.1))
 						_log("[color=#f97316]🔥 Ember branded %s! (Burn applied)[/color]" % hit_enemy.unit_name)
 					elif ability == "guard":
-						player.guard_armor += 2
-						_show_floating_text(player.position + Vector2(0, -22), "+2 GUARD ARMOR", Color(0.3, 0.8, 1.0))
-						_log("[color=#38bdf8]🛡️ Counter poise! Gained +2 Guard Armor for next pulse.[/color]")
+						player.guard_armor += (2 + player.get_status_potency_bonus())
+						_show_floating_text(player.position + Vector2(0, -22), "+%d GUARD ARMOR" % (2 + player.get_status_potency_bonus()), Color(0.3, 0.8, 1.0))
+						_log("[color=#38bdf8]🛡️ Counter poise! Gained guard armor for next pulse.[/color]")
 					elif ability == "leech":
-						var heal = mini(player.max_hp - player.current_hp, 1)
+						var heal = mini(player.max_hp - player.current_hp, 1 + player.get_status_potency_bonus())
 						if heal > 0:
 							player.current_hp += heal
 							if player.hp_bar:
 								player.hp_bar.value = player.current_hp
-							_show_floating_text(player.position + Vector2(0, -22), "+1 HP (LEECH)", Color(0.2, 0.9, 0.3))
-							_log("[color=#22c55e]🩸 Vampiric leech! Restored +1 HP.[/color]")
+							_show_floating_text(player.position + Vector2(0, -22), "+%d HP (LEECH)" % heal, Color(0.2, 0.9, 0.3))
+							_log("[color=#22c55e]🩸 Vampiric leech! Restored +%d HP.[/color]" % heal)
+
+					# Weapon Chassis Trait Procs
+					if chassis_trait == "serrated":
+						hit_enemy.apply_bleed(1)
+					elif chassis_trait == "ember_core":
+						hit_enemy.apply_burn(1)
+					elif chassis_trait == "phalanx_guard":
+						player.guard_armor += 2
+					elif chassis_trait == "vampiric" and is_crit:
+						var v_heal = mini(player.max_hp - player.current_hp, 2)
+						if v_heal > 0:
+							player.current_hp += v_heal
+							if player.hp_bar:
+								player.hp_bar.value = player.current_hp
+							_show_floating_text(player.position + Vector2(0, -22), "+2 HP (VAMPIRIC)", Color(0.2, 0.9, 0.3))
 					
 					# PUSH / WALL SLAM PUZZLE MECHANIC
 					if is_knockback and hit_enemy.is_alive:
@@ -4199,6 +4466,30 @@ func _on_enemy_died(enemy: CombatUnit) -> void:
 	_show_floating_text(enemy.position, "SLAIN!", Color(0.95, 0.8, 0.1))
 	_spawn_shockwave(enemy.position, Color(0.85, 0.25, 0.25))
 	_shake_camera(4.5, 0.18)
+
+	# Award EXP based on monster strength
+	var exp_gained = 25
+	match enemy.unit_type:
+		"grunt": exp_gained = 25
+		"charger": exp_gained = 35
+		"shieldbearer": exp_gained = 45
+		"pyromancer": exp_gained = 55
+		"brawler": exp_gained = 70
+	if "BOSS" in enemy.unit_name.to_upper() or "WARLORD" in enemy.unit_name.to_upper():
+		exp_gained = 150
+
+	if player:
+		var leveled_up = player.gain_exp(exp_gained)
+		_log("[color=#38bdf8]+%d EXP earned from %s![/color]" % [exp_gained, enemy.unit_name])
+		_show_floating_text(enemy.position + Vector2(0, -22), "+%d EXP" % exp_gained, Color(0.38, 0.74, 0.97))
+		if leveled_up:
+			play_dice_tumble_sfx()
+			_show_floating_text(player.position, "LEVEL UP! Lv. %d (+1 Stat Point!)" % player.level, Color(0.98, 0.85, 0.2))
+			_log("[color=#facc15][b]🌟 LEVEL UP! You reached Level %d! Unspent Stat Point ready in Backpack [B]![/b][/color]" % player.level)
+			_recalculate_equipped_stats()
+			if is_backpack_open:
+				_render_backpack_ui()
+
 	var death_tween = enemy.animate_death_collapse()
 	death_tween.tween_callback(func():
 		if is_instance_valid(enemy):

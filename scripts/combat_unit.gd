@@ -15,6 +15,52 @@ var is_active_in_combat: bool = false
 var room_id: int = 0
 var grid_pos: Vector2i = Vector2i.ZERO
 
+# RPG Core Attributes & Progression
+var stat_str: int = 10 # Strength: +Max HP, +Physical Flat DMG
+var stat_dex: int = 10 # Dexterity: +Critical Hit Chance, +Agility
+var stat_int: int = 10 # Intelligence: +Status Effect potency, +Guard Armor
+var bonus_str: int = 0 # From equipped gear
+var bonus_dex: int = 0 # From equipped gear
+var bonus_int: int = 0 # From equipped gear
+var level: int = 1
+var current_exp: int = 0
+var exp_to_level: int = 100
+var unspent_stat_points: int = 0
+
+func get_total_str() -> int:
+	return stat_str + bonus_str
+
+func get_total_dex() -> int:
+	return stat_dex + bonus_dex
+
+func get_total_int() -> int:
+	return stat_int + bonus_int
+
+func get_crit_chance() -> float:
+	return 0.05 + float(maxi(0, get_total_dex() - 10)) * 0.015
+
+func get_stat_dmg_bonus() -> int:
+	return int(float(maxi(0, get_total_str() - 10)) / 4.0)
+
+func get_status_potency_bonus() -> int:
+	return int(float(maxi(0, get_total_int() - 10)) / 3.0)
+
+func gain_exp(amount: int) -> bool:
+	current_exp += amount
+	if current_exp >= exp_to_level:
+		current_exp -= exp_to_level
+		level += 1
+		exp_to_level = int(float(exp_to_level) * 1.45) + 20
+		unspent_stat_points += 1
+		# Level-up invigorates the hero: +5 Max HP per level + full heal!
+		max_hp += 5
+		current_hp = max_hp
+		if hp_bar:
+			hp_bar.max_value = max_hp
+			hp_bar.value = current_hp
+		return true
+	return false
+
 # New Tactical Properties
 var unit_type: String = "grunt" # "grunt", "charger", "shieldbearer", "pyromancer", "brawler"
 var facing_dir: Vector2i = Vector2i(0, 1) # (0,1)=Down, (0,-1)=Up, (1,0)=Right, (-1,0)=Left
