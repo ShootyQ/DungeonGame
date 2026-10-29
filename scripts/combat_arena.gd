@@ -85,8 +85,12 @@ var countdown_number: Label
 var countdown_subtitle: Label
 var log_label: RichTextLabel
 
+# Cached Die Textures for Animations
+var cached_die_textures: Array[Texture2D] = []
+
 func _ready() -> void:
 	randomize()
+	_cache_die_textures()
 	_setup_dungeon_layout()
 	_create_scene_hierarchy()
 	_build_board_visuals()
@@ -96,6 +100,15 @@ func _ready() -> void:
 	_setup_hud()
 	_setup_backpack_ui()
 	_enter_exploration_mode()
+
+func _cache_die_textures() -> void:
+	cached_die_textures.clear()
+	for i in range(1, 7):
+		var p = "res://assets/ui/die_face_%d.svg" % i
+		if ResourceLoader.exists(p):
+			cached_die_textures.append(load(p))
+	if ResourceLoader.exists("res://assets/ui/die_face_fire.svg"):
+		cached_die_textures.append(load("res://assets/ui/die_face_fire.svg"))
 
 func _setup_dungeon_layout() -> void:
 	grid.clear()
@@ -408,6 +421,7 @@ func _setup_hud() -> void:
 	# Player Loaded Die in Combat (Clickable to open Dice Inspector!)
 	player_die_icon = TextureRect.new()
 	player_die_icon.custom_minimum_size = Vector2(56, 56)
+	player_die_icon.pivot_offset = Vector2(28, 28)
 	player_die_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	player_die_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	player_die_icon.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -908,6 +922,8 @@ func _equip_weapon_from_backpack(weapon: DieData) -> void:
 	player.roll_next_face()
 	_update_hud_display()
 	_render_backpack_ui()
+	_animate_hud_die_tumbler()
+	_animate_overhead_hero_roll()
 	_log("[color=#38bdf8]⚔️ Swapped equipped weapon to [b]%s[/b]! Loaded face: %s[/color]" % [player.die.name, player.loaded_face.get("title", "")])
 	_show_floating_text(player.position, "EQUIPPED: %s" % player.die.name, Color(0.3, 0.8, 0.95))
 
@@ -1190,11 +1206,6 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 func _start_combat_pulse_mode() -> void:
 	current_mode = GameMode.COMBAT_PULSE
 	combat_hud.visible = true
-	
-	player.roll_next_face()
-	for enemy in active_combat_enemies:
-		enemy.roll_next_face()
-		
 	_start_planning_phase()
 
 func _enter_exploration_mode() -> void:
@@ -1330,6 +1341,9 @@ func _start_planning_phase() -> void:
 		if is_instance_valid(ind):
 			ind.queue_free()
 	danger_indicators.clear()
+	
+	# Trigger Pre-Pulse Dice Roll Tumble & Reveal
+	_trigger_pulse_roll()
 	
 	_plan_enemy_intents()
 	_update_hud_display()
@@ -1609,6 +1623,8 @@ func _resolve_pulse() -> void:
 				# Check if tile has hero
 				if player.grid_pos == t_tile:
 					enemy.animate_attack_thrust(grid_to_world(t_tile))
+					var charge_face = {"title": "CHARGE SLAM", "damage": 8, "icon": "res://assets/ui/intent_enemy_charge.svg", "roll": 6}
+					await _play_attack_impact_animation(player.position, charge_face, false)
 					player.take_damage(8)
 					_log("[color=#ef4444]💥 %s charged into Hero for 8 damage![/color]" % enemy.unit_name)
 					_show_floating_text(player.position, "-8 HP (CHARGE)", Color(0.95, 0.2, 0.2))
@@ -1658,6 +1674,7 @@ func _resolve_pulse() -> void:
 		if hit_enemy:
 			if dmg == 0:
 				_log("[color=#94a3b8]Hero rolled MISS! Stumbled.[/color]")
+				await _play_attack_impact_animation(hit_enemy.position, face, false)
 				_show_floating_text(hit_enemy.position, "MISS!", Color(0.6, 0.6, 0.6))
 			else:
 				# CHECK SHIELDBEARER FRONTAL DEFENSE (Puzzle Mechanic!)
@@ -1676,6 +1693,7 @@ func _resolve_pulse() -> void:
 							_log("[color=#94a3b8]🛡️ %s's tower shield BLOCKED the front strike! (0 DMG - Flank or use Heavy!)[/color]" % hit_enemy.unit_name)
 							_show_floating_text(hit_enemy.position, "BLOCKED BY SHIELD!", Color(0.38, 0.74, 0.97))
 							
+				await _play_attack_impact_animation(hit_enemy.position, face, attack_blocked)
 				if not attack_blocked:
 					hit_enemy.take_damage(dmg)
 					_log("[color=#22c55e]Hero struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
@@ -1728,6 +1746,8 @@ func _resolve_pulse() -> void:
 			for b_tile in enemy.telegraphed_tiles:
 				_spawn_hazard_tile(b_tile)
 				if player.grid_pos == b_tile:
+					var blast_face = {"title": "FLAME BLAST", "damage": 7, "icon": "res://assets/ui/die_face_fire.svg", "roll": 5}
+					await _play_attack_impact_animation(player.position, blast_face, false)
 					player.take_damage(7)
 					_log("[color=#ef4444]Hero caught in flame blast! (-7 HP)[/color]")
 					_show_floating_text(player.position, "-7 HP (FIRE)", Color(0.95, 0.25, 0.25))
@@ -1744,6 +1764,8 @@ func _resolve_pulse() -> void:
 			_log("[color=#ef4444]🪓 %s unleashes a WIDE CLEAVE SWEEP![/color]" % enemy.unit_name)
 			for s_tile in enemy.telegraphed_tiles:
 				if player.grid_pos == s_tile:
+					var cleave_face = {"title": "CLEAVE SWEEP", "damage": 6, "icon": "res://assets/ui/icon_axe.svg", "roll": 5}
+					await _play_attack_impact_animation(player.position, cleave_face, false)
 					player.take_damage(6)
 					_log("[color=#ef4444]Hero caught in cleave arc! (-6 HP)[/color]")
 					_show_floating_text(player.position, "-6 HP", Color(0.95, 0.25, 0.25))
@@ -1760,6 +1782,7 @@ func _resolve_pulse() -> void:
 			var dmg = face.get("damage", 4)
 			
 			if player.grid_pos == enemy.target_grid_pos:
+				await _play_attack_impact_animation(player.position, face, false)
 				player.take_damage(dmg)
 				_log("[color=#ef4444]%s struck Hero for %d damage![/color]" % [enemy.unit_name, dmg])
 				_show_floating_text(player.position, "-%d HP" % dmg, Color(0.95, 0.25, 0.25))
@@ -1776,11 +1799,9 @@ func _resolve_pulse() -> void:
 		_game_over()
 		return
 		
-	# STEP 6: DICE RE-ROLL & NEXT PULSE
-	player.roll_next_face()
+	# STEP 6: NEXT PULSE (Rolls & tumble animations trigger in _start_planning_phase)
 	for enemy in active_combat_enemies:
 		if is_instance_valid(enemy) and enemy.is_alive:
-			enemy.roll_next_face()
 			enemy.clear_intent()
 			
 	active_combat_enemies = active_combat_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
@@ -1886,6 +1907,256 @@ func _show_floating_text(world_pos: Vector2, text: String, color: Color) -> void
 	tween.tween_property(label, "position", label.position + Vector2(0, -32), 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.7)
 	tween.tween_callback(label.queue_free)
+
+func _shake_camera(intensity: float = 4.0, duration: float = 0.18) -> void:
+	if not camera:
+		return
+	var tween = create_tween()
+	var steps = int(duration / 0.03)
+	for i in range(steps):
+		var damp = 1.0 - (float(i) / float(steps))
+		var shake_vec = Vector2(randf_range(-intensity, intensity), randf_range(-intensity, intensity)) * damp
+		tween.tween_property(camera, "offset", shake_vec, 0.03)
+	tween.tween_property(camera, "offset", Vector2.ZERO, 0.04)
+
+func _trigger_pulse_roll() -> void:
+	if not player or not player.die:
+		return
+		
+	# 1. Roll actual next faces
+	player.roll_next_face()
+	for enemy in active_combat_enemies:
+		if is_instance_valid(enemy) and enemy.is_alive:
+			enemy.roll_next_face()
+			
+	# 2. Animate HUD Die Tumbler
+	_animate_hud_die_tumbler()
+	
+	# 3. Animate Hero Overhead Tumbler
+	_animate_overhead_hero_roll()
+	
+	# 4. Animate Enemies Overhead Tumbler
+	_animate_overhead_enemies_roll()
+	
+	_log("[color=#facc15]🎲 Pulse Roll: Hero loaded [b]%s[/b] (%d DMG)![/color]" % [player.loaded_face.get("title", ""), player.loaded_face.get("damage", 0)])
+
+func _animate_hud_die_tumbler() -> void:
+	if not player_die_icon or not player or not player.die:
+		return
+		
+	var roll_tween = create_tween()
+	var final_tex_path = player.loaded_face.get("icon", "res://assets/ui/die_face_1.svg")
+	var final_tex = load(final_tex_path) if ResourceLoader.exists(final_tex_path) else null
+	
+	player_die_title.text = "🎲 ROLLING..."
+	player_die_title.add_theme_color_override("font_color", Color(0.98, 0.8, 0.2))
+	player_die_desc.text = "Tumbling %s..." % player.die.name
+	
+	# Rapid face shuffles (6 steps over 0.36s)
+	for i in range(6):
+		roll_tween.tween_callback(func():
+			if not cached_die_textures.is_empty():
+				player_die_icon.texture = cached_die_textures.pick_random()
+			player_die_icon.rotation = randf_range(-0.35, 0.35)
+			player_die_icon.scale = Vector2(1.2, 1.2)
+		)
+		roll_tween.tween_interval(0.06)
+		
+	# Settle on final face with punch scale
+	roll_tween.tween_callback(func():
+		player_die_icon.rotation = 0.0
+		if final_tex:
+			player_die_icon.texture = final_tex
+		player_die_icon.scale = Vector2(1.4, 1.4)
+		_update_hud_display()
+		if is_backpack_open:
+			_render_backpack_ui()
+	)
+	roll_tween.tween_property(player_die_icon, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _animate_overhead_hero_roll() -> void:
+	if not player:
+		return
+		
+	var badge = Node2D.new()
+	badge.position = player.position + Vector2(0, -48)
+	badge.z_index = 25
+	effects_container.add_child(badge)
+	
+	var spr = Sprite2D.new()
+	if not cached_die_textures.is_empty():
+		spr.texture = cached_die_textures.pick_random()
+	spr.scale = Vector2(0.85, 0.85)
+	badge.add_child(spr)
+	
+	var tag = Label.new()
+	tag.text = "🎲 ROLL"
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tag.add_theme_font_size_override("font_size", 11)
+	tag.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
+	tag.position = Vector2(-28, -26)
+	tag.custom_minimum_size = Vector2(56, 14)
+	badge.add_child(tag)
+	
+	var tween = create_tween()
+	for i in range(5):
+		tween.tween_callback(func():
+			if not cached_die_textures.is_empty():
+				spr.texture = cached_die_textures.pick_random()
+			spr.rotation = randf_range(-0.35, 0.35)
+		)
+		tween.tween_interval(0.06)
+		
+	tween.tween_callback(func():
+		var final_tex_path = player.loaded_face.get("icon", "res://assets/ui/die_face_1.svg")
+		if ResourceLoader.exists(final_tex_path):
+			spr.texture = load(final_tex_path)
+		spr.rotation = 0.0
+		spr.scale = Vector2(1.15, 1.15)
+		tag.text = player.loaded_face.get("title", "STRIKE")
+		tag.add_theme_color_override("font_color", Color(0.3, 0.9, 0.5))
+	)
+	tween.tween_property(spr, "scale", Vector2(0.85, 0.85), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(0.35)
+	
+	tween.tween_property(badge, "position:y", badge.position.y - 18.0, 0.25)
+	tween.parallel().tween_property(badge, "modulate:a", 0.0, 0.25)
+	tween.tween_callback(badge.queue_free)
+
+func _animate_overhead_enemies_roll() -> void:
+	for enemy in active_combat_enemies:
+		if not is_instance_valid(enemy) or not enemy.is_alive:
+			continue
+			
+		var enemy_badge = Node2D.new()
+		enemy_badge.position = enemy.position + Vector2(0, -44)
+		enemy_badge.z_index = 25
+		effects_container.add_child(enemy_badge)
+		
+		var spr = Sprite2D.new()
+		if not cached_die_textures.is_empty():
+			spr.texture = cached_die_textures.pick_random()
+		spr.scale = Vector2(0.65, 0.65)
+		spr.modulate = Color(1.3, 0.6, 0.6)
+		enemy_badge.add_child(spr)
+		
+		var tween = create_tween()
+		for i in range(4):
+			tween.tween_callback(func():
+				if not cached_die_textures.is_empty():
+					spr.texture = cached_die_textures.pick_random()
+				spr.rotation = randf_range(-0.3, 0.3)
+			)
+			tween.tween_interval(0.07)
+			
+		tween.tween_property(enemy_badge, "modulate:a", 0.0, 0.15)
+		tween.tween_callback(enemy_badge.queue_free)
+
+func _play_attack_impact_animation(target_world_pos: Vector2, face: Dictionary, is_blocked: bool = false) -> void:
+	var impact_node = Node2D.new()
+	impact_node.position = target_world_pos + Vector2(0, -16)
+	impact_node.z_index = 28
+	effects_container.add_child(impact_node)
+	
+	var panel = PanelContainer.new()
+	var p_style = StyleBoxFlat.new()
+	p_style.set_corner_radius_all(8)
+	p_style.content_margin_left = 10
+	p_style.content_margin_right = 10
+	p_style.content_margin_top = 6
+	p_style.content_margin_bottom = 6
+	p_style.bg_color = Color(0.08, 0.10, 0.15, 0.95)
+	
+	var dmg = face.get("damage", 0)
+	var is_crit = (face.get("roll", 0) == 6 or dmg >= 9)
+	var is_miss = (dmg == 0)
+	
+	if is_blocked:
+		p_style.border_color = Color(0.38, 0.74, 0.97)
+		p_style.set_border_width_all(2)
+	elif is_crit:
+		p_style.border_color = Color(1.0, 0.35, 0.15)
+		p_style.set_border_width_all(3)
+	elif is_miss:
+		p_style.border_color = Color(0.5, 0.55, 0.65)
+		p_style.set_border_width_all(1)
+	else:
+		p_style.border_color = Color(0.98, 0.82, 0.2)
+		p_style.set_border_width_all(2)
+		
+	panel.add_theme_stylebox_override("panel", p_style)
+	impact_node.add_child(panel)
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 8)
+	panel.add_child(hbox)
+	
+	var icon = TextureRect.new()
+	var icon_path = face.get("icon", "res://assets/ui/die_face_1.svg")
+	if ResourceLoader.exists(icon_path):
+		icon.texture = load(icon_path)
+	icon.custom_minimum_size = Vector2(36, 36)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hbox.add_child(icon)
+	
+	var vbox = VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.add_child(vbox)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = "BLOCKED!" if is_blocked else face.get("title", "STRIKE")
+	title_lbl.add_theme_font_size_override("font_size", 13)
+	if is_blocked:
+		title_lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
+	elif is_crit:
+		title_lbl.add_theme_color_override("font_color", Color(1.0, 0.4, 0.2))
+	elif is_miss:
+		title_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	else:
+		title_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
+	vbox.add_child(title_lbl)
+	
+	var dmg_lbl = Label.new()
+	if is_blocked:
+		dmg_lbl.text = "SHIELD GUARD"
+		dmg_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.85))
+	elif is_miss:
+		dmg_lbl.text = "0 DMG (MISS)"
+		dmg_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	else:
+		dmg_lbl.text = "%d DMG" % dmg
+		dmg_lbl.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4) if not is_crit else Color(1.0, 0.8, 0.2))
+	dmg_lbl.add_theme_font_size_override("font_size", 12)
+	vbox.add_child(dmg_lbl)
+	
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.position = Vector2(-45, -24)
+	
+	# Initial pose for slam: scaled small and elevated
+	impact_node.scale = Vector2(0.25, 0.25)
+	impact_node.position.y -= 25.0
+	impact_node.rotation = randf_range(-0.35, 0.35)
+	
+	var tween = create_tween()
+	# Slam down!
+	tween.tween_property(impact_node, "scale", Vector2(1.3, 1.3), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(impact_node, "position:y", target_world_pos.y - 16.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(impact_node, "rotation", 0.0, 0.12)
+	
+	# Camera shake on slam!
+	_shake_camera(5.0 if is_crit else (2.0 if is_blocked else 3.5), 0.15)
+	
+	# Hold for readability
+	await get_tree().create_timer(0.22).timeout
+	
+	# Pop and fade out
+	var fade_tween = create_tween()
+	fade_tween.tween_property(impact_node, "scale", Vector2(1.45, 1.45), 0.15)
+	fade_tween.parallel().tween_property(impact_node, "modulate:a", 0.0, 0.15)
+	fade_tween.parallel().tween_property(impact_node, "position:y", impact_node.position.y - 16.0, 0.15)
+	fade_tween.tween_callback(impact_node.queue_free)
+	await fade_tween.finished
 
 func _on_player_died(_unit: CombatUnit) -> void:
 	_game_over()
