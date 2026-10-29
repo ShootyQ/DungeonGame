@@ -89,6 +89,11 @@ var sfx_pulse_heartbeat: AudioStream
 var sfx_sword_slash: AudioStream
 var sfx_hammer_slam: AudioStream
 var sfx_shield_parry: AudioStream
+var sfx_crit_sting: AudioStream
+var sfx_attack_whiff: AudioStream
+var sfx_enemy_intent: AudioStream
+var sfx_charger_rush: AudioStream
+var sfx_pyro_flame: AudioStream
 var last_pulse_tick_sec: int = -1
 var music_volume: float = 0.65
 var sfx_volume: float = 0.85
@@ -1050,6 +1055,16 @@ func _setup_audio_system() -> void:
 		sfx_hammer_slam = load("res://assets/audio/blunt_hammer_slam.wav")
 	if ResourceLoader.exists("res://assets/audio/shield_parry_clink.wav"):
 		sfx_shield_parry = load("res://assets/audio/shield_parry_clink.wav")
+	if ResourceLoader.exists("res://assets/audio/critical_hit_sting.wav"):
+		sfx_crit_sting = load("res://assets/audio/critical_hit_sting.wav")
+	if ResourceLoader.exists("res://assets/audio/attack_whiff_whoosh.wav"):
+		sfx_attack_whiff = load("res://assets/audio/attack_whiff_whoosh.wav")
+	if ResourceLoader.exists("res://assets/audio/enemy_intent_cue.wav"):
+		sfx_enemy_intent = load("res://assets/audio/enemy_intent_cue.wav")
+	if ResourceLoader.exists("res://assets/audio/charger_rush_roar.wav"):
+		sfx_charger_rush = load("res://assets/audio/charger_rush_roar.wav")
+	if ResourceLoader.exists("res://assets/audio/pyro_flame_ignite.wav"):
+		sfx_pyro_flame = load("res://assets/audio/pyro_flame_ignite.wav")
 		
 	# Music Player (Plays the fantasy clarinet dungeon music)
 	music_player = AudioStreamPlayer.new()
@@ -1104,6 +1119,26 @@ func play_shield_parry_sfx() -> void:
 	if sfx_shield_parry:
 		play_sfx(sfx_shield_parry, randf_range(0.98, 1.02), 1.0)
 
+func play_critical_hit_sfx() -> void:
+	if sfx_crit_sting:
+		play_sfx(sfx_crit_sting, randf_range(0.98, 1.02), 2.5)
+
+func play_attack_whiff_sfx() -> void:
+	if sfx_attack_whiff:
+		play_sfx(sfx_attack_whiff, randf_range(0.96, 1.04))
+
+func play_enemy_intent_sfx() -> void:
+	if sfx_enemy_intent:
+		play_sfx(sfx_enemy_intent, randf_range(0.95, 1.05))
+
+func play_charger_rush_sfx() -> void:
+	if sfx_charger_rush:
+		play_sfx(sfx_charger_rush, randf_range(0.96, 1.04), 1.5)
+
+func play_pyro_flame_sfx() -> void:
+	if sfx_pyro_flame:
+		play_sfx(sfx_pyro_flame, randf_range(0.96, 1.04), 1.0)
+
 func set_music_volume(val: float) -> void:
 	music_volume = clamp(val, 0.0, 1.0)
 	if music_player:
@@ -1133,11 +1168,11 @@ func _toggle_audio_settings() -> void:
 func _setup_audio_ui() -> void:
 	audio_settings_modal = PanelContainer.new()
 	audio_settings_modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	audio_settings_modal.custom_minimum_size = Vector2(540, 360)
-	audio_settings_modal.offset_left = -270
-	audio_settings_modal.offset_top = -180
-	audio_settings_modal.offset_right = 270
-	audio_settings_modal.offset_bottom = 180
+	audio_settings_modal.custom_minimum_size = Vector2(560, 390)
+	audio_settings_modal.offset_left = -280
+	audio_settings_modal.offset_top = -195
+	audio_settings_modal.offset_right = 280
+	audio_settings_modal.offset_bottom = 195
 	audio_settings_modal.visible = false
 	
 	var a_style = StyleBoxFlat.new()
@@ -1214,7 +1249,7 @@ func _setup_audio_ui() -> void:
 	var sfx_head = HBoxContainer.new()
 	sfx_vbox.add_child(sfx_head)
 	var sfx_lbl = Label.new()
-	sfx_lbl.text = "🎲 Dice Tumbler, Slam & Combat SFX"
+	sfx_lbl.text = "🎲 Dice Tumbler, Combat & Monster SFX"
 	sfx_lbl.add_theme_font_size_override("font_size", 14)
 	sfx_lbl.add_theme_color_override("font_color", Color(0.9, 0.92, 0.98))
 	sfx_head.add_child(sfx_lbl)
@@ -1237,9 +1272,9 @@ func _setup_audio_ui() -> void:
 	sfx_slider.value_changed.connect(set_sfx_volume)
 	sfx_vbox.add_child(sfx_slider)
 
-	# Quick Action Buttons Row 1: Dice & Pulse
+	# Quick Action Buttons Row 1: Dice & Pulse Timing
 	var test_hbox = HBoxContainer.new()
-	test_hbox.add_theme_constant_override("separation", 8)
+	test_hbox.add_theme_constant_override("separation", 6)
 	vbox.add_child(test_hbox)
 
 	var test_roll_btn = Button.new()
@@ -1262,28 +1297,58 @@ func _setup_audio_ui() -> void:
 	test_sub_btn.pressed.connect(play_pulse_heartbeat_sfx)
 	test_hbox.add_child(test_sub_btn)
 
-	# Quick Action Buttons Row 2: Combat & Mute
+	var test_intent_btn = Button.new()
+	test_intent_btn.text = "👹 Monster Growl"
+	test_intent_btn.pressed.connect(play_enemy_intent_sfx)
+	test_hbox.add_child(test_intent_btn)
+
+	# Quick Action Buttons Row 2: Combat Attacks & Impacts
 	var test_hbox2 = HBoxContainer.new()
-	test_hbox2.add_theme_constant_override("separation", 8)
+	test_hbox2.add_theme_constant_override("separation", 6)
 	vbox.add_child(test_hbox2)
 
 	var test_slash_btn = Button.new()
-	test_slash_btn.text = "⚔️ Sword Slash"
+	test_slash_btn.text = "⚔️ Slash"
 	test_slash_btn.pressed.connect(play_sword_slash_sfx)
 	test_hbox2.add_child(test_slash_btn)
 
 	var test_hammer_btn = Button.new()
-	test_hammer_btn.text = "🔨 Hammer Slam"
+	test_hammer_btn.text = "🔨 Hammer"
 	test_hammer_btn.pressed.connect(play_hammer_slam_sfx)
 	test_hbox2.add_child(test_hammer_btn)
 
 	var test_parry_btn = Button.new()
-	test_parry_btn.text = "🛡️ Shield Parry"
+	test_parry_btn.text = "🛡️ Parry"
 	test_parry_btn.pressed.connect(play_shield_parry_sfx)
 	test_hbox2.add_child(test_parry_btn)
 
+	var test_crit_btn = Button.new()
+	test_crit_btn.text = "💥 Crit Sting"
+	test_crit_btn.pressed.connect(play_critical_hit_sfx)
+	test_hbox2.add_child(test_crit_btn)
+
+	var test_whiff_btn = Button.new()
+	test_whiff_btn.text = "💨 Whiff"
+	test_whiff_btn.pressed.connect(play_attack_whiff_sfx)
+	test_hbox2.add_child(test_whiff_btn)
+
+	# Quick Action Buttons Row 3: Special Abilities & Mute
+	var test_hbox3 = HBoxContainer.new()
+	test_hbox3.add_theme_constant_override("separation", 6)
+	vbox.add_child(test_hbox3)
+
+	var test_charge_btn = Button.new()
+	test_charge_btn.text = "🐂 Charger Rush"
+	test_charge_btn.pressed.connect(play_charger_rush_sfx)
+	test_hbox3.add_child(test_charge_btn)
+
+	var test_flame_btn = Button.new()
+	test_flame_btn.text = "🔥 Flame Blast"
+	test_flame_btn.pressed.connect(play_pyro_flame_sfx)
+	test_hbox3.add_child(test_flame_btn)
+
 	var mute_btn = Button.new()
-	mute_btn.text = "🔇 Mute (M)"
+	mute_btn.text = "🔇 Mute / Unmute (M)"
 	mute_btn.pressed.connect(func():
 		if music_volume > 0.0 or sfx_volume > 0.0:
 			set_music_volume(0.0)
@@ -1292,7 +1357,7 @@ func _setup_audio_ui() -> void:
 			set_music_volume(0.65)
 			set_sfx_volume(0.85)
 	)
-	test_hbox2.add_child(mute_btn)
+	test_hbox3.add_child(mute_btn)
 
 func _toggle_backpack() -> void:
 	is_backpack_open = !is_backpack_open
@@ -2265,6 +2330,7 @@ func _resolve_pulse() -> void:
 	# STEP 2: CHARGE RESOLUTION (Chargers rush forward, slam into walls or other units!)
 	for enemy in active_combat_enemies:
 		if is_instance_valid(enemy) and enemy.is_alive and enemy.intent_type == "CHARGE":
+			play_charger_rush_sfx()
 			var charge_path = enemy.telegraphed_tiles
 			var stopped = false
 			for t_tile in charge_path:
@@ -2391,6 +2457,7 @@ func _resolve_pulse() -> void:
 		
 		# PYROMANCER BLAST (AoE)
 		if enemy.intent_type == "BLAST":
+			play_pyro_flame_sfx()
 			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
 			_log("[color=#f97316]🔥 %s detonated a Flame Blast![/color]" % enemy.unit_name)
 			for b_tile in enemy.telegraphed_tiles:
@@ -2653,6 +2720,8 @@ func _animate_overhead_hero_roll() -> void:
 			)
 
 func _animate_overhead_enemies_roll() -> void:
+	if not active_combat_enemies.is_empty():
+		play_enemy_intent_sfx()
 	for enemy in active_combat_enemies:
 		if not is_instance_valid(enemy) or not enemy.is_alive:
 			continue
@@ -2779,14 +2848,16 @@ func _play_attack_impact_animation(target_world_pos: Vector2, face: Dictionary, 
 	
 	# Camera shake and dynamic combat sound impact!
 	_shake_camera(5.0 if is_crit else (2.0 if is_blocked else 3.5), 0.15)
-	if is_blocked:
+	if is_crit:
+		play_critical_hit_sfx()
+	elif is_blocked:
 		play_shield_parry_sfx()
+	elif is_miss:
+		play_attack_whiff_sfx()
 	elif "HAMMER" in action_title.to_upper() or "BASH" in action_title.to_upper() or "SMASH" in action_title.to_upper() or dmg >= 8:
 		play_hammer_slam_sfx()
-	elif not is_miss:
-		play_sword_slash_sfx()
 	else:
-		play_dice_lock_sfx()
+		play_sword_slash_sfx()
 	
 	# Update HUD Last Action Callout
 	if last_action_label:
