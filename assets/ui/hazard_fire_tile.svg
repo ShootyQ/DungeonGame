@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Fire Hazard Floor Tile (Animated pulsing flame area) -->
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="#450a0a" fill-opacity="0.65" stroke="#ef4444" stroke-width="2" stroke-dasharray="4,2"/>
+  <!-- Cracked lava floor lines -->
+  <path d="M 8 32 Q 24 28 32 38 T 56 30" stroke="#f97316" stroke-width="2.5" fill="none"/>
+  <path d="M 32 8 Q 28 24 38 32 T 30 56" stroke="#fbbf24" stroke-width="2" fill="none"/>
+  <!-- Flame tongues in center -->
+  <path d="M 24 44 Q 28 26 32 18 Q 38 28 34 36 Q 42 30 40 44 Z" fill="#ef4444" opacity="0.8"/>
+  <path d="M 28 42 Q 32 28 34 22 Q 38 30 36 38 Z" fill="#f97316"/>
+  <circle cx="32" cy="40" r="4" fill="#fef08a"/>
+</svg>

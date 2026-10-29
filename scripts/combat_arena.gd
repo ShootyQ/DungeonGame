@@ -2,9 +2,9 @@ class_name CombatArena
 extends Node2D
 
 const TILE_SIZE: int = 64
-const GRID_WIDTH: int = 20
-const GRID_HEIGHT: int = 11
-const BOARD_OFFSET: Vector2 = Vector2(0, 8)
+const GRID_WIDTH: int = 42
+const GRID_HEIGHT: int = 24
+const BOARD_OFFSET: Vector2 = Vector2(0, 0)
 
 enum GameMode { EXPLORATION, COMBAT_COUNTDOWN, COMBAT_PULSE, GAME_OVER }
 var current_mode: GameMode = GameMode.EXPLORATION
@@ -30,11 +30,14 @@ var player_attack_target: Vector2i = Vector2i(-1, -1)
 var grid: Array = []
 var doors: Array[Dictionary] = [] # [{pos, room_id, is_open, sprite}]
 var fog_overlays: Dictionary = {} # room_id -> ColorRect
-var chests: Array[Dictionary] = [] # [{pos, is_open, sprite}]
+var chests: Array[Dictionary] = [] # [{pos, is_open, sprite, reward}]
+var hazard_tiles: Dictionary = {} # Vector2i -> {duration: int, sprite: Sprite2D}
 
 # Node references
+var camera: Camera2D
 var board_container: Node2D
 var tile_sprites: Node2D
+var hazard_container: Node2D
 var door_container: Node2D
 var chest_container: Node2D
 var reticle_container: Node2D
@@ -47,7 +50,8 @@ var move_indicator: Sprite2D
 var attack_indicator: Sprite2D
 var danger_indicators: Array[Sprite2D] = []
 
-# UI references
+# UI references (in CanvasLayer)
+var canvas_layer: CanvasLayer
 var hud_root: Control
 var explore_banner: PanelContainer
 var combat_hud: PanelContainer
@@ -89,33 +93,55 @@ func _setup_dungeon_layout() -> void:
 			row.append(1) # Default to wall
 		grid.append(row)
 		
-	# 1. Hallway Floor (x: 1 to 18, y: 7 to 8)
-	for y in range(7, 9):
-		for x in range(1, 19):
+	# 1. Main Central Hallway (x: 1 to 28, y: 11 to 12)
+	for y in range(11, 13):
+		for x in range(1, 29):
 			grid[y][x] = 0
 			
-	# 2. Room 1 (West Chamber): Floor x: 2 to 8, y: 2 to 5
-	for y in range(2, 6):
-		for x in range(2, 9):
+	# 2. Room 1: Goblin Den (North-West) x: 3 to 9, y: 3 to 9
+	for y in range(3, 10):
+		for x in range(3, 10):
 			grid[y][x] = 0
-			
-	# Door 1 at (5, 6)
-	grid[6][5] = 2
+	grid[10][6] = 2 # Door 1 (leads South into hallway)
 	
-	# 3. Room 2 (East Crypt): Floor x: 12 to 17, y: 2 to 5
-	for y in range(2, 6):
-		for x in range(12, 18):
+	# 3. Room 2: Crypt of the Phalanx (South-West) x: 3 to 9, y: 14 to 20
+	for y in range(14, 21):
+		for x in range(3, 10):
 			grid[y][x] = 0
-			
-	# Door 2 at (14, 6)
-	grid[6][14] = 2
+	grid[13][6] = 2 # Door 2 (leads North into hallway)
+	
+	# 4. Room 3: Pyromancer's Sanctum (North-Mid) x: 16 to 23, y: 3 to 9
+	for y in range(3, 10):
+		for x in range(16, 24):
+			grid[y][x] = 0
+	grid[10][20] = 2 # Door 3 (leads South into hallway)
+	
+	# 5. Room 4: Brawler's Arena (South-Mid) x: 16 to 23, y: 14 to 20
+	for y in range(14, 21):
+		for x in range(16, 24):
+			grid[y][x] = 0
+	grid[13][20] = 2 # Door 4 (leads North into hallway)
+	
+	# 6. Room 5: Grand Boss Vault (Far East) x: 29 to 39, y: 7 to 16
+	for y in range(7, 17):
+		for x in range(29, 40):
+			grid[y][x] = 0
+	grid[11][28] = 2 # Door 5 (leads East from end of hallway)
+	grid[12][28] = 2 # Double Door 5
 
 func _create_scene_hierarchy() -> void:
+	# Canvas Background
 	var bg = ColorRect.new()
-	bg.size = Vector2(1280, 720)
-	bg.color = Color(0.06, 0.07, 0.09)
+	bg.size = Vector2(GRID_WIDTH * TILE_SIZE + 200, GRID_HEIGHT * TILE_SIZE + 200)
+	bg.color = Color(0.04, 0.05, 0.07)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
+	
+	# Smooth Scrolling Camera
+	camera = Camera2D.new()
+	camera.position_smoothing_enabled = true
+	camera.position_smoothing_speed = 6.0
+	add_child(camera)
 	
 	board_container = Node2D.new()
 	board_container.position = BOARD_OFFSET
@@ -125,20 +151,24 @@ func _create_scene_hierarchy() -> void:
 	tile_sprites.z_index = 0
 	board_container.add_child(tile_sprites)
 	
+	hazard_container = Node2D.new()
+	hazard_container.z_index = 1
+	board_container.add_child(hazard_container)
+	
 	door_container = Node2D.new()
-	door_container.z_index = 1
+	door_container.z_index = 2
 	board_container.add_child(door_container)
 	
 	chest_container = Node2D.new()
-	chest_container.z_index = 2
+	chest_container.z_index = 3
 	board_container.add_child(chest_container)
 	
 	reticle_container = Node2D.new()
-	reticle_container.z_index = 3
+	reticle_container.z_index = 4
 	board_container.add_child(reticle_container)
 	
 	unit_container = Node2D.new()
-	unit_container.z_index = 5
+	unit_container.z_index = 6
 	board_container.add_child(unit_container)
 	
 	fog_container = Node2D.new()
@@ -177,21 +207,23 @@ func _build_board_visuals() -> void:
 func _create_doors() -> void:
 	doors.clear()
 	var door_configs = [
-		{"pos": Vector2i(5, 6), "room_id": 1},
-		{"pos": Vector2i(14, 6), "room_id": 2}
+		{"pos": Vector2i(6, 10), "room_id": 1},
+		{"pos": Vector2i(6, 13), "room_id": 2},
+		{"pos": Vector2i(20, 10), "room_id": 3},
+		{"pos": Vector2i(20, 13), "room_id": 4},
+		{"pos": Vector2i(28, 11), "room_id": 5},
+		{"pos": Vector2i(28, 12), "room_id": 5}
 	]
 	
-	var closed_tex = load("res://assets/sprites/door_closed.svg")
-	for config in door_configs:
-		var pos = config["pos"]
+	var door_tex = load("res://assets/sprites/door_closed.svg")
+	for cfg in door_configs:
 		var sprite = Sprite2D.new()
-		sprite.texture = closed_tex
-		sprite.position = grid_to_world(pos)
+		sprite.texture = door_tex
+		sprite.position = grid_to_world(cfg["pos"])
 		door_container.add_child(sprite)
-		
 		doors.append({
-			"pos": pos,
-			"room_id": config["room_id"],
+			"pos": cfg["pos"],
+			"room_id": cfg["room_id"],
 			"is_open": false,
 			"sprite": sprite
 		})
@@ -199,65 +231,89 @@ func _create_doors() -> void:
 func _create_fog_of_war() -> void:
 	fog_overlays.clear()
 	
-	# Room 1 Fog: x: 2 to 8, y: 2 to 5
-	var r1_fog = ColorRect.new()
-	r1_fog.position = Vector2(2 * TILE_SIZE, 2 * TILE_SIZE)
-	r1_fog.size = Vector2(7 * TILE_SIZE, 4 * TILE_SIZE)
-	r1_fog.color = Color(0.04, 0.05, 0.07, 0.98)
-	r1_fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fog_container.add_child(r1_fog)
-	fog_overlays[1] = r1_fog
+	var room_bounds = [
+		{"id": 1, "x": 3, "y": 3, "w": 7, "h": 7},
+		{"id": 2, "x": 3, "y": 14, "w": 7, "h": 7},
+		{"id": 3, "x": 16, "y": 3, "w": 8, "h": 7},
+		{"id": 4, "x": 16, "y": 14, "w": 8, "h": 7},
+		{"id": 5, "x": 29, "y": 7, "w": 11, "h": 10}
+	]
 	
-	# Room 2 Fog: x: 12 to 17, y: 2 to 5
-	var r2_fog = ColorRect.new()
-	r2_fog.position = Vector2(12 * TILE_SIZE, 2 * TILE_SIZE)
-	r2_fog.size = Vector2(6 * TILE_SIZE, 4 * TILE_SIZE)
-	r2_fog.color = Color(0.04, 0.05, 0.07, 0.98)
-	r2_fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fog_container.add_child(r2_fog)
-	fog_overlays[2] = r2_fog
+	for rb in room_bounds:
+		var fog = ColorRect.new()
+		fog.position = Vector2(rb["x"] * TILE_SIZE, rb["y"] * TILE_SIZE)
+		fog.size = Vector2(rb["w"] * TILE_SIZE, rb["h"] * TILE_SIZE)
+		fog.color = Color(0.04, 0.05, 0.07, 0.98)
+		fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fog_container.add_child(fog)
+		fog_overlays[rb["id"]] = fog
 
 func _spawn_units() -> void:
 	all_enemies.clear()
 	active_combat_enemies.clear()
 	
-	# Hero (Starts in Hallway)
+	# Hero (Starts in Entrance of Hallway)
 	player = CombatUnit.new()
 	unit_container.add_child(player)
-	player.setup("Knight", true, 30, load("res://assets/sprites/hero.svg"), Vector2i(2, 7), DieData.create_default_d6_sword())
+	player.setup("Knight", true, 35, load("res://assets/sprites/hero.svg"), Vector2i(2, 11), DieData.create_default_d6_sword())
 	player.position = grid_to_world(player.grid_pos)
 	player.died.connect(_on_player_died)
 	
-	# Room 1 Enemies (2 Monsters: 1 Goblin, 1 Skeleton)
-	var gob1 = _create_enemy("Goblin Scout", 14, "res://assets/sprites/monster_goblin.svg", Vector2i(4, 3), 1)
-	var skel1 = _create_enemy("Skeleton Warrior", 18, "res://assets/sprites/monster_skeleton.svg", Vector2i(6, 4), 1)
-	all_enemies.append_array([gob1, skel1])
+	# ROOM 1: Goblin Den (1 Charger + 2 Grunts)
+	var c1 = _create_enemy("Goblin Charger", 16, "res://assets/sprites/monster_charger.svg", Vector2i(6, 5), 1, "charger")
+	var g1 = _create_enemy("Goblin Scout", 12, "res://assets/sprites/monster_goblin.svg", Vector2i(4, 7), 1, "grunt")
+	var g2 = _create_enemy("Goblin Scout", 12, "res://assets/sprites/monster_goblin.svg", Vector2i(8, 7), 1, "grunt")
+	all_enemies.append_array([c1, g1, g2])
 	
-	# Room 2 Enemies (3 Monsters: Skeleton Guard right in direct line with Door 2 + 2 Goblins flanking)
-	var skel2 = _create_enemy("Skeleton Guard", 22, "res://assets/sprites/monster_skeleton.svg", Vector2i(14, 4), 2)
-	var gob2 = _create_enemy("Goblin Berserker", 16, "res://assets/sprites/monster_goblin.svg", Vector2i(13, 3), 2)
-	var gob3 = _create_enemy("Goblin Sneak", 14, "res://assets/sprites/monster_goblin.svg", Vector2i(16, 3), 2)
-	all_enemies.append_array([skel2, gob2, gob3])
+	# ROOM 2: Crypt of the Phalanx (1 Skeleton Shieldbearer + 2 Skeleton Grunts)
+	var s1 = _create_enemy("Skeleton Shieldbearer", 24, "res://assets/sprites/monster_shieldbearer.svg", Vector2i(6, 17), 2, "shieldbearer")
+	s1.facing_dir = Vector2i(0, -1) # Facing North toward Door 2!
+	var sk1 = _create_enemy("Skeleton Warrior", 16, "res://assets/sprites/monster_skeleton.svg", Vector2i(4, 18), 2, "grunt")
+	var sk2 = _create_enemy("Skeleton Warrior", 16, "res://assets/sprites/monster_skeleton.svg", Vector2i(8, 18), 2, "grunt")
+	all_enemies.append_array([s1, sk1, sk2])
 	
-	# All enemies remain active inside their rooms (completely hidden by the Fog of War overlays above them)
+	# ROOM 3: Pyromancer's Sanctum (1 Cultist Pyromancer + 2 Berserkers)
+	var p1 = _create_enemy("Cultist Pyromancer", 18, "res://assets/sprites/monster_pyromancer.svg", Vector2i(20, 5), 3, "pyromancer")
+	var b1 = _create_enemy("Goblin Berserker", 15, "res://assets/sprites/monster_goblin.svg", Vector2i(18, 7), 3, "grunt")
+	var b2 = _create_enemy("Goblin Berserker", 15, "res://assets/sprites/monster_goblin.svg", Vector2i(22, 7), 3, "grunt")
+	all_enemies.append_array([p1, b1, b2])
+	
+	# ROOM 4: Brawler's Arena (1 Orc Brawler + 1 Charger + 1 Skeleton)
+	var ob1 = _create_enemy("Orc Brawler", 28, "res://assets/sprites/monster_orcbrawler.svg", Vector2i(20, 17), 4, "brawler")
+	ob1.facing_dir = Vector2i(0, -1)
+	var c2 = _create_enemy("Goblin Rusher", 16, "res://assets/sprites/monster_charger.svg", Vector2i(18, 18), 4, "charger")
+	var sk3 = _create_enemy("Skeleton Guard", 18, "res://assets/sprites/monster_skeleton.svg", Vector2i(22, 18), 4, "grunt")
+	all_enemies.append_array([ob1, c2, sk3])
+	
+	# ROOM 5: Grand Boss Vault (Orc Warlord + Shieldbearer + Pyromancer + Charger)
+	var boss = _create_enemy("Orc Warlord", 38, "res://assets/sprites/monster_orcbrawler.svg", Vector2i(35, 11), 5, "brawler")
+	var bs1 = _create_enemy("Phalanx Captain", 26, "res://assets/sprites/monster_shieldbearer.svg", Vector2i(32, 10), 5, "shieldbearer")
+	bs1.facing_dir = Vector2i(-1, 0) # Facing West toward Entrance
+	var bp1 = _create_enemy("Grand Pyromancer", 22, "res://assets/sprites/monster_pyromancer.svg", Vector2i(37, 13), 5, "pyromancer")
+	var bc1 = _create_enemy("Elite Charger", 18, "res://assets/sprites/monster_charger.svg", Vector2i(32, 13), 5, "charger")
+	all_enemies.append_array([boss, bs1, bp1, bc1])
+	
 	for enemy in all_enemies:
 		enemy.visible = true
 		enemy.is_active_in_combat = false
 
-func _create_enemy(p_name: String, hp: int, tex_path: String, pos: Vector2i, p_room_id: int) -> CombatUnit:
+func _create_enemy(p_name: String, hp: int, tex_path: String, pos: Vector2i, p_room_id: int, p_type: String = "grunt") -> CombatUnit:
 	var enemy = CombatUnit.new()
 	unit_container.add_child(enemy)
-	enemy.setup(p_name, false, hp, load(tex_path), pos, DieData.create_default_d6_sword())
+	enemy.setup(p_name, false, hp, load(tex_path), pos, DieData.create_default_d6_sword(), p_type)
 	enemy.position = grid_to_world(pos)
 	enemy.room_id = p_room_id
 	enemy.died.connect(_on_enemy_died)
 	return enemy
 
 func _setup_hud() -> void:
+	canvas_layer = CanvasLayer.new()
+	add_child(canvas_layer)
+	
 	hud_root = Control.new()
 	hud_root.size = Vector2(1280, 720)
 	hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(hud_root)
+	canvas_layer.add_child(hud_root)
 	
 	# 1. Exploration Banner (Top)
 	explore_banner = PanelContainer.new()
@@ -284,7 +340,7 @@ func _setup_hud() -> void:
 	exp_hbox.add_child(exp_title)
 	
 	var exp_instr = Label.new()
-	exp_instr.text = "  |  Move with [W, A, S, D] or Arrows. Walk into closed doors to breach rooms!"
+	exp_instr.text = "  |  Move with [WASD]. Explore hallway & breach 5 dungeon rooms! Watch enemy charges and shields."
 	exp_instr.add_theme_font_size_override("font_size", 14)
 	exp_instr.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	exp_hbox.add_child(exp_instr)
@@ -398,17 +454,23 @@ func _setup_hud() -> void:
 	btn_hbox.add_child(restart_button)
 	
 	enemy_intel_label = Label.new()
-	enemy_intel_label.text = "Monsters engaged: 2"
-	enemy_intel_label.add_theme_font_size_override("font_size", 11)
-	enemy_intel_label.add_theme_color_override("font_color", Color(0.95, 0.5, 0.5))
+	enemy_intel_label.text = "Monsters engaged"
+	enemy_intel_label.add_theme_font_size_override("font_size", 12)
+	enemy_intel_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
 	action_vbox.add_child(enemy_intel_label)
 	
-	# 3. Dramatic Fullscreen Countdown Overlay
+	# 3. Fullscreen Dramatic 3-2-1 Countdown Overlay
 	countdown_overlay = Control.new()
 	countdown_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	countdown_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	countdown_overlay.visible = false
 	hud_root.add_child(countdown_overlay)
+	
+	var dim_bg = ColorRect.new()
+	dim_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim_bg.color = Color(0.04, 0.05, 0.08, 0.55)
+	dim_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	countdown_overlay.add_child(dim_bg)
 	
 	var count_vbox = VBoxContainer.new()
 	count_vbox.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -416,16 +478,16 @@ func _setup_hud() -> void:
 	countdown_overlay.add_child(count_vbox)
 	
 	countdown_subtitle = Label.new()
-	countdown_subtitle.text = "⚔️ COMBAT ENGAGED!"
+	countdown_subtitle.text = "⚠️ ENEMY ENGAGED ⚠️"
 	countdown_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	countdown_subtitle.add_theme_font_size_override("font_size", 32)
-	countdown_subtitle.add_theme_color_override("font_color", Color(0.95, 0.3, 0.3))
+	countdown_subtitle.add_theme_font_size_override("font_size", 24)
+	countdown_subtitle.add_theme_color_override("font_color", Color(0.95, 0.35, 0.2))
 	count_vbox.add_child(countdown_subtitle)
 	
 	countdown_number = Label.new()
 	countdown_number.text = "3"
 	countdown_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	countdown_number.add_theme_font_size_override("font_size", 64)
+	countdown_number.add_theme_font_size_override("font_size", 96)
 	countdown_number.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
 	count_vbox.add_child(countdown_number)
 	
@@ -434,7 +496,7 @@ func _setup_hud() -> void:
 	log_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	log_panel.offset_left = 20
 	log_panel.offset_right = -20
-	log_panel.offset_top = -68
+	log_panel.offset_top = -74
 	log_panel.offset_bottom = -10
 	var l_style = StyleBoxFlat.new()
 	l_style.bg_color = Color(0.06, 0.08, 0.11, 0.85)
@@ -449,10 +511,15 @@ func _setup_hud() -> void:
 	log_label = RichTextLabel.new()
 	log_label.bbcode_enabled = true
 	log_label.scroll_following = true
-	log_label.text = "[color=#38bdf8]Dungeon loaded.[/color] [color=#94a3b8]Walk through hallway with WASD and breach doors.[/color]\n"
+	log_label.text = "[color=#38bdf8]Dungeon loaded.[/color] [color=#94a3b8]5 chambers await. Push enemies into walls or each other to stun them![/color]\n"
 	log_panel.add_child(log_label)
 
 func _process(delta: float) -> void:
+	# Smooth Camera Follow
+	if player and is_instance_valid(player):
+		var target_pos = player.position + BOARD_OFFSET
+		camera.position = camera.position.lerp(target_pos, delta * 6.0)
+		
 	if current_mode == GameMode.EXPLORATION:
 		_process_exploration_movement(delta)
 	elif current_mode == GameMode.COMBAT_PULSE:
@@ -471,7 +538,7 @@ func _process_exploration_movement(delta: float) -> void:
 		
 	if move_vec != Vector2.ZERO:
 		move_vec = move_vec.normalized()
-		var speed = 190.0
+		var speed = 200.0
 		var desired_pos = player.position + move_vec * speed * delta
 		
 		var p_grid = world_to_grid(desired_pos)
@@ -483,6 +550,7 @@ func _process_exploration_movement(delta: float) -> void:
 				player.position = desired_pos
 				player.grid_pos = p_grid
 			else:
+				# Simple sliding along walls
 				var slide_x = Vector2(desired_pos.x, player.position.y)
 				var grid_x = world_to_grid(slide_x)
 				if is_valid_grid_pos(grid_x) and grid[grid_x.y][grid_x.x] == 0:
@@ -495,11 +563,11 @@ func _process_exploration_movement(delta: float) -> void:
 						player.position = slide_y
 						player.grid_pos = grid_y
 						
-	# Check proximity to doors
+	# Check proximity to closed doors
 	for door in doors:
 		if not door["is_open"]:
 			var d_world = grid_to_world(door["pos"])
-			if player.position.distance_to(d_world) < 60.0:
+			if player.position.distance_to(d_world) < 64.0:
 				_open_door(door)
 				
 	# Check proximity to chests
@@ -516,19 +584,23 @@ func _check_door_interaction(door_grid_pos: Vector2i) -> void:
 			break
 
 func _open_door(door: Dictionary) -> void:
-	door["is_open"] = true
-	door["sprite"].texture = load("res://assets/sprites/door_open.svg")
-	grid[door["pos"].y][door["pos"].x] = 0 # Doorway is now walkable floor
-	
 	var r_id = door["room_id"]
 	current_combat_room_id = r_id
-	_log("[color=#f59e0b]🚪 Door breached! Room %d revealed![/color]" % r_id)
+	
+	# Open all door tiles associated with this room (supports double doors)
+	for d in doors:
+		if d["room_id"] == r_id and not d["is_open"]:
+			d["is_open"] = true
+			d["sprite"].texture = load("res://assets/sprites/door_open.svg")
+			grid[d["pos"].y][d["pos"].x] = 0
+			
+	_log("[color=#f59e0b]🚪 Chamber %d breached! Fog fades away![/color]" % r_id)
 	
 	# Fade Fog of War
 	if fog_overlays.has(r_id):
 		var fog = fog_overlays[r_id]
 		var tween = create_tween()
-		tween.tween_property(fog, "modulate:a", 0.0, 0.5)
+		tween.tween_property(fog, "modulate:a", 0.0, 0.4)
 		tween.tween_callback(fog.queue_free)
 		fog_overlays.erase(r_id)
 		
@@ -538,7 +610,6 @@ func _open_door(door: Dictionary) -> void:
 		if is_instance_valid(enemy) and enemy.is_alive and enemy.current_hp > 0 and enemy.room_id == r_id:
 			enemy.is_active_in_combat = true
 			engaged_monsters.append(enemy)
-			# Alert indicator
 			_show_floating_text(enemy.position, "!", Color(0.95, 0.2, 0.2))
 			
 	if not engaged_monsters.is_empty():
@@ -551,41 +622,69 @@ func _open_chest(chest: Dictionary) -> void:
 	
 	var reward_type = chest.get("reward", "flame_rune")
 	if reward_type == "flame_rune":
-		# Reward 1: Modify D6 Sword! Add Flaming Rune face
 		if player and player.die and player.die.faces.size() >= 4:
 			var fire_face = {
 				"roll": 4,
 				"title": "FLAME RUNE",
-				"desc": "8 Damage + Burn!",
+				"desc": "8 Damage + Burn Hazard!",
 				"damage": 8,
 				"knockback": false,
 				"icon": "res://assets/ui/die_face_fire.svg"
 			}
-			player.die.faces[3] = fire_face # Replace face 4 with Flaming Rune!
+			player.die.faces[3] = fire_face
 			player.loaded_face = fire_face
 			_update_hud_display()
-			_log("[color=#f97316][b]🔥 TREASURE FOUND: Flame Rune etched into your D6 Sword! (Face 4 replaced with 8 DMG + BURN)[/b][/color]")
+			_log("[color=#f97316][b]🔥 TREASURE: Flame Rune! (Face 4 upgraded to 8 DMG + Burn Hazard)[/b][/color]")
+	elif reward_type == "shield_basher":
+		if player and player.die and player.die.faces.size() >= 2:
+			var bash_face = {
+				"roll": 2,
+				"title": "SHIELD BASHER",
+				"desc": "5 Damage + Breaks Guard!",
+				"damage": 5,
+				"knockback": true,
+				"icon": "res://assets/ui/die_face_5.svg"
+			}
+			player.die.faces[1] = bash_face
+			player.loaded_face = bash_face
+			_update_hud_display()
+			_log("[color=#38bdf8][b]🛡️ TREASURE: Shield Basher! (Face 2 upgraded to 5 DMG + SHIELD BREAK)[/b][/color]")
+	elif reward_type == "chaos_blast":
+		if player and player.die and player.die.faces.size() >= 3:
+			var chaos_face = {
+				"roll": 3,
+				"title": "CHAOS SHOCKWAVE",
+				"desc": "7 Damage + Heavy Push!",
+				"damage": 7,
+				"knockback": true,
+				"icon": "res://assets/ui/die_face_6.svg"
+			}
+			player.die.faces[2] = chaos_face
+			player.loaded_face = chaos_face
+			_update_hud_display()
+			_log("[color=#a855f7][b]🔮 TREASURE: Chaos Shockwave! (Face 3 upgraded to 7 DMG + HEAVY PUSH)[/b][/color]")
 	elif reward_type == "executioner_edge":
-		# Reward 2: Modify D6 Sword! Replace Miss with Executioner's Edge
 		if player and player.die and not player.die.faces.is_empty():
 			var exec_face = {
 				"roll": 1,
 				"title": "EXECUTIONER",
-				"desc": "10 Damage + Knockback!",
+				"desc": "10 Damage + Wall Slam!",
 				"damage": 10,
 				"knockback": true,
 				"icon": "res://assets/ui/die_face_6.svg"
 			}
-			player.die.faces[0] = exec_face # Replace face 1 (MISS) with Executioner!
+			player.die.faces[0] = exec_face
 			player.loaded_face = exec_face
 			_update_hud_display()
-			_log("[color=#eab308][b]⚡ TREASURE FOUND: Executioner's Edge! (Face 1 MISS replaced with 10 DMG + KNOCKBACK)[/b][/color]")
+			_log("[color=#eab308][b]⚡ TREASURE: Executioner's Edge! (Face 1 MISS replaced with 10 DMG + WALL SLAM)[/b][/color]")
+	elif reward_type == "dungeon_crown":
+		_log("[color=#22c55e][b]👑 RELIC OF VICTORY: You claimed the Dungeon Crown! All chambers conquered![/b][/color]")
 
 func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	current_mode = GameMode.COMBAT_COUNTDOWN
 	active_combat_enemies = engaged_monsters
 	
-	# Smoothly snap player to nearest grid tile
+	# Snap player to nearest grid tile
 	var snap_target = grid_to_world(world_to_grid(player.position))
 	var snap_tween = create_tween()
 	snap_tween.tween_property(player, "position", snap_target, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -594,7 +693,7 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	explore_banner.visible = false
 	countdown_overlay.visible = true
 	
-	_log("[color=#ef4444][b]⚔️ COMBAT STARTING IN 3... 2... 1...[/b][/color]")
+	_log("[color=#ef4444][b]⚔️ TACTICAL PULSE ENGAGING IN 3... 2... 1...[/b][/color]")
 	
 	var count_seq = create_tween()
 	count_seq.tween_callback(func():
@@ -694,7 +793,7 @@ func _input(event: InputEvent) -> void:
 			elif event.keycode == KEY_T:
 				_on_toggle_telegraphs()
 				
-	# Board clicks in combat mode
+	# Board clicks in combat planning mode (board_container handles camera offset automatically!)
 	if current_mode == GameMode.COMBAT_PULSE and pulse_state == PulseState.PLANNING and event is InputEventMouseButton and event.pressed:
 		var local_mouse = board_container.get_local_mouse_position()
 		if local_mouse.x >= 0 and local_mouse.x < GRID_WIDTH * TILE_SIZE and local_mouse.y >= 0 and local_mouse.y < GRID_HEIGHT * TILE_SIZE:
@@ -762,7 +861,8 @@ func _start_planning_phase() -> void:
 	attack_indicator.visible = false
 	
 	for ind in danger_indicators:
-		ind.queue_free()
+		if is_instance_valid(ind):
+			ind.queue_free()
 	danger_indicators.clear()
 	
 	_plan_enemy_intents()
@@ -773,16 +873,83 @@ func _plan_enemy_intents() -> void:
 		if not is_instance_valid(enemy) or not enemy.is_alive:
 			continue
 			
-		var diff = (player.grid_pos - enemy.grid_pos).abs()
-		var dist_chebyshev = max(diff.x, diff.y)
+		# Reset shield broken state per round
+		enemy.shield_broken = false
 		
+		# If enemy was stunned from a wall-crash or push, they skip intent!
+		if enemy.is_stunned:
+			enemy.set_stunned(false) # Will recover after this turn
+			enemy.set_intent("STUNNED", enemy.grid_pos)
+			_show_floating_text(enemy.position, "DIZZY!", Color(0.95, 0.85, 0.2))
+			continue
+			
+		var diff = player.grid_pos - enemy.grid_pos
+		var abs_diff = diff.abs()
+		var dist_chebyshev = max(abs_diff.x, abs_diff.y)
+		
+		# 1. GOBLIN CHARGER: Straight line 3-tile rush
+		if enemy.unit_type == "charger":
+			var can_charge = false
+			var charge_dir = Vector2i.ZERO
+			if abs_diff.y <= 1 and abs_diff.x >= 2 and abs_diff.x <= 4:
+				charge_dir = Vector2i(1 if diff.x > 0 else -1, 0)
+				can_charge = true
+			elif abs_diff.x <= 1 and abs_diff.y >= 2 and abs_diff.y <= 4:
+				charge_dir = Vector2i(0, 1 if diff.y > 0 else -1)
+				can_charge = true
+				
+			if can_charge:
+				var charge_tiles: Array[Vector2i] = []
+				for step in range(1, 4):
+					var c_tile = enemy.grid_pos + charge_dir * step
+					if is_valid_grid_pos(c_tile) and grid[c_tile.y][c_tile.x] == 0:
+						charge_tiles.append(c_tile)
+						if show_telegraphs:
+							_spawn_danger_indicator(c_tile)
+				enemy.set_intent("CHARGE", enemy.grid_pos + charge_dir * 3, charge_tiles)
+				continue
+				
+		# 2. CULTIST PYROMANCER: 3-Tile Cross / 2x2 Flame Blast
+		if enemy.unit_type == "pyromancer" and dist_chebyshev <= 4:
+			var blast_tiles: Array[Vector2i] = [player.grid_pos]
+			for d in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
+				var b_tile = player.grid_pos + d
+				if is_valid_grid_pos(b_tile) and grid[b_tile.y][b_tile.x] == 0:
+					blast_tiles.append(b_tile)
+			if show_telegraphs:
+				for bt in blast_tiles:
+					_spawn_danger_indicator(bt)
+			enemy.set_intent("BLAST", player.grid_pos, blast_tiles)
+			continue
+			
+		# 3. ORC BRAWLER: Wide 3-Tile Cleave Sweep
+		if enemy.unit_type == "brawler" and dist_chebyshev <= 1:
+			var sweep_dir = (player.grid_pos - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
+			var sweep_tiles: Array[Vector2i] = [player.grid_pos]
+			if sweep_dir.x != 0:
+				sweep_tiles.append(enemy.grid_pos + Vector2i(sweep_dir.x, 1))
+				sweep_tiles.append(enemy.grid_pos + Vector2i(sweep_dir.x, -1))
+			else:
+				sweep_tiles.append(enemy.grid_pos + Vector2i(1, sweep_dir.y))
+				sweep_tiles.append(enemy.grid_pos + Vector2i(-1, sweep_dir.y))
+				
+			if show_telegraphs:
+				for st in sweep_tiles:
+					if is_valid_grid_pos(st) and grid[st.y][st.x] == 0:
+						_spawn_danger_indicator(st)
+			enemy.set_intent("SWEEP", player.grid_pos, sweep_tiles)
+			continue
+			
+		# 4. SKELETON SHIELDBEARER & GRUNTS
 		if dist_chebyshev <= 1:
+			enemy.facing_dir = (player.grid_pos - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
 			enemy.set_intent("ATTACK", player.grid_pos)
 			if show_telegraphs:
 				_spawn_danger_indicator(player.grid_pos)
 		else:
 			var next_step = _find_smart_path_step(enemy.grid_pos, player.grid_pos, enemy)
 			if next_step != enemy.grid_pos and is_valid_grid_pos(next_step) and grid[next_step.y][next_step.x] == 0:
+				enemy.facing_dir = (next_step - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
 				enemy.set_intent("MOVE", next_step)
 			else:
 				enemy.set_intent("NONE", enemy.grid_pos)
@@ -805,8 +972,6 @@ func _find_smart_path_step(from_pos: Vector2i, target_pos: Vector2i, current_uni
 	for other in active_combat_enemies:
 		if is_instance_valid(other) and other != current_unit and other.is_alive and other.current_hp > 0:
 			blocked[other.grid_pos] = true
-			if other.intent_type == "MOVE":
-				blocked[other.target_grid_pos] = true
 
 	var target_found: bool = false
 	var goal_tile: Vector2i = from_pos
@@ -828,9 +993,6 @@ func _find_smart_path_step(from_pos: Vector2i, target_pos: Vector2i, current_uni
 			var neighbor = curr + d
 			if is_valid_grid_pos(neighbor):
 				if not blocked.has(neighbor) and not visited.has(neighbor):
-					if d.x != 0 and d.y != 0:
-						if grid[curr.y][neighbor.x] != 0 and grid[neighbor.y][curr.x] != 0:
-							continue
 					visited[neighbor] = curr
 					queue.push_back(neighbor)
 
@@ -865,14 +1027,19 @@ func _update_hud_display() -> void:
 	var monster_info: Array[String] = []
 	for enemy in active_combat_enemies:
 		if is_instance_valid(enemy) and enemy.is_alive and enemy.current_hp > 0:
-			var act = "⚔️ Attack" if enemy.intent_type == "ATTACK" else "👟 Advance"
+			var act = "⚔️ Strike"
+			if enemy.intent_type == "CHARGE": act = "⏩ CHARGE"
+			elif enemy.intent_type == "BLAST": act = "🔥 BLAST"
+			elif enemy.intent_type == "SWEEP": act = "🪓 CLEAVE"
+			elif enemy.intent_type == "MOVE": act = "👟 Advance"
+			elif enemy.intent_type == "STUNNED": act = "💫 Stunned"
 			monster_info.append("%s [%s, HP %d]" % [enemy.unit_name, act, enemy.current_hp])
 	enemy_intel_label.text = "Threats: " + " | ".join(monster_info)
 
 func _resolve_pulse() -> void:
 	pulse_state = PulseState.RESOLVING
 	commit_button.disabled = true
-	phase_title.text = "💥 PULSE: RESOLVING ACTION!"
+	phase_title.text = "💥 PULSE: SIMULTANEOUS CLASH!"
 	phase_title.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35))
 	
 	var planned_player_pos = player_move_target if player_move_target != Vector2i(-1, -1) else player.grid_pos
@@ -904,13 +1071,56 @@ func _resolve_pulse() -> void:
 				
 	await get_tree().create_timer(0.35).timeout
 	
-	# STEP 2: ATTACK PHASE (0.35s)
-	_log("[b]▶ ATTACK PHASE[/b]")
+	# STEP 2: CHARGE RESOLUTION (Chargers rush forward, slam into walls or other units!)
+	for enemy in active_combat_enemies:
+		if is_instance_valid(enemy) and enemy.is_alive and enemy.intent_type == "CHARGE":
+			var charge_path = enemy.telegraphed_tiles
+			var stopped = false
+			for t_tile in charge_path:
+				if stopped: break
+				
+				# Check if tile has hero
+				if player.grid_pos == t_tile:
+					enemy.animate_attack_thrust(grid_to_world(t_tile))
+					player.take_damage(8)
+					_log("[color=#ef4444]💥 %s charged into Hero for 8 damage![/color]" % enemy.unit_name)
+					_show_floating_text(player.position, "-8 HP (CHARGE)", Color(0.95, 0.2, 0.2))
+					stopped = true
+					break
+					
+				# Check if tile has other monster (Friendly Fire / Collision!)
+				for other in active_combat_enemies:
+					if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == t_tile:
+						other.take_damage(6)
+						enemy.take_damage(4)
+						_log("[color=#f97316]💥 %s bowled over %s! FRIENDLY FIRE (6 DMG)![/color]" % [enemy.unit_name, other.unit_name])
+						_show_floating_text(other.position, "COLLISION! -6 HP", Color(0.95, 0.6, 0.1))
+						stopped = true
+						break
+						
+				if not stopped:
+					enemy.grid_pos = t_tile
+					enemy.animate_move_to(grid_to_world(t_tile), 0.15)
+					
+			if not stopped:
+				# Check if charger slammed into a wall at end of rush!
+				var next_tile = enemy.grid_pos + enemy.facing_dir
+				if not is_valid_grid_pos(next_tile) or grid[next_tile.y][next_tile.x] != 0:
+					enemy.take_damage(6)
+					enemy.set_stunned(true)
+					_log("[color=#eab308]💥 %s CRASHED into wall! (6 Wall-Slam DMG + STUNNED!)[/color]" % enemy.unit_name)
+					_show_floating_text(enemy.position, "WALL CRASH! STUNNED!", Color(0.98, 0.85, 0.2))
+					enemy.animate_bump_back(grid_to_world(enemy.grid_pos))
+					
+	await get_tree().create_timer(0.25).timeout
+	
+	# STEP 3: PLAYER ATTACK PHASE (0.35s)
+	_log("[b]▶ HERO ATTACK PHASE[/b]")
 	if player_attack_target != Vector2i(-1, -1):
 		player.animate_attack_thrust(grid_to_world(player_attack_target))
 		var face = player.loaded_face
 		var dmg = face.get("damage", 0)
-		var is_crit = face.get("knockback", false)
+		var is_knockback = face.get("knockback", false)
 		
 		var hit_enemy: CombatUnit = null
 		for enemy in active_combat_enemies:
@@ -923,17 +1133,54 @@ func _resolve_pulse() -> void:
 				_log("[color=#94a3b8]Hero rolled MISS! Stumbled.[/color]")
 				_show_floating_text(hit_enemy.position, "MISS!", Color(0.6, 0.6, 0.6))
 			else:
-				hit_enemy.take_damage(dmg)
-				var crit_tag = " (CRIT + PUSH!)" if is_crit else ""
-				_log("[color=#22c55e]Hero struck %s for %d damage!%s[/color]" % [hit_enemy.unit_name, dmg, crit_tag])
-				_show_floating_text(hit_enemy.position, "-%d DMG%s" % [dmg, "!" if is_crit else ""], Color(0.95, 0.2, 0.2) if is_crit else Color(0.95, 0.85, 0.2))
-				
-				if is_crit and hit_enemy.is_alive:
-					var push_dir = (hit_enemy.grid_pos - player.grid_pos).clamp(Vector2i(-1, -1), Vector2i(1, 1))
-					var pushed_pos = hit_enemy.grid_pos + push_dir
-					if is_valid_grid_pos(pushed_pos) and grid[pushed_pos.y][pushed_pos.x] == 0:
-						hit_enemy.grid_pos = pushed_pos
-						hit_enemy.animate_move_to(grid_to_world(pushed_pos), 0.2)
+				# CHECK SHIELDBEARER FRONTAL DEFENSE (Puzzle Mechanic!)
+				var attack_blocked = false
+				if hit_enemy.has_shield and not hit_enemy.shield_broken:
+					var attack_dir = (hit_enemy.grid_pos - player.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
+					# If hit comes directly from the front the shieldbearer is facing:
+					if hit_enemy.facing_dir == -attack_dir or hit_enemy.facing_dir == Vector2i.ZERO:
+						if is_knockback or dmg >= 8:
+							# Heavy or knockback breaks shield!
+							hit_enemy.shield_broken = true
+							_log("[color=#38bdf8]⚡ Hero's heavy strike SHATTERED %s's shield![/color]" % hit_enemy.unit_name)
+							_show_floating_text(hit_enemy.position, "GUARD BROKEN!", Color(0.3, 0.8, 0.95))
+						else:
+							attack_blocked = true
+							_log("[color=#94a3b8]🛡️ %s's tower shield BLOCKED the front strike! (0 DMG - Flank or use Heavy!)[/color]" % hit_enemy.unit_name)
+							_show_floating_text(hit_enemy.position, "BLOCKED BY SHIELD!", Color(0.38, 0.74, 0.97))
+							
+				if not attack_blocked:
+					hit_enemy.take_damage(dmg)
+					_log("[color=#22c55e]Hero struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
+					_show_floating_text(hit_enemy.position, "-%d DMG" % dmg, Color(0.95, 0.85, 0.2))
+					
+					# PUSH / WALL SLAM PUZZLE MECHANIC
+					if is_knockback and hit_enemy.is_alive:
+						var push_dir = (hit_enemy.grid_pos - player.grid_pos).clamp(Vector2i(-1, -1), Vector2i(1, 1))
+						var pushed_pos = hit_enemy.grid_pos + push_dir
+						
+						# Check if pushed into wall -> WALL SLAM + STUN!
+						if not is_valid_grid_pos(pushed_pos) or grid[pushed_pos.y][pushed_pos.x] != 0:
+							hit_enemy.take_damage(4)
+							hit_enemy.set_stunned(true)
+							_log("[color=#eab308]💥 WALL SLAM! %s slammed into wall (+4 DMG + STUNNED!)[/color]" % hit_enemy.unit_name)
+							_show_floating_text(hit_enemy.position, "WALL SLAM! (STUNNED)", Color(0.98, 0.8, 0.2))
+							hit_enemy.animate_bump_back(grid_to_world(hit_enemy.grid_pos))
+						else:
+							# Check if pushed into another monster -> COLLISION!
+							var collided_monster: CombatUnit = null
+							for other in active_combat_enemies:
+								if is_instance_valid(other) and other != hit_enemy and other.is_alive and other.grid_pos == pushed_pos:
+									collided_monster = other
+									break
+							if collided_monster:
+								collided_monster.take_damage(4)
+								hit_enemy.take_damage(4)
+								_log("[color=#f97316]💥 %s pushed into %s! COLLISION (4 DMG each)![/color]" % [hit_enemy.unit_name, collided_monster.unit_name])
+								_show_floating_text(collided_monster.position, "COLLISION! -4 HP", Color(0.95, 0.6, 0.1))
+							else:
+								hit_enemy.grid_pos = pushed_pos
+								hit_enemy.animate_move_to(grid_to_world(pushed_pos), 0.2)
 		else:
 			_log("[color=#94a3b8]Hero struck empty air! Target dodged.[/color]")
 			_show_floating_text(grid_to_world(player_attack_target), "WHIFF!", Color(0.6, 0.7, 0.8))
@@ -943,32 +1190,66 @@ func _resolve_pulse() -> void:
 		_on_active_room_cleared()
 		return
 		
-	# Enemy Attacks
+	# STEP 4: ENEMY ATTACKS (Cleaves, Blasts, Strikes & Friendly Fire)
 	for enemy in active_combat_enemies:
-		if is_instance_valid(enemy) and enemy.is_alive and enemy.intent_type == "ATTACK":
+		if not is_instance_valid(enemy) or not enemy.is_alive: continue
+		
+		# PYROMANCER BLAST (AoE)
+		if enemy.intent_type == "BLAST":
+			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
+			_log("[color=#f97316]🔥 %s detonated a Flame Blast![/color]" % enemy.unit_name)
+			for b_tile in enemy.telegraphed_tiles:
+				_spawn_hazard_tile(b_tile)
+				if player.grid_pos == b_tile:
+					player.take_damage(7)
+					_log("[color=#ef4444]Hero caught in flame blast! (-7 HP)[/color]")
+					_show_floating_text(player.position, "-7 HP (FIRE)", Color(0.95, 0.25, 0.25))
+				# Friendly fire on any other monster in blast!
+				for other in active_combat_enemies:
+					if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == b_tile:
+						other.take_damage(7)
+						_log("[color=#f97316]Friendly fire! %s caught in blast (-7 HP)[/color]" % other.unit_name)
+						_show_floating_text(other.position, "-7 HP (FIRE)", Color(0.95, 0.6, 0.1))
+						
+		# ORC BRAWLER SWEEP (3-Tile Arc)
+		elif enemy.intent_type == "SWEEP":
+			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
+			_log("[color=#ef4444]🪓 %s unleashes a WIDE CLEAVE SWEEP![/color]" % enemy.unit_name)
+			for s_tile in enemy.telegraphed_tiles:
+				if player.grid_pos == s_tile:
+					player.take_damage(6)
+					_log("[color=#ef4444]Hero caught in cleave arc! (-6 HP)[/color]")
+					_show_floating_text(player.position, "-6 HP", Color(0.95, 0.25, 0.25))
+				for other in active_combat_enemies:
+					if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == s_tile:
+						other.take_damage(6)
+						_log("[color=#f97316]Friendly fire! %s caught in cleave (-6 HP)[/color]" % other.unit_name)
+						_show_floating_text(other.position, "-6 HP", Color(0.95, 0.6, 0.1))
+						
+		# STANDARD MELEE STRIKE
+		elif enemy.intent_type == "ATTACK":
 			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
 			var face = enemy.loaded_face
-			var dmg = face.get("damage", 0)
+			var dmg = face.get("damage", 4)
 			
 			if player.grid_pos == enemy.target_grid_pos:
-				if dmg == 0:
-					_log("[color=#94a3b8]%s rolled MISS![/color]" % enemy.unit_name)
-					_show_floating_text(player.position, "BLOCKED!", Color(0.3, 0.8, 0.9))
-				else:
-					player.take_damage(dmg)
-					_log("[color=#ef4444]%s hit Hero for %d damage![/color]" % [enemy.unit_name, dmg])
-					_show_floating_text(player.position, "-%d HP" % dmg, Color(0.95, 0.25, 0.25))
+				player.take_damage(dmg)
+				_log("[color=#ef4444]%s struck Hero for %d damage![/color]" % [enemy.unit_name, dmg])
+				_show_floating_text(player.position, "-%d HP" % dmg, Color(0.95, 0.25, 0.25))
 			else:
 				_log("[color=#38bdf8]Hero dodged %s's strike![/color]" % enemy.unit_name)
 				_show_floating_text(player.position, "DODGED!", Color(0.2, 0.8, 0.4))
 				
+	# STEP 5: HAZARD TILE TICKS
+	_process_hazard_tiles()
+	
 	await get_tree().create_timer(0.35).timeout
 	
 	if player.current_hp <= 0:
 		_game_over()
 		return
 		
-	# STEP 3: DICE RE-ROLL STEP
+	# STEP 6: DICE RE-ROLL & NEXT PULSE
 	player.roll_next_face()
 	for enemy in active_combat_enemies:
 		if is_instance_valid(enemy) and enemy.is_alive:
@@ -981,26 +1262,65 @@ func _resolve_pulse() -> void:
 	else:
 		_start_planning_phase()
 
+func _spawn_hazard_tile(pos: Vector2i) -> void:
+	if hazard_tiles.has(pos):
+		hazard_tiles[pos]["duration"] = 2
+		return
+		
+	var h_sprite = Sprite2D.new()
+	h_sprite.texture = load("res://assets/ui/hazard_fire_tile.svg")
+	h_sprite.position = grid_to_world(pos)
+	hazard_container.add_child(h_sprite)
+	
+	hazard_tiles[pos] = {
+		"duration": 2, # Lasts 2 pulses
+		"sprite": h_sprite
+	}
+
+func _process_hazard_tiles() -> void:
+	var expired = []
+	for pos in hazard_tiles.keys():
+		var h = hazard_tiles[pos]
+		# Check if player on fire
+		if player.grid_pos == pos:
+			player.take_damage(3)
+			_show_floating_text(player.position, "-3 BURN!", Color(0.95, 0.4, 0.1))
+			
+		# Check if monster on fire
+		for enemy in active_combat_enemies:
+			if is_instance_valid(enemy) and enemy.is_alive and enemy.grid_pos == pos:
+				enemy.take_damage(3)
+				_show_floating_text(enemy.position, "-3 BURN!", Color(0.95, 0.4, 0.1))
+				
+		h["duration"] -= 1
+		if h["duration"] <= 0:
+			expired.append(pos)
+			
+	for p in expired:
+		if hazard_tiles.has(p):
+			hazard_tiles[p]["sprite"].queue_free()
+			hazard_tiles.erase(p)
+
 func _on_active_room_cleared() -> void:
-	# Clean up any dead references
 	all_enemies = all_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
 	
-	# Spawn chest for the room that was actually cleared!
+	# Spawn chest for the room that was cleared
 	if current_combat_room_id == 1:
-		_spawn_treasure_chest(Vector2i(5, 3), "flame_rune")
+		_spawn_treasure_chest(Vector2i(6, 4), "flame_rune")
 	elif current_combat_room_id == 2:
-		_spawn_treasure_chest(Vector2i(15, 3), "executioner_edge")
-	else:
-		if player.grid_pos.x < 10:
-			_spawn_treasure_chest(Vector2i(5, 3), "flame_rune")
-		else:
-			_spawn_treasure_chest(Vector2i(15, 3), "executioner_edge")
-			
+		_spawn_treasure_chest(Vector2i(6, 19), "shield_basher")
+	elif current_combat_room_id == 3:
+		_spawn_treasure_chest(Vector2i(20, 4), "chaos_blast")
+	elif current_combat_room_id == 4:
+		_spawn_treasure_chest(Vector2i(20, 19), "executioner_edge")
+	elif current_combat_room_id == 5:
+		_spawn_treasure_chest(Vector2i(38, 11), "dungeon_crown")
+		
 	var any_remaining = not all_enemies.is_empty()
 	if not any_remaining:
 		_game_conquered()
 	else:
-		_log("[color=#22c55e][b]🏆 ROOM CLEARED! A treasure chest has appeared! Returning to Exploration mode...[/b][/color]")
+		_log("[color=#22c55e][b]🏆 CHAMBER CLEARED! A treasure chest has appeared! Returning to Exploration mode...[/b][/color]")
 		_show_floating_text(player.position, "ROOM CLEARED!", Color(0.2, 0.9, 0.4))
 		var t = create_tween()
 		t.tween_interval(1.0)
@@ -1009,14 +1329,13 @@ func _on_active_room_cleared() -> void:
 func _spawn_treasure_chest(pos: Vector2i, reward_type: String = "flame_rune") -> void:
 	for c in chests:
 		if c["pos"] == pos:
-			return # Avoid duplicate chest on same tile
+			return # Avoid duplicate
 			
 	var sprite = Sprite2D.new()
 	sprite.texture = load("res://assets/sprites/chest_closed.svg")
 	sprite.position = grid_to_world(pos)
 	chest_container.add_child(sprite)
 	
-	# Spawn bounce animation
 	sprite.scale = Vector2(0.2, 0.2)
 	var tween = create_tween()
 	tween.tween_property(sprite, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
@@ -1059,8 +1378,7 @@ func _game_conquered() -> void:
 	current_mode = GameMode.GAME_OVER
 	phase_title.text = "🏆 DUNGEON CONQUERED!"
 	phase_title.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4))
-	_log("[color=#22c55e][b]🎉 VICTORY! All rooms purged. The dungeon is conquered! Walk up to the golden chest to claim your relic![/b][/color]")
-	# Allow walking to the chest in exploration
+	_log("[color=#22c55e][b]🎉 VICTORY! All 5 chambers purged. You are the Dungeon Conqueror! Press R to play again.[/b][/color]")
 	_enter_exploration_mode()
 
 func _game_over() -> void:
@@ -1077,7 +1395,8 @@ func _on_toggle_telegraphs() -> void:
 	show_telegraphs = !show_telegraphs
 	telegraph_button.text = "👁️ Telegraphs: ON" if show_telegraphs else "👁️ Telegraphs: OFF"
 	for danger in danger_indicators:
-		danger.visible = show_telegraphs
+		if is_instance_valid(danger):
+			danger.visible = show_telegraphs
 	_log("[color=#94a3b8]Telegraphs %s[/color]" % ("enabled" if show_telegraphs else "disabled"))
 
 func _on_restart_pressed() -> void:

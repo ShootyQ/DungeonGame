@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Intent Blast: Magic AoE explosion badge -->
+  <circle cx="16" cy="16" r="15" fill="#4c0519" stroke="#e11d48" stroke-width="2"/>
+  <polygon points="16,4 19,12 28,12 21,17 24,26 16,21 8,26 11,17 4,12 13,12" fill="#fb7185"/>
+  <circle cx="16" cy="16" r="4" fill="#fef08a"/>
+</svg>

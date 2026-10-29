@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Orc Cleaver Berserker -->
+  <circle cx="32" cy="32" r="30" fill="#142416" stroke="#22c55e" stroke-width="2.5"/>
+  <!-- Broad Orc Head & Jaws -->
+  <ellipse cx="32" cy="28" rx="17" ry="15" fill="#3f6212" stroke="#1a2e05" stroke-width="2"/>
+  <!-- War Paint across brow -->
+  <path d="M 17 24 Q 32 20 47 24 L 45 28 Q 32 24 19 28 Z" fill="#b91c1c"/>
+  <!-- Yellow Beady Eyes -->
+  <circle cx="26" cy="26" r="3" fill="#facc15" stroke="#713f12" stroke-width="1"/>
+  <circle cx="26" cy="26" r="1.5" fill="#450a0a"/>
+  <circle cx="38" cy="26" r="3" fill="#facc15" stroke="#713f12" stroke-width="1"/>
+  <circle cx="38" cy="26" r="1.5" fill="#450a0a"/>
+  <!-- Huge Upward Tusks -->
+  <polygon points="23,37 25,27 28,37" fill="#fef08a" stroke="#ca8a04" stroke-width="1"/>
+  <polygon points="41,37 39,27 36,37" fill="#fef08a" stroke="#ca8a04" stroke-width="1"/>
+  <path d="M 26 36 Q 32 39 38 36" stroke="#1c1917" stroke-width="2.5" fill="none"/>
+  <!-- Massive Battleaxe in Left Hand -->
+  <line x1="12" y1="12" x2="16" y2="56" stroke="#52525b" stroke-width="3"/>
+  <path d="M 6 16 Q 16 10 18 26 Q 10 24 6 16 Z" fill="#94a3b8" stroke="#334155" stroke-width="1.5"/>
+  <!-- Spiked Iron Armor Collar -->
+  <path d="M 18 45 L 46 45 L 42 56 L 22 56 Z" fill="#3f3f46" stroke="#71717a" stroke-width="1.5"/>
+  <circle cx="24" cy="50" r="2" fill="#d4d4d8"/>
+  <circle cx="40" cy="50" r="2" fill="#d4d4d8"/>
+</svg>

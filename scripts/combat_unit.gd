@@ -10,27 +10,39 @@ signal hp_changed(unit: CombatUnit, new_hp: int, max_hp: int)
 var current_hp: int = 20
 var is_alive: bool = true
 var is_active_in_combat: bool = false
-var room_id: int = 0 # 0 = hallway/player, 1 = room 1, 2 = room 2
+var room_id: int = 0
 var grid_pos: Vector2i = Vector2i.ZERO
+
+# New Tactical Properties
+var unit_type: String = "grunt" # "grunt", "charger", "shieldbearer", "pyromancer", "brawler"
+var facing_dir: Vector2i = Vector2i(0, 1) # (0,1)=Down, (0,-1)=Up, (1,0)=Right, (-1,0)=Left
+var is_stunned: bool = false
+var has_shield: bool = false
+var shield_broken: bool = false
+var telegraphed_tiles: Array[Vector2i] = []
 
 var die: DieData
 var loaded_face: Dictionary = {}
 
-var intent_type: String = "NONE" # "NONE", "MOVE", "ATTACK"
+var intent_type: String = "NONE" # "NONE", "MOVE", "ATTACK", "CHARGE", "SWEEP", "BLAST", "STUNNED"
 var target_grid_pos: Vector2i = Vector2i.ZERO
 
 var sprite: Sprite2D
 var hp_bar: ProgressBar
 var intent_icon: Sprite2D
+var shield_icon: Sprite2D
+var stun_icon: Sprite2D
 var loaded_face_icon: TextureRect
 
-func setup(p_name: String, p_is_player: bool, p_max_hp: int, p_texture: Texture2D, p_grid_pos: Vector2i, p_die: DieData) -> void:
+func setup(p_name: String, p_is_player: bool, p_max_hp: int, p_texture: Texture2D, p_grid_pos: Vector2i, p_die: DieData, p_type: String = "grunt") -> void:
 	unit_name = p_name
 	is_player = p_is_player
 	max_hp = p_max_hp
 	current_hp = p_max_hp
 	grid_pos = p_grid_pos
 	die = p_die
+	unit_type = p_type
+	has_shield = (p_type == "shieldbearer")
 	
 	# Sprite
 	sprite = Sprite2D.new()
@@ -41,9 +53,25 @@ func setup(p_name: String, p_is_player: bool, p_max_hp: int, p_texture: Texture2
 	# Intent Badge above unit head
 	intent_icon = Sprite2D.new()
 	intent_icon.position = Vector2(0, -42)
-	intent_icon.scale = Vector2(0.8, 0.8)
+	intent_icon.scale = Vector2(0.85, 0.85)
 	intent_icon.visible = false
 	add_child(intent_icon)
+	
+	# Shield indicator for Shieldbearers
+	shield_icon = Sprite2D.new()
+	shield_icon.texture = load("res://assets/ui/shield_badge.svg")
+	shield_icon.position = Vector2(16, -20)
+	shield_icon.scale = Vector2(0.7, 0.7)
+	shield_icon.visible = has_shield
+	add_child(shield_icon)
+	
+	# Stun indicator
+	stun_icon = Sprite2D.new()
+	stun_icon.texture = load("res://assets/ui/stun_badge.svg")
+	stun_icon.position = Vector2(0, -52)
+	stun_icon.scale = Vector2(0.85, 0.85)
+	stun_icon.visible = false
+	add_child(stun_icon)
 	
 	# HP Bar
 	hp_bar = ProgressBar.new()
@@ -74,9 +102,10 @@ func roll_next_face() -> Dictionary:
 		loaded_face = die.roll_random_face()
 	return loaded_face
 
-func set_intent(type: String, target_pos: Vector2i) -> void:
+func set_intent(type: String, target_pos: Vector2i, p_telegraphed: Array[Vector2i] = []) -> void:
 	intent_type = type
 	target_grid_pos = target_pos
+	telegraphed_tiles = p_telegraphed
 	
 	if type == "MOVE":
 		intent_icon.texture = load("res://assets/ui/intent_enemy_move.svg")
@@ -84,12 +113,31 @@ func set_intent(type: String, target_pos: Vector2i) -> void:
 	elif type == "ATTACK":
 		intent_icon.texture = load("res://assets/ui/intent_enemy_attack.svg")
 		intent_icon.visible = true
+	elif type == "CHARGE":
+		intent_icon.texture = load("res://assets/ui/intent_enemy_charge.svg")
+		intent_icon.visible = true
+	elif type == "SWEEP":
+		intent_icon.texture = load("res://assets/ui/intent_enemy_sweep.svg")
+		intent_icon.visible = true
+	elif type == "BLAST":
+		intent_icon.texture = load("res://assets/ui/intent_enemy_blast.svg")
+		intent_icon.visible = true
+	elif type == "STUNNED":
+		intent_icon.visible = false
 	else:
 		intent_icon.visible = false
+
+func set_stunned(val: bool) -> void:
+	is_stunned = val
+	stun_icon.visible = val
+	if val:
+		clear_intent()
+		intent_type = "STUNNED"
 
 func clear_intent() -> void:
 	intent_type = "NONE"
 	target_grid_pos = grid_pos
+	telegraphed_tiles.clear()
 	if intent_icon:
 		intent_icon.visible = false
 

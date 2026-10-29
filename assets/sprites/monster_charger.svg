@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Goblin Charger (Horned Helmet, Spiked Shoulder, Fierce Face) -->
+  <circle cx="32" cy="32" r="30" fill="#2d1209" stroke="#ea580c" stroke-width="2.5"/>
+  <!-- Helmet with ram horns -->
+  <path d="M 12 18 Q 20 8 32 12 Q 44 8 52 18 Q 42 16 32 18 Q 22 16 12 18 Z" fill="#78350f" stroke="#ea580c" stroke-width="2"/>
+  <path d="M 14 18 Q 6 12 8 26 Q 14 24 16 20" fill="#d97706" stroke="#b45309" stroke-width="1.5"/>
+  <path d="M 50 18 Q 58 12 56 26 Q 50 24 48 20" fill="#d97706" stroke="#b45309" stroke-width="1.5"/>
+  <!-- Green angry face -->
+  <ellipse cx="32" cy="34" rx="16" ry="14" fill="#65a30d" stroke="#365314" stroke-width="2"/>
+  <!-- Eyes glowing red/yellow -->
+  <polygon points="24,29 30,32 24,35" fill="#facc15" stroke="#dc2626" stroke-width="1"/>
+  <polygon points="40,29 34,32 40,35" fill="#facc15" stroke="#dc2626" stroke-width="1"/>
+  <circle cx="27" cy="32" r="1.5" fill="#dc2626"/>
+  <circle cx="37" cy="32" r="1.5" fill="#dc2626"/>
+  <!-- Snarl with tusks -->
+  <path d="M 26 40 Q 32 44 38 40" stroke="#1c1917" stroke-width="2" fill="none"/>
+  <polygon points="28,40 30,36 32,40" fill="#fef08a"/>
+  <polygon points="34,40 36,36 38,40" fill="#fef08a"/>
+  <!-- Spiked iron shoulder pads -->
+  <path d="M 12 42 L 20 54 L 14 56 Z" fill="#9ca3af" stroke="#4b5563" stroke-width="1.5"/>
+  <path d="M 52 42 L 44 54 L 50 56 Z" fill="#9ca3af" stroke="#4b5563" stroke-width="1.5"/>
+  <polygon points="32,48 28,58 36,58" fill="#ea580c"/>
+</svg>
