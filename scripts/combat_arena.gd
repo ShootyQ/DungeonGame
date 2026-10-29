@@ -20,6 +20,7 @@ var show_telegraphs: bool = true
 var player: CombatUnit
 var all_enemies: Array[CombatUnit] = []
 var active_combat_enemies: Array[CombatUnit] = []
+var current_combat_room_id: int = 0
 
 # Player planned intents in combat
 var player_move_target: Vector2i = Vector2i(-1, -1)
@@ -520,6 +521,7 @@ func _open_door(door: Dictionary) -> void:
 	grid[door["pos"].y][door["pos"].x] = 0 # Doorway is now walkable floor
 	
 	var r_id = door["room_id"]
+	current_combat_room_id = r_id
 	_log("[color=#f59e0b]🚪 Door breached! Room %d revealed![/color]" % r_id)
 	
 	# Fade Fog of War
@@ -533,7 +535,7 @@ func _open_door(door: Dictionary) -> void:
 	# Find and activate living monsters in this room
 	var engaged_monsters: Array[CombatUnit] = []
 	for enemy in all_enemies:
-		if enemy.room_id == r_id and is_instance_valid(enemy) and enemy.is_alive and enemy.current_hp > 0:
+		if is_instance_valid(enemy) and enemy.is_alive and enemy.current_hp > 0 and enemy.room_id == r_id:
 			enemy.is_active_in_combat = true
 			engaged_monsters.append(enemy)
 			# Alert indicator
@@ -547,20 +549,37 @@ func _open_chest(chest: Dictionary) -> void:
 	chest["sprite"].texture = load("res://assets/sprites/chest_open.svg")
 	_show_floating_text(grid_to_world(chest["pos"]), "LOOT UNLOCKED!", Color(0.98, 0.85, 0.2))
 	
-	# Reward: Modify D6 Sword! Add Flaming Rune face
-	if player and player.die and not player.die.faces.is_empty():
-		var fire_face = {
-			"roll": 4,
-			"title": "FLAME RUNE",
-			"desc": "8 Damage + Burn!",
-			"damage": 8,
-			"knockback": false,
-			"icon": "res://assets/ui/die_face_fire.svg"
-		}
-		player.die.faces[3] = fire_face # Replace face 4 with Flaming Rune!
-		player.loaded_face = fire_face
-		_update_hud_display()
-		_log("[color=#f97316][b]🔥 TREASURE FOUND: Flame Rune etched into your D6 Sword! (Face 4 replaced with 8 DMG + BURN)[/b][/color]")
+	var reward_type = chest.get("reward", "flame_rune")
+	if reward_type == "flame_rune":
+		# Reward 1: Modify D6 Sword! Add Flaming Rune face
+		if player and player.die and player.die.faces.size() >= 4:
+			var fire_face = {
+				"roll": 4,
+				"title": "FLAME RUNE",
+				"desc": "8 Damage + Burn!",
+				"damage": 8,
+				"knockback": false,
+				"icon": "res://assets/ui/die_face_fire.svg"
+			}
+			player.die.faces[3] = fire_face # Replace face 4 with Flaming Rune!
+			player.loaded_face = fire_face
+			_update_hud_display()
+			_log("[color=#f97316][b]🔥 TREASURE FOUND: Flame Rune etched into your D6 Sword! (Face 4 replaced with 8 DMG + BURN)[/b][/color]")
+	elif reward_type == "executioner_edge":
+		# Reward 2: Modify D6 Sword! Replace Miss with Executioner's Edge
+		if player and player.die and not player.die.faces.is_empty():
+			var exec_face = {
+				"roll": 1,
+				"title": "EXECUTIONER",
+				"desc": "10 Damage + Knockback!",
+				"damage": 10,
+				"knockback": true,
+				"icon": "res://assets/ui/die_face_6.svg"
+			}
+			player.die.faces[0] = exec_face # Replace face 1 (MISS) with Executioner!
+			player.loaded_face = exec_face
+			_update_hud_display()
+			_log("[color=#eab308][b]⚡ TREASURE FOUND: Executioner's Edge! (Face 1 MISS replaced with 10 DMG + KNOCKBACK)[/b][/color]")
 
 func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	current_mode = GameMode.COMBAT_COUNTDOWN
@@ -625,6 +644,11 @@ func _start_combat_pulse_mode() -> void:
 
 func _enter_exploration_mode() -> void:
 	current_mode = GameMode.EXPLORATION
+	pulse_state = PulseState.PLANNING
+	active_combat_enemies.clear()
+	player_move_target = Vector2i(-1, -1)
+	player_attack_target = Vector2i(-1, -1)
+	
 	explore_banner.visible = true
 	combat_hud.visible = false
 	countdown_overlay.visible = false
@@ -632,7 +656,8 @@ func _enter_exploration_mode() -> void:
 	move_indicator.visible = false
 	attack_indicator.visible = false
 	for danger in danger_indicators:
-		danger.queue_free()
+		if is_instance_valid(danger):
+			danger.queue_free()
 	danger_indicators.clear()
 
 func _process_combat_pulse(delta: float) -> void:
@@ -957,26 +982,35 @@ func _resolve_pulse() -> void:
 		_start_planning_phase()
 
 func _on_active_room_cleared() -> void:
-	var any_remaining = false
-	for enemy in all_enemies:
-		if is_instance_valid(enemy) and enemy.is_alive and enemy.current_hp > 0:
-			any_remaining = true
-			break
+	# Clean up any dead references
+	all_enemies = all_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
+	
+	# Spawn chest for the room that was actually cleared!
+	if current_combat_room_id == 1:
+		_spawn_treasure_chest(Vector2i(5, 3), "flame_rune")
+	elif current_combat_room_id == 2:
+		_spawn_treasure_chest(Vector2i(15, 3), "executioner_edge")
+	else:
+		if player.grid_pos.x < 10:
+			_spawn_treasure_chest(Vector2i(5, 3), "flame_rune")
+		else:
+			_spawn_treasure_chest(Vector2i(15, 3), "executioner_edge")
 			
+	var any_remaining = not all_enemies.is_empty()
 	if not any_remaining:
-		# Spawn final reward chest in Room 2!
-		_spawn_treasure_chest(Vector2i(15, 3))
 		_game_conquered()
 	else:
-		# Spawn chest in Room 1!
-		_spawn_treasure_chest(Vector2i(5, 3))
 		_log("[color=#22c55e][b]🏆 ROOM CLEARED! A treasure chest has appeared! Returning to Exploration mode...[/b][/color]")
 		_show_floating_text(player.position, "ROOM CLEARED!", Color(0.2, 0.9, 0.4))
 		var t = create_tween()
 		t.tween_interval(1.0)
 		t.tween_callback(_enter_exploration_mode)
 
-func _spawn_treasure_chest(pos: Vector2i) -> void:
+func _spawn_treasure_chest(pos: Vector2i, reward_type: String = "flame_rune") -> void:
+	for c in chests:
+		if c["pos"] == pos:
+			return # Avoid duplicate chest on same tile
+			
 	var sprite = Sprite2D.new()
 	sprite.texture = load("res://assets/sprites/chest_closed.svg")
 	sprite.position = grid_to_world(pos)
@@ -990,7 +1024,8 @@ func _spawn_treasure_chest(pos: Vector2i) -> void:
 	chests.append({
 		"pos": pos,
 		"is_open": false,
-		"sprite": sprite
+		"sprite": sprite,
+		"reward": reward_type
 	})
 
 func _show_floating_text(world_pos: Vector2, text: String, color: Color) -> void:
@@ -1010,6 +1045,7 @@ func _on_player_died(_unit: CombatUnit) -> void:
 	_game_over()
 
 func _on_enemy_died(enemy: CombatUnit) -> void:
+	all_enemies.erase(enemy)
 	_log("[color=#fbbf24]💀 %s has been slain![/color]" % enemy.unit_name)
 	_show_floating_text(enemy.position, "SLAIN!", Color(0.95, 0.8, 0.1))
 	var tween = create_tween()
