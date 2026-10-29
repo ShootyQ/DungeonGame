@@ -438,34 +438,96 @@ func _start_planning_phase() -> void:
 	_update_hud_display()
 
 func _plan_enemy_intents() -> void:
+	# Clean any dead enemies first
+	enemies = enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
+	
 	for enemy in enemies:
-		var diff = player.grid_pos - enemy.grid_pos
-		var dist_manhattan = abs(diff.x) + abs(diff.y)
-		var dist_chebyshev = max(abs(diff.x), abs(diff.y))
+		if not is_instance_valid(enemy) or not enemy.is_alive:
+			continue
+			
+		var diff = (player.grid_pos - enemy.grid_pos).abs()
+		var dist_chebyshev = max(diff.x, diff.y)
 		
 		# If adjacent to player, attack player's tile!
-		if dist_chebyshev == 1:
+		if dist_chebyshev <= 1:
 			enemy.set_intent("ATTACK", player.grid_pos)
 			if show_telegraphs:
 				_spawn_danger_indicator(player.grid_pos)
 		else:
-			# Move 1 step towards player
-			var step_x = 0
-			var step_y = 0
-			if diff.x != 0:
-				step_x = 1 if diff.x > 0 else -1
-			if diff.y != 0:
-				step_y = 1 if diff.y > 0 else -1
-				
-			# Prefer horizontal or vertical step if both exist
-			var candidate_pos = enemy.grid_pos + Vector2i(step_x, 0)
-			if step_x == 0 or grid[candidate_pos.y][candidate_pos.x] != 0 or _is_tile_occupied(candidate_pos):
-				candidate_pos = enemy.grid_pos + Vector2i(0, step_y)
-				
-			if is_valid_grid_pos(candidate_pos) and grid[candidate_pos.y][candidate_pos.x] == 0:
-				enemy.set_intent("MOVE", candidate_pos)
+			# Smart BFS pathfinding: routes around walls, pillars, and allies
+			var next_step = _find_smart_path_step(enemy.grid_pos, player.grid_pos, enemy)
+			if next_step != enemy.grid_pos and is_valid_grid_pos(next_step) and grid[next_step.y][next_step.x] == 0:
+				enemy.set_intent("MOVE", next_step)
 			else:
 				enemy.set_intent("NONE", enemy.grid_pos)
+
+func _find_smart_path_step(from_pos: Vector2i, target_pos: Vector2i, current_unit: CombatUnit) -> Vector2i:
+	# If already adjacent, no need to move
+	var diff = (target_pos - from_pos).abs()
+	if diff.x <= 1 and diff.y <= 1:
+		return from_pos
+
+	var queue: Array[Vector2i] = [from_pos]
+	var visited: Dictionary = {}
+	visited[from_pos] = from_pos
+	
+	# Blocked tiles: walls and living other enemies
+	var blocked: Dictionary = {}
+	for y in range(GRID_HEIGHT):
+		for x in range(GRID_WIDTH):
+			if grid[y][x] == 1:
+				blocked[Vector2i(x, y)] = true
+				
+	for other in enemies:
+		if is_instance_valid(other) and other != current_unit and other.is_alive and other.current_hp > 0:
+			blocked[other.grid_pos] = true
+			if other.intent_type == "MOVE":
+				blocked[other.target_grid_pos] = true
+
+	var target_found: bool = false
+	var goal_tile: Vector2i = from_pos
+	
+	# 8-direction movement (orthogonal first, then diagonal)
+	var directions: Array[Vector2i] = [
+		Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+		Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)
+	]
+
+	while not queue.is_empty():
+		var curr = queue.pop_front()
+		
+		# Check if adjacent to target player
+		var dist_to_target = (target_pos - curr).abs()
+		if dist_to_target.x <= 1 and dist_to_target.y <= 1:
+			goal_tile = curr
+			target_found = true
+			break
+			
+		for d in directions:
+			var neighbor = curr + d
+			if is_valid_grid_pos(neighbor):
+				if not blocked.has(neighbor) and not visited.has(neighbor):
+					# Prevent corner cutting through adjacent diagonal walls
+					if d.x != 0 and d.y != 0:
+						if grid[curr.y][neighbor.x] == 1 and grid[neighbor.y][curr.x] == 1:
+							continue
+					visited[neighbor] = curr
+					queue.push_back(neighbor)
+
+	if not target_found or goal_tile == from_pos:
+		return from_pos
+
+	# Reconstruct path from goal_tile back to from_pos
+	var curr_trace = goal_tile
+	var path: Array[Vector2i] = [curr_trace]
+	while curr_trace != from_pos:
+		curr_trace = visited[curr_trace]
+		path.push_front(curr_trace)
+
+	if path.size() >= 2:
+		return path[1] # First step along the path!
+
+	return from_pos
 
 func _is_tile_occupied(pos: Vector2i) -> bool:
 	if player.grid_pos == pos:
@@ -495,6 +557,9 @@ func _update_hud_display() -> void:
 		child.queue_free()
 		
 	for enemy in enemies:
+		if not is_instance_valid(enemy) or not enemy.is_alive:
+			continue
+			
 		var card = HBoxContainer.new()
 		card.add_theme_constant_override("separation", 10)
 		
@@ -594,9 +659,15 @@ func _resolve_pulse() -> void:
 			_log("[color=#94a3b8]Hero struck empty air! Target dodged away.[/color]")
 			_show_floating_text(grid_to_world(player_attack_target), "WHIFF!", Color(0.6, 0.7, 0.8))
 			
-	# Enemy Attacks
+	# Prune any enemies that were slain by player
+	enemies = enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
+	if enemies.is_empty():
+		_game_won()
+		return
+			
+	# Enemy Attacks (only living enemies attack!)
 	for enemy in enemies:
-		if enemy.intent_type == "ATTACK":
+		if is_instance_valid(enemy) and enemy.is_alive and enemy.intent_type == "ATTACK":
 			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
 			var face = enemy.loaded_face
 			var dmg = face.get("damage", 0)
@@ -615,18 +686,21 @@ func _resolve_pulse() -> void:
 				
 	await get_tree().create_timer(0.4).timeout
 	
+	if player.current_hp <= 0:
+		_game_over()
+		return
+	
 	# STEP 3: DICE RE-ROLL STEP (0.2s)
 	player.roll_next_face()
 	for enemy in enemies:
-		enemy.roll_next_face()
-		enemy.clear_intent()
+		if is_instance_valid(enemy) and enemy.is_alive:
+			enemy.roll_next_face()
+			enemy.clear_intent()
 		
-	# Clean up dead enemies
-	enemies = enemies.filter(func(e): return e.current_hp > 0)
+	# Double check living enemies
+	enemies = enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
 	
-	if player.current_hp <= 0:
-		_game_over()
-	elif enemies.is_empty():
+	if enemies.is_empty():
 		_game_won()
 	else:
 		_start_planning_phase()
@@ -652,7 +726,10 @@ func _on_enemy_died(enemy: CombatUnit) -> void:
 	_show_floating_text(enemy.position, "SLAIN!", Color(0.95, 0.8, 0.1))
 	var tween = create_tween()
 	tween.tween_property(enemy, "modulate:a", 0.0, 0.4)
-	tween.tween_callback(enemy.queue_free)
+	tween.tween_callback(func():
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+	)
 
 func _game_won() -> void:
 	current_state = PulseState.GAME_OVER

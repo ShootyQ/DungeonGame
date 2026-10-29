@@ -8,6 +8,7 @@ signal hp_changed(unit: CombatUnit, new_hp: int, max_hp: int)
 @export var is_player: bool = false
 @export var max_hp: int = 20
 var current_hp: int = 20
+var is_alive: bool = true
 var grid_pos: Vector2i = Vector2i.ZERO
 
 var die: DieData
@@ -91,6 +92,8 @@ func clear_intent() -> void:
 		intent_icon.visible = false
 
 func take_damage(dmg: int) -> void:
+	if not is_alive:
+		return
 	current_hp = max(0, current_hp - dmg)
 	hp_bar.value = current_hp
 	hp_changed.emit(self, current_hp, max_hp)
@@ -101,6 +104,8 @@ func take_damage(dmg: int) -> void:
 	tween.tween_property(sprite, "modulate", Color.WHITE, 0.15)
 	
 	if current_hp <= 0:
+		is_alive = false
+		clear_intent()
 		died.emit(self)
 
 func animate_move_to(target_world_pos: Vector2, duration: float = 0.35) -> Tween:
