@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Floor visible beneath arch -->
+  <rect width="64" height="64" fill="#2d3340"/>
+  
+  <!-- Stone arch frame for south doorway -->
+  <rect x="0" y="0" width="8" height="64" fill="#383f4f"/>
+  <rect x="56" y="0" width="8" height="64" fill="#383f4f"/>
+  <rect x="0" y="56" width="64" height="8" fill="#4d566b"/>
+  
+  <!-- Door swung open inwards (perspective slivers) -->
+  <polygon points="8,0 14,6 14,56 8,56" fill="#451a03"/>
+  <polygon points="56,0 50,6 50,56 56,56" fill="#451a03"/>
+  <line x1="14" y1="6" x2="14" y2="56" stroke="#1e293b" stroke-width="2"/>
+  <line x1="50" y1="6" x2="50" y2="56" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- Light spill downwards -->
+  <polygon points="14,6 50,6 58,56 6,56" fill="#fef08a" opacity="0.12"/>
+</svg>

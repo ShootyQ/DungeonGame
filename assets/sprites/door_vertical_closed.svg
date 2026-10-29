@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Stone arch frame for vertical wall (passage goes East-West) -->
+  <rect width="64" height="64" fill="#181b22"/>
+  <rect x="0" y="0" width="64" height="8" fill="#383f4f"/>
+  <rect x="0" y="56" width="64" height="8" fill="#383f4f"/>
+  <rect x="0" y="0" width="8" height="64" fill="#4d566b"/>
+  
+  <!-- Heavy wood door panels (horizontal planks running through vertical passage) -->
+  <rect x="8" y="8" width="56" height="48" fill="#5c2e0b"/>
+  <line x1="8" y1="32" x2="64" y2="32" stroke="#2e1405" stroke-width="2"/>
+  
+  <!-- Wood grain horizontal planks -->
+  <rect x="10" y="10" width="52" height="20" fill="#78350f" rx="1"/>
+  <rect x="10" y="34" width="52" height="20" fill="#78350f" rx="1"/>
+
+  <!-- Vertical Iron reinforcement bands -->
+  <rect x="18" y="8" width="6" height="48" fill="#1e293b"/>
+  <rect x="44" y="8" width="6" height="48" fill="#1e293b"/>
+  
+  <!-- Iron rivets -->
+  <circle cx="21" cy="14" r="1.5" fill="#94a3b8"/>
+  <circle cx="21" cy="28" r="1.5" fill="#94a3b8"/>
+  <circle cx="21" cy="36" r="1.5" fill="#94a3b8"/>
+  <circle cx="21" cy="50" r="1.5" fill="#94a3b8"/>
+  <circle cx="47" cy="14" r="1.5" fill="#94a3b8"/>
+  <circle cx="47" cy="28" r="1.5" fill="#94a3b8"/>
+  <circle cx="47" cy="36" r="1.5" fill="#94a3b8"/>
+  <circle cx="47" cy="50" r="1.5" fill="#94a3b8"/>
+
+  <!-- Iron Ring Handle / Latch Bar -->
+  <circle cx="34" cy="28" r="3.5" fill="none" stroke="#f1f5f9" stroke-width="1.5"/>
+  <circle cx="31" cy="28" r="1.5" fill="#94a3b8"/>
+  <line x1="28" y1="32" x2="40" y2="32" stroke="#0f172a" stroke-width="2"/>
+</svg>

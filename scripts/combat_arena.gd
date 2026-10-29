@@ -458,17 +458,49 @@ func _setup_lighting_and_sconces() -> void:
 		player_light.position = player.position
 	lighting_container.add_child(player_light)
 
+func _get_door_orientation(door_pos: Vector2i, room_id: int) -> String:
+	for r in dungeon_rooms:
+		if r["id"] == room_id:
+			var rect: Rect2i = r["rect"]
+			# Vertical side walls (Left or Right wall of room: runs up-and-down!)
+			if door_pos.x == rect.position.x or door_pos.x == rect.end.x - 1:
+				return "vertical"
+			# Horizontal top wall (North entrance: walking up into room)
+			elif door_pos.y == rect.position.y:
+				return "north"
+			# Horizontal bottom wall (South entrance: walking down into room)
+			elif door_pos.y == rect.end.y - 1:
+				return "south"
+				
+	return "vertical"
+
 func _create_doors() -> void:
 	doors.clear()
-	var door_tex = load("res://assets/sprites/door_closed.svg")
+	var door_tex_map = {
+		"north": {
+			"closed": load("res://assets/sprites/door_closed.svg"),
+			"open": load("res://assets/sprites/door_open.svg")
+		},
+		"south": {
+			"closed": load("res://assets/sprites/door_south_closed.svg"),
+			"open": load("res://assets/sprites/door_south_open.svg")
+		},
+		"vertical": {
+			"closed": load("res://assets/sprites/door_vertical_closed.svg"),
+			"open": load("res://assets/sprites/door_vertical_open.svg")
+		}
+	}
+
 	for cfg in dungeon_data.get("doors", []):
+		var orient = _get_door_orientation(cfg["pos"], cfg["room_id"])
 		var sprite = Sprite2D.new()
-		sprite.texture = door_tex
+		sprite.texture = door_tex_map[orient]["closed"]
 		sprite.position = grid_to_world(cfg["pos"])
 		door_container.add_child(sprite)
 		doors.append({
 			"pos": cfg["pos"],
 			"room_id": cfg["room_id"],
+			"orientation": orient,
 			"is_open": false,
 			"sprite": sprite
 		})
@@ -2000,11 +2032,18 @@ func _open_door(door: Dictionary) -> void:
 		if is_instance_valid(exp_chambers_label):
 			exp_chambers_label.text = "Chambers Breached: %d / %d  |  Move with [WASD]" % [breached_rooms.size(), total_hostile]
 	
+	var door_open_tex_map = {
+		"north": load("res://assets/sprites/door_open.svg"),
+		"south": load("res://assets/sprites/door_south_open.svg"),
+		"vertical": load("res://assets/sprites/door_vertical_open.svg")
+	}
+
 	# Open all door tiles associated with this room (supports double doors)
 	for d in doors:
 		if d["room_id"] == r_id and not d["is_open"]:
 			d["is_open"] = true
-			d["sprite"].texture = load("res://assets/sprites/door_open.svg")
+			var orient = d.get("orientation", "north")
+			d["sprite"].texture = door_open_tex_map.get(orient, door_open_tex_map["north"])
 			grid[d["pos"].y][d["pos"].x] = 0
 			_spawn_dust_puff(d["sprite"].position)
 			var d_tween = create_tween()

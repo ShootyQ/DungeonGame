@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Stone arch frame for south doorway (leading down) -->
+  <rect width="64" height="64" fill="#181b22"/>
+  <rect x="0" y="0" width="8" height="64" fill="#383f4f"/>
+  <rect x="56" y="0" width="8" height="64" fill="#383f4f"/>
+  <rect x="0" y="56" width="64" height="8" fill="#4d566b"/>
+  
+  <!-- Heavy wood door panels -->
+  <rect x="8" y="0" width="48" height="56" fill="#5c2e0b"/>
+  <line x1="32" y1="0" x2="32" y2="56" stroke="#2e1405" stroke-width="2"/>
+  
+  <!-- Wood grain planks -->
+  <rect x="10" y="2" width="20" height="52" fill="#78350f" rx="1"/>
+  <rect x="34" y="2" width="20" height="52" fill="#78350f" rx="1"/>
+
+  <!-- Iron reinforcement bands -->
+  <rect x="8" y="14" width="48" height="6" fill="#1e293b"/>
+  <rect x="8" y="40" width="48" height="6" fill="#1e293b"/>
+  
+  <!-- Rivets -->
+  <circle cx="14" cy="17" r="1.5" fill="#94a3b8"/>
+  <circle cx="28" cy="17" r="1.5" fill="#94a3b8"/>
+  <circle cx="36" cy="17" r="1.5" fill="#94a3b8"/>
+  <circle cx="50" cy="17" r="1.5" fill="#94a3b8"/>
+  <circle cx="14" cy="43" r="1.5" fill="#94a3b8"/>
+  <circle cx="28" cy="43" r="1.5" fill="#94a3b8"/>
+  <circle cx="36" cy="43" r="1.5" fill="#94a3b8"/>
+  <circle cx="50" cy="43" r="1.5" fill="#94a3b8"/>
+
+  <!-- Iron Ring Handle -->
+  <circle cx="36" cy="27" r="3.5" fill="none" stroke="#f1f5f9" stroke-width="1.5"/>
+  <circle cx="36" cy="24" r="1.5" fill="#94a3b8"/>
+</svg>
