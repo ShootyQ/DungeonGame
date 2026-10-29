@@ -2,7 +2,7 @@ class_name DieData
 extends RefCounted
 
 var name: String = "D6 Sword"
-var faces: Array[Dictionary] = []
+var faces: Array = []
 
 static func create_default_d6_sword() -> DieData:
 	var die = DieData.new()

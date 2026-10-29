@@ -83,6 +83,7 @@ func _create_scene_hierarchy() -> void:
 	var bg = ColorRect.new()
 	bg.size = Vector2(1280, 720)
 	bg.color = Color(0.07, 0.08, 0.11)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 	
 	board_container = Node2D.new()
@@ -154,6 +155,7 @@ func _setup_hud() -> void:
 	var hud_root = Control.new()
 	hud_root.position = Vector2(720, 30)
 	hud_root.size = Vector2(520, 660)
+	hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hud_root)
 	
 	var vbox = VBoxContainer.new()
@@ -339,7 +341,7 @@ func _process(delta: float) -> void:
 		if pulse_timer <= 0.0:
 			_resolve_pulse()
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if current_state == PulseState.GAME_OVER:
 		if event is InputEventKey and event.pressed and event.keycode == KEY_R:
 			_on_restart_pressed()
@@ -353,42 +355,59 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.keycode == KEY_R:
 			_on_restart_pressed()
 			
-	if current_state == PulseState.PLANNING and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+	if current_state == PulseState.PLANNING and event is InputEventMouseButton and event.pressed:
 		var local_mouse = board_container.get_local_mouse_position()
-		var clicked_grid = world_to_grid(local_mouse)
-		if is_valid_grid_pos(clicked_grid):
-			_handle_grid_click(clicked_grid)
+		# Only handle clicks inside the board dimensions
+		if local_mouse.x >= 0 and local_mouse.x < GRID_WIDTH * TILE_SIZE and local_mouse.y >= 0 and local_mouse.y < GRID_HEIGHT * TILE_SIZE:
+			var clicked_grid = world_to_grid(local_mouse)
+			if is_valid_grid_pos(clicked_grid):
+				if event.button_index == MOUSE_BUTTON_LEFT:
+					_handle_grid_left_click(clicked_grid)
+				elif event.button_index == MOUSE_BUTTON_RIGHT:
+					_handle_grid_right_click(clicked_grid)
 
-func _handle_grid_click(pos: Vector2i) -> void:
-	# Check if clicked on an enemy
+func _handle_grid_left_click(pos: Vector2i) -> void:
+	# 1. Check if clicked directly on an enemy
 	for enemy in enemies:
 		if enemy.grid_pos == pos:
-			# Toggle / Set attack target
-			if player_attack_target == pos:
-				player_attack_target = Vector2i(-1, -1)
-				attack_indicator.visible = false
-				_log("[color=#94a3b8]Cancelled attack on %s[/color]" % enemy.unit_name)
-			else:
-				player_attack_target = pos
-				attack_indicator.position = grid_to_world(pos)
-				attack_indicator.visible = true
-				_log("[color=#ef4444]Targeted %s for strike![/color]" % enemy.unit_name)
+			_toggle_attack_target(pos, enemy.unit_name)
 			return
-			
-	# If clicked on empty floor tile
+
+	# 2. If clicked on player's own tile: cancel movement (hold ground)
+	if pos == player.grid_pos:
+		player_move_target = Vector2i(-1, -1)
+		move_indicator.visible = false
+		_log("[color=#94a3b8]Holding ground at current position.[/color]")
+		return
+
+	# 3. If clicked on an adjacent walkable floor tile: set movement intent
 	if grid[pos.y][pos.x] == 0:
-		# Check adjacency (range 1 tile move)
 		var dist = (pos - player.grid_pos).abs()
 		if dist.x <= 1 and dist.y <= 1:
 			if player_move_target == pos:
 				player_move_target = Vector2i(-1, -1)
 				move_indicator.visible = false
-				_log("[color=#94a3b8]Holding position (no move).[/color]")
+				_log("[color=#94a3b8]Cancelled movement.[/color]")
 			else:
 				player_move_target = pos
 				move_indicator.position = grid_to_world(pos)
 				move_indicator.visible = true
-				_log("[color=#38bdf8]Moving to tile (%d, %d)[/color]" % [pos.x, pos.y])
+				_log("[color=#38bdf8]Set move intent → (%d, %d)[/color]" % [pos.x, pos.y])
+
+func _handle_grid_right_click(pos: Vector2i) -> void:
+	# Right click targets any tile for attack (predictive strike)
+	_toggle_attack_target(pos, "tile (%d, %d)" % [pos.x, pos.y])
+
+func _toggle_attack_target(pos: Vector2i, label: String) -> void:
+	if player_attack_target == pos:
+		player_attack_target = Vector2i(-1, -1)
+		attack_indicator.visible = false
+		_log("[color=#94a3b8]Cancelled attack on %s[/color]" % label)
+	else:
+		player_attack_target = pos
+		attack_indicator.position = grid_to_world(pos)
+		attack_indicator.visible = true
+		_log("[color=#ef4444]Locked attack target → %s[/color]" % label)
 
 func _start_planning_phase() -> void:
 	if enemies.is_empty():
