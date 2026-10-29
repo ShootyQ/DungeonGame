@@ -94,15 +94,23 @@ var sfx_attack_whiff: AudioStream
 var sfx_enemy_intent: AudioStream
 var sfx_charger_rush: AudioStream
 var sfx_pyro_flame: AudioStream
+var sfx_door_creak: AudioStream
+var sfx_torch_crackle: AudioStream
+var sfx_wind_whisper: AudioStream
+var ambient_wind_player: AudioStreamPlayer
+var ambient_torch_player: AudioStreamPlayer
 var last_pulse_tick_sec: int = -1
 var music_volume: float = 0.65
 var sfx_volume: float = 0.85
+var ambience_volume: float = 0.40
 var is_audio_settings_open: bool = false
 var audio_settings_modal: PanelContainer
 var music_slider: HSlider
 var sfx_slider: HSlider
+var ambience_slider: HSlider
 var music_val_label: Label
 var sfx_val_label: Label
+var ambience_val_label: Label
 var backpack_modal: PanelContainer
 var dice_rack_container: HBoxContainer
 var backpack_items_container: VBoxContainer
@@ -1065,6 +1073,12 @@ func _setup_audio_system() -> void:
 		sfx_charger_rush = load("res://assets/audio/charger_rush_roar.wav")
 	if ResourceLoader.exists("res://assets/audio/pyro_flame_ignite.wav"):
 		sfx_pyro_flame = load("res://assets/audio/pyro_flame_ignite.wav")
+	if ResourceLoader.exists("res://assets/audio/heavy_door_creak.wav"):
+		sfx_door_creak = load("res://assets/audio/heavy_door_creak.wav")
+	if ResourceLoader.exists("res://assets/audio/torch_crackle_ambient.wav"):
+		sfx_torch_crackle = load("res://assets/audio/torch_crackle_ambient.wav")
+	if ResourceLoader.exists("res://assets/audio/dungeon_wind_whisper.wav"):
+		sfx_wind_whisper = load("res://assets/audio/dungeon_wind_whisper.wav")
 		
 	# Music Player (Plays the fantasy clarinet dungeon music)
 	music_player = AudioStreamPlayer.new()
@@ -1077,6 +1091,30 @@ func _setup_audio_system() -> void:
 	add_child(music_player)
 	if music_stream:
 		music_player.play()
+
+	# Ambient Subterranean Wind Player (Subtle background draft - kept fairly quiet)
+	ambient_wind_player = AudioStreamPlayer.new()
+	if sfx_wind_whisper:
+		var wind_wav = sfx_wind_whisper as AudioStreamWAV
+		if wind_wav:
+			wind_wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		ambient_wind_player.stream = sfx_wind_whisper
+		ambient_wind_player.volume_db = linear_to_db(ambience_volume * 0.20) - 6.0
+	add_child(ambient_wind_player)
+	if sfx_wind_whisper:
+		ambient_wind_player.play()
+
+	# Ambient Wall Torch Crackle Player (Gentle licking flame and embers)
+	ambient_torch_player = AudioStreamPlayer.new()
+	if sfx_torch_crackle:
+		var torch_wav = sfx_torch_crackle as AudioStreamWAV
+		if torch_wav:
+			torch_wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		ambient_torch_player.stream = sfx_torch_crackle
+		ambient_torch_player.volume_db = linear_to_db(ambience_volume * 0.32)
+	add_child(ambient_torch_player)
+	if sfx_torch_crackle:
+		ambient_torch_player.play()
 
 func play_sfx(stream: AudioStream, pitch_scale: float = 1.0, volume_offset_db: float = 0.0) -> void:
 	if not stream or sfx_volume <= 0.01:
@@ -1139,6 +1177,19 @@ func play_pyro_flame_sfx() -> void:
 	if sfx_pyro_flame:
 		play_sfx(sfx_pyro_flame, randf_range(0.96, 1.04), 1.0)
 
+func play_door_creak_sfx() -> void:
+	if sfx_door_creak:
+		play_sfx(sfx_door_creak, randf_range(0.96, 1.04), 2.0)
+
+func play_torch_crackle_sfx() -> void:
+	if sfx_torch_crackle:
+		play_sfx(sfx_torch_crackle, randf_range(0.95, 1.05), -4.0)
+
+func play_wind_whisper_sfx() -> void:
+	if sfx_wind_whisper:
+		# Wind kept fairly quiet
+		play_sfx(sfx_wind_whisper, randf_range(0.95, 1.05), -14.0)
+
 func set_music_volume(val: float) -> void:
 	music_volume = clamp(val, 0.0, 1.0)
 	if music_player:
@@ -1158,6 +1209,23 @@ func set_sfx_volume(val: float) -> void:
 	if sfx_val_label:
 		sfx_val_label.text = "%d%%" % int(sfx_volume * 100)
 
+func set_ambience_volume(val: float) -> void:
+	ambience_volume = clamp(val, 0.0, 1.0)
+	if ambient_wind_player:
+		if ambience_volume <= 0.01:
+			ambient_wind_player.volume_db = -80.0
+		else:
+			ambient_wind_player.volume_db = linear_to_db(ambience_volume * 0.20) - 6.0
+	if ambient_torch_player:
+		if ambience_volume <= 0.01:
+			ambient_torch_player.volume_db = -80.0
+		else:
+			ambient_torch_player.volume_db = linear_to_db(ambience_volume * 0.32)
+	if ambience_slider:
+		ambience_slider.value = ambience_volume
+	if ambience_val_label:
+		ambience_val_label.text = "%d%%" % int(ambience_volume * 100)
+
 func _toggle_audio_settings() -> void:
 	is_audio_settings_open = !is_audio_settings_open
 	if audio_settings_modal:
@@ -1168,11 +1236,11 @@ func _toggle_audio_settings() -> void:
 func _setup_audio_ui() -> void:
 	audio_settings_modal = PanelContainer.new()
 	audio_settings_modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	audio_settings_modal.custom_minimum_size = Vector2(560, 390)
-	audio_settings_modal.offset_left = -280
-	audio_settings_modal.offset_top = -195
-	audio_settings_modal.offset_right = 280
-	audio_settings_modal.offset_bottom = 195
+	audio_settings_modal.custom_minimum_size = Vector2(580, 450)
+	audio_settings_modal.offset_left = -290
+	audio_settings_modal.offset_top = -225
+	audio_settings_modal.offset_right = 290
+	audio_settings_modal.offset_bottom = 225
 	audio_settings_modal.visible = false
 	
 	var a_style = StyleBoxFlat.new()
@@ -1188,7 +1256,7 @@ func _setup_audio_ui() -> void:
 	hud_root.add_child(audio_settings_modal)
 
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", 12)
 	audio_settings_modal.add_child(vbox)
 
 	# Header Row
@@ -1240,6 +1308,37 @@ func _setup_audio_ui() -> void:
 	music_slider.value = music_volume
 	music_slider.value_changed.connect(set_music_volume)
 	mus_vbox.add_child(music_slider)
+
+	# Ambience Volume Row
+	var amb_vbox = VBoxContainer.new()
+	amb_vbox.add_theme_constant_override("separation", 4)
+	vbox.add_child(amb_vbox)
+
+	var amb_head = HBoxContainer.new()
+	amb_vbox.add_child(amb_head)
+	var amb_lbl = Label.new()
+	amb_lbl.text = "🌬️ Dungeon Ambience (Quiet Wind & Torch Crackle)"
+	amb_lbl.add_theme_font_size_override("font_size", 14)
+	amb_lbl.add_theme_color_override("font_color", Color(0.9, 0.92, 0.98))
+	amb_head.add_child(amb_lbl)
+
+	var a_sp = Control.new()
+	a_sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	amb_head.add_child(a_sp)
+
+	ambience_val_label = Label.new()
+	ambience_val_label.text = "%d%%" % int(ambience_volume * 100)
+	ambience_val_label.add_theme_font_size_override("font_size", 14)
+	ambience_val_label.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	amb_head.add_child(ambience_val_label)
+
+	ambience_slider = HSlider.new()
+	ambience_slider.min_value = 0.0
+	ambience_slider.max_value = 1.0
+	ambience_slider.step = 0.02
+	ambience_slider.value = ambience_volume
+	ambience_slider.value_changed.connect(set_ambience_volume)
+	amb_vbox.add_child(ambience_slider)
 
 	# Sound FX Volume Row
 	var sfx_vbox = VBoxContainer.new()
@@ -1298,7 +1397,7 @@ func _setup_audio_ui() -> void:
 	test_hbox.add_child(test_sub_btn)
 
 	var test_intent_btn = Button.new()
-	test_intent_btn.text = "👹 Monster Growl"
+	test_intent_btn.text = "👹 Intent Growl"
 	test_intent_btn.pressed.connect(play_enemy_intent_sfx)
 	test_hbox.add_child(test_intent_btn)
 
@@ -1332,13 +1431,13 @@ func _setup_audio_ui() -> void:
 	test_whiff_btn.pressed.connect(play_attack_whiff_sfx)
 	test_hbox2.add_child(test_whiff_btn)
 
-	# Quick Action Buttons Row 3: Special Abilities & Mute
+	# Quick Action Buttons Row 3: Monsters & Chamber Actions
 	var test_hbox3 = HBoxContainer.new()
 	test_hbox3.add_theme_constant_override("separation", 6)
 	vbox.add_child(test_hbox3)
 
 	var test_charge_btn = Button.new()
-	test_charge_btn.text = "🐂 Charger Rush"
+	test_charge_btn.text = "🐂 Charger"
 	test_charge_btn.pressed.connect(play_charger_rush_sfx)
 	test_hbox3.add_child(test_charge_btn)
 
@@ -1347,17 +1446,39 @@ func _setup_audio_ui() -> void:
 	test_flame_btn.pressed.connect(play_pyro_flame_sfx)
 	test_hbox3.add_child(test_flame_btn)
 
+	var test_door_btn = Button.new()
+	test_door_btn.text = "🚪 Door Creak"
+	test_door_btn.pressed.connect(play_door_creak_sfx)
+	test_hbox3.add_child(test_door_btn)
+
+	var test_torch_btn = Button.new()
+	test_torch_btn.text = "🪵 Torch"
+	test_torch_btn.pressed.connect(play_torch_crackle_sfx)
+	test_hbox3.add_child(test_torch_btn)
+
+	var test_wind_btn = Button.new()
+	test_wind_btn.text = "🌬️ Soft Wind"
+	test_wind_btn.pressed.connect(play_wind_whisper_sfx)
+	test_hbox3.add_child(test_wind_btn)
+
+	# Quick Action Buttons Row 4: Master Mute
+	var test_hbox4 = HBoxContainer.new()
+	test_hbox4.add_theme_constant_override("separation", 6)
+	vbox.add_child(test_hbox4)
+
 	var mute_btn = Button.new()
-	mute_btn.text = "🔇 Mute / Unmute (M)"
+	mute_btn.text = "🔇 Master Mute / Unmute"
 	mute_btn.pressed.connect(func():
-		if music_volume > 0.0 or sfx_volume > 0.0:
+		if music_volume > 0.0 or sfx_volume > 0.0 or ambience_volume > 0.0:
 			set_music_volume(0.0)
 			set_sfx_volume(0.0)
+			set_ambience_volume(0.0)
 		else:
 			set_music_volume(0.65)
 			set_sfx_volume(0.85)
+			set_ambience_volume(0.40)
 	)
-	test_hbox3.add_child(mute_btn)
+	test_hbox4.add_child(mute_btn)
 
 func _toggle_backpack() -> void:
 	is_backpack_open = !is_backpack_open
@@ -1717,6 +1838,7 @@ func _get_room_breach_entrance_tile(r_id: int, door_pos: Vector2i) -> Vector2i:
 	return door_pos
 
 func _open_door(door: Dictionary) -> void:
+	play_door_creak_sfx()
 	var r_id = door["room_id"]
 	current_combat_room_id = r_id
 	
