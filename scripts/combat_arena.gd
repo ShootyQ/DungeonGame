@@ -1,9 +1,11 @@
 class_name CombatArena
 extends Node2D
 
+const DungeonGenerator = preload("res://scripts/dungeon_generator.gd")
+
 const TILE_SIZE: int = 64
-const GRID_WIDTH: int = 42
-const GRID_HEIGHT: int = 24
+const GRID_WIDTH: int = 80
+const GRID_HEIGHT: int = 60
 const BOARD_OFFSET: Vector2 = Vector2(0, 0)
 
 enum GameMode { EXPLORATION, COMBAT_COUNTDOWN, COMBAT_PULSE, GAME_OVER }
@@ -25,6 +27,10 @@ var current_combat_room_id: int = 0
 # Player planned intents in combat
 var player_move_target: Vector2i = Vector2i(-1, -1)
 var player_attack_target: Vector2i = Vector2i(-1, -1)
+
+# Dungeon generation data
+var dungeon_data: Dictionary = {}
+var dungeon_rooms: Array[Dictionary] = []
 
 # Grid data: 0 = floor, 1 = wall, 2 = door
 var grid: Array = []
@@ -151,6 +157,7 @@ var cached_die_textures: Array[Texture2D] = []
 
 func _ready() -> void:
 	randomize()
+	RenderingServer.set_default_clear_color(Color(0.027, 0.035, 0.055, 1.0))
 	_cache_die_textures()
 	_setup_audio_system()
 	_setup_dungeon_layout()
@@ -177,65 +184,28 @@ func _cache_die_textures() -> void:
 		cached_die_textures.append(load("res://assets/ui/die_face_fire.svg"))
 
 func _setup_dungeon_layout() -> void:
-	grid.clear()
-	for y in range(GRID_HEIGHT):
-		var row: Array[int] = []
-		for x in range(GRID_WIDTH):
-			row.append(1) # Default to wall
-		grid.append(row)
-		
-	# 1. Main Central Hallway (x: 1 to 28, y: 11 to 12)
-	for y in range(11, 13):
-		for x in range(1, 29):
-			grid[y][x] = 0
-			
-	# 2. Room 1: Goblin Den (North-West) x: 3 to 9, y: 3 to 9
-	for y in range(3, 10):
-		for x in range(3, 10):
-			grid[y][x] = 0
-	grid[10][6] = 2 # Double Door 1
-	grid[10][7] = 2
-	
-	# 3. Room 2: Crypt of the Phalanx (South-West) x: 3 to 9, y: 14 to 20
-	for y in range(14, 21):
-		for x in range(3, 10):
-			grid[y][x] = 0
-	grid[13][6] = 2 # Double Door 2
-	grid[13][7] = 2
-	
-	# 4. Room 3: Pyromancer's Sanctum (North-Mid) x: 16 to 23, y: 3 to 9
-	for y in range(3, 10):
-		for x in range(16, 24):
-			grid[y][x] = 0
-	grid[10][19] = 2 # Double Door 3
-	grid[10][20] = 2
-	
-	# 5. Room 4: Brawler's Arena (South-Mid) x: 16 to 23, y: 14 to 20
-	for y in range(14, 21):
-		for x in range(16, 24):
-			grid[y][x] = 0
-	grid[13][19] = 2 # Double Door 4
-	grid[13][20] = 2
-	
-	# 6. Room 5: Grand Boss Vault (Far East) x: 29 to 39, y: 7 to 16
-	for y in range(7, 17):
-		for x in range(29, 40):
-			grid[y][x] = 0
-	grid[11][28] = 2 # Double Door 5
-	grid[12][28] = 2
+	dungeon_data = DungeonGenerator.generate()
+	grid = dungeon_data["grid"]
+	dungeon_rooms = dungeon_data["rooms"]
 
 func _create_scene_hierarchy() -> void:
-	# Canvas Background
+	# Canvas Background (Abyss plane extends far out to prevent border seams)
 	var bg = ColorRect.new()
-	bg.size = Vector2(GRID_WIDTH * TILE_SIZE + 200, GRID_HEIGHT * TILE_SIZE + 200)
-	bg.color = Color(0.04, 0.05, 0.07)
+	bg.position = Vector2(-4000, -4000)
+	bg.size = Vector2(GRID_WIDTH * TILE_SIZE + 8000, GRID_HEIGHT * TILE_SIZE + 8000)
+	bg.color = Color(0.027, 0.035, 0.055, 1.0)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 	
-	# Smooth Scrolling Camera
+	# Smooth Scrolling Camera clamped strictly inside dungeon boundaries
 	camera = Camera2D.new()
 	camera.position_smoothing_enabled = true
 	camera.position_smoothing_speed = 6.0
+	camera.limit_left = 0
+	camera.limit_top = 0
+	camera.limit_right = GRID_WIDTH * TILE_SIZE
+	camera.limit_bottom = GRID_HEIGHT * TILE_SIZE
+	camera.limit_smoothed = true
 	add_child(camera)
 	
 	board_container = Node2D.new()
@@ -308,13 +278,21 @@ func _build_board_visuals() -> void:
 	var tex_floor_rubble = load("res://assets/sprites/tile_floor_rubble.svg")
 	var tex_floor_bones = load("res://assets/sprites/tile_floor_bones.svg")
 	var tex_floor_sigil = load("res://assets/sprites/tile_floor_sigil.svg")
+	var tex_floor_puddle = load("res://assets/sprites/tile_floor_puddle.svg")
+	var tex_floor_drain = load("res://assets/sprites/tile_floor_drain.svg")
+	var tex_floor_moss = load("res://assets/sprites/tile_floor_moss.svg")
+	var tex_floor_blood = load("res://assets/sprites/tile_floor_blood.svg")
+	var tex_floor_ornate = load("res://assets/sprites/tile_floor_ornate.svg")
+	var tex_floor_runic = load("res://assets/sprites/tile_floor_runic.svg")
 	
 	# Horizontal Top Walls
 	var tex_wall_clean = load("res://assets/sprites/tile_wall.svg")
 	var tex_wall_crumbled = load("res://assets/sprites/tile_wall_crumbled.svg")
 	var tex_wall_moss = load("res://assets/sprites/tile_wall_moss.svg")
+	var tex_wall_alcove = load("res://assets/sprites/tile_wall_alcove.svg")
+	var tex_wall_chains = load("res://assets/sprites/tile_wall_chains.svg")
 
-	# Vertical Side Walls (turned sideways for up/down walls)
+	# Vertical Side Walls
 	var tex_wall_side_left = load("res://assets/sprites/tile_wall_side_left.svg")
 	var tex_wall_side_left_crumbled = load("res://assets/sprites/tile_wall_side_left_crumbled.svg")
 	var tex_wall_side_left_moss = load("res://assets/sprites/tile_wall_side_left_moss.svg")
@@ -322,63 +300,28 @@ func _build_board_visuals() -> void:
 	var tex_wall_side_right_crumbled = load("res://assets/sprites/tile_wall_side_right_crumbled.svg")
 	var tex_wall_side_right_moss = load("res://assets/sprites/tile_wall_side_right_moss.svg")
 
-	# Deep interior solid bedrock (no horizontal stripes)
+	# Deep interior solid bedrock
 	var tex_wall_solid = load("res://assets/sprites/tile_wall_solid.svg")
 
-	# Pre-designated thematic floor tiles
-	var special_floors: Dictionary = {
-		# Room 3 Pyromancer Sanctum Core Arcane Sigils & Scorched Cracks
-		Vector2i(19, 6): tex_floor_sigil,
-		Vector2i(20, 6): tex_floor_sigil,
-		Vector2i(18, 5): tex_floor_cracked,
-		Vector2i(21, 5): tex_floor_cracked,
-		Vector2i(18, 7): tex_floor_cracked,
-		Vector2i(21, 7): tex_floor_cracked,
-
-		# Room 5 Grand Boss Vault Core Sigils & Cracks
-		Vector2i(34, 11): tex_floor_sigil,
-		Vector2i(34, 12): tex_floor_sigil,
-		Vector2i(33, 11): tex_floor_cracked,
-		Vector2i(33, 12): tex_floor_cracked,
-		Vector2i(35, 11): tex_floor_cracked,
-		Vector2i(35, 12): tex_floor_cracked,
-		Vector2i(37, 10): tex_floor_rubble,
-		Vector2i(37, 13): tex_floor_bones,
-
-		# Room 1 Goblin Den Bones & Rubble
-		Vector2i(5, 4): tex_floor_bones,
-		Vector2i(8, 8): tex_floor_bones,
-		Vector2i(4, 8): tex_floor_rubble,
-		Vector2i(7, 5): tex_floor_rubble,
-		Vector2i(6, 6): tex_floor_cracked,
-		Vector2i(8, 4): tex_floor_cracked,
-
-		# Room 2 Crypt of the Phalanx Ancient Bones & Slabs
-		Vector2i(5, 16): tex_floor_bones,
-		Vector2i(7, 18): tex_floor_bones,
-		Vector2i(8, 15): tex_floor_bones,
-		Vector2i(4, 17): tex_floor_cracked,
-		Vector2i(6, 19): tex_floor_cracked,
-		Vector2i(7, 15): tex_floor_rubble,
-
-		# Room 4 Brawler Arena Shattered Flagstones
-		Vector2i(18, 16): tex_floor_cracked,
-		Vector2i(21, 18): tex_floor_cracked,
-		Vector2i(19, 15): tex_floor_cracked,
-		Vector2i(17, 18): tex_floor_rubble,
-		Vector2i(22, 17): tex_floor_rubble,
-		Vector2i(20, 16): tex_floor_bones,
-
-		# Main Hallway Foot-trafficked Cracks & Rubble
-		Vector2i(4, 12): tex_floor_cracked,
-		Vector2i(9, 11): tex_floor_rubble,
-		Vector2i(12, 11): tex_floor_cracked,
-		Vector2i(15, 12): tex_floor_bones,
-		Vector2i(17, 12): tex_floor_rubble,
-		Vector2i(21, 12): tex_floor_cracked,
-		Vector2i(24, 11): tex_floor_rubble,
-		Vector2i(26, 11): tex_floor_cracked,
+	var floor_tex_map = {
+		"cracked": tex_floor_cracked,
+		"rubble": tex_floor_rubble,
+		"bones": tex_floor_bones,
+		"sigil": tex_floor_sigil,
+		"puddle": tex_floor_puddle,
+		"drain": tex_floor_drain,
+		"moss": tex_floor_moss,
+		"blood": tex_floor_blood,
+		"ornate": tex_floor_ornate,
+		"runic": tex_floor_runic
 	}
+	var wall_tex_map = {
+		"alcove": tex_wall_alcove,
+		"chains": tex_wall_chains
+	}
+
+	var special_floors: Dictionary = dungeon_data.get("special_floors", {})
+	var special_walls: Dictionary = dungeon_data.get("special_walls", {})
 
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
@@ -393,51 +336,35 @@ func _build_board_visuals() -> void:
 				var floor_north = (y - 1 >= 0) and (grid[y - 1][x] == 0 or grid[y - 1][x] == 2)
 
 				var h = (x * 17 + y * 31) % 100
-				var is_crypt = (x >= 2 and x <= 10 and y >= 13 and y <= 21)
-				var is_goblin = (x >= 2 and x <= 10 and y >= 2 and y <= 10)
-				var is_brawler = (x >= 15 and x <= 24 and y >= 13 and y <= 21)
 
-				if floor_east and not floor_south and not floor_west:
-					# Vertical wall running up/down on the left side of room/hallway (turned sideways!)
-					if is_crypt and h < 55:
+				if special_walls.has(cell) and floor_south:
+					var w_key = special_walls[cell]
+					sprite.texture = wall_tex_map.get(w_key, tex_wall_clean)
+				elif floor_east and not floor_south and not floor_west:
+					if h < 25:
 						sprite.texture = tex_wall_side_left_moss
-					elif (is_goblin or is_brawler) and h < 45:
+					elif h < 50:
 						sprite.texture = tex_wall_side_left_crumbled
-					elif h < 18:
-						sprite.texture = tex_wall_side_left_crumbled
-					elif h < 32:
-						sprite.texture = tex_wall_side_left_moss
 					else:
 						sprite.texture = tex_wall_side_left
 				elif floor_west and not floor_south and not floor_east:
-					# Vertical wall running up/down on the right side of room/hallway (turned sideways!)
-					if is_crypt and h < 55:
+					if h < 25:
 						sprite.texture = tex_wall_side_right_moss
-					elif (is_goblin or is_brawler) and h < 45:
+					elif h < 50:
 						sprite.texture = tex_wall_side_right_crumbled
-					elif h < 18:
-						sprite.texture = tex_wall_side_right_crumbled
-					elif h < 32:
-						sprite.texture = tex_wall_side_right_moss
 					else:
 						sprite.texture = tex_wall_side_right
 				elif floor_south:
-					# Horizontal top wall facing south into room
-					if is_crypt and h < 55:
+					if h < 25:
 						sprite.texture = tex_wall_moss
-					elif (is_goblin or is_brawler) and h < 45:
+					elif h < 50:
 						sprite.texture = tex_wall_crumbled
-					elif h < 18:
-						sprite.texture = tex_wall_crumbled
-					elif h < 32:
-						sprite.texture = tex_wall_moss
 					else:
 						sprite.texture = tex_wall_clean
 				elif floor_north:
-					# Horizontal bottom wall facing north into room
-					if is_crypt and h < 55:
+					if h < 30:
 						sprite.texture = tex_wall_moss
-					elif (is_goblin or is_brawler) and h < 45:
+					elif h < 55:
 						sprite.texture = tex_wall_crumbled
 					else:
 						sprite.texture = tex_wall_clean
@@ -446,14 +373,13 @@ func _build_board_visuals() -> void:
 				elif floor_west:
 					sprite.texture = tex_wall_side_right
 				else:
-					# Solid interior bedrock (no horizontal ladder lines)
 					sprite.texture = tex_wall_solid
 			else:
 				# Floor tile
 				if special_floors.has(cell):
-					sprite.texture = special_floors[cell]
+					var s_key = special_floors[cell]
+					sprite.texture = floor_tex_map.get(s_key, tex_floor_clean)
 				else:
-					# Natural variance across standard stone slabs
 					var fh = (x * 13 + y * 29) % 100
 					if fh < 8:
 						sprite.texture = tex_floor_cracked
@@ -471,88 +397,27 @@ func _spawn_props_and_decorations() -> void:
 	var tex_chains = load("res://assets/sprites/prop_chains.svg")
 	var tex_web = load("res://assets/sprites/prop_cobweb.svg")
 
-	# 1. Ornamental Pillars (Framing grand hallways and boss vault)
-	var pillar_positions = [
-		Vector2i(2, 10), Vector2i(2, 13),
-		Vector2i(13, 10), Vector2i(13, 13),
-		Vector2i(25, 10), Vector2i(25, 13),
-		Vector2i(31, 9), Vector2i(31, 14),
-		Vector2i(36, 9), Vector2i(36, 14)
-	]
-	for pos in pillar_positions:
-		var spr = Sprite2D.new()
-		spr.texture = tex_pillar
-		spr.position = grid_to_world(pos)
-		prop_container.add_child(spr)
+	var prop_tex_map = {
+		"pillar": tex_pillar,
+		"crates": tex_crates,
+		"chains": tex_chains,
+		"web": tex_web
+	}
 
-	# 2. Wooden Crates & Barrels (Corner supplies & loot stashes)
-	var crate_positions = [
-		Vector2i(9, 4),   # Goblin Den stash
-		Vector2i(2, 12),  # Hallway entrance supplies
-		Vector2i(16, 19), # Brawler Arena corner
-		Vector2i(23, 15), # Brawler Arena weapon cache
-		Vector2i(30, 8),  # Boss Vault treasury corner
-		Vector2i(38, 15)  # Boss Vault treasury corner
-	]
-	for pos in crate_positions:
-		var spr = Sprite2D.new()
-		spr.texture = tex_crates
-		spr.position = grid_to_world(pos)
-		prop_container.add_child(spr)
-
-	# 3. Hanging Wall Chains & Manacles
-	var chain_positions = [
-		Vector2i(4, 14), Vector2i(8, 14),   # Crypt shackles
-		Vector2i(17, 14), Vector2i(22, 14), # Brawler pit chains
-		Vector2i(33, 7), Vector2i(35, 7)    # Boss vault back wall chains
-	]
-	for pos in chain_positions:
-		var spr = Sprite2D.new()
-		spr.texture = tex_chains
-		spr.position = grid_to_world(pos) + Vector2(0, -18)
-		prop_container.add_child(spr)
-
-	# 4. Spooky Cobwebs in Dark Corners
-	var web_positions = [
-		Vector2i(3, 3),   # Goblin den top-left
-		Vector2i(3, 20),  # Crypt bottom-left
-		Vector2i(23, 3),  # Pyromancer sanctum corner
-		Vector2i(1, 11),  # Hallway western terminus
-		Vector2i(39, 7)   # Boss vault far corner
-	]
-	for pos in web_positions:
-		var spr = Sprite2D.new()
-		spr.texture = tex_web
-		spr.position = grid_to_world(pos) + Vector2(-12, -12)
-		prop_container.add_child(spr)
+	for p in dungeon_data.get("props", []):
+		var p_type = p["type"]
+		if prop_tex_map.has(p_type):
+			var spr = Sprite2D.new()
+			spr.texture = prop_tex_map[p_type]
+			spr.position = grid_to_world(p["pos"]) + p.get("offset", Vector2.ZERO)
+			prop_container.add_child(spr)
 
 func _setup_lighting_and_sconces() -> void:
 	torch_lights.clear()
 	var tex_sconce = load("res://assets/sprites/torch_sconce.svg")
 	var tex_glow = load("res://assets/sprites/light_glow.svg")
 
-	# Sconce Wall Positions across hallways and chambers
-	var sconce_positions = [
-		# Hallway Northern & Southern Wall Torches
-		Vector2i(4, 10), Vector2i(10, 10), Vector2i(16, 10), Vector2i(22, 10), Vector2i(27, 10),
-		Vector2i(4, 13), Vector2i(10, 13), Vector2i(16, 13), Vector2i(22, 13), Vector2i(27, 13),
-
-		# Room 1 Goblin Den
-		Vector2i(5, 3), Vector2i(8, 3),
-
-		# Room 2 Crypt of the Phalanx
-		Vector2i(5, 14), Vector2i(8, 14),
-
-		# Room 3 Pyromancer's Sanctum (Altar Flanks)
-		Vector2i(18, 3), Vector2i(22, 3), Vector2i(18, 9), Vector2i(22, 9),
-
-		# Room 4 Brawler's Arena
-		Vector2i(18, 14), Vector2i(22, 14), Vector2i(18, 20), Vector2i(22, 20),
-
-		# Room 5 Grand Boss Vault Torches
-		Vector2i(30, 7), Vector2i(34, 7), Vector2i(39, 7),
-		Vector2i(30, 16), Vector2i(34, 16), Vector2i(39, 16)
-	]
+	var sconce_positions = dungeon_data.get("torches", [])
 
 	for pos in sconce_positions:
 		var world_pos = grid_to_world(pos)
@@ -595,21 +460,8 @@ func _setup_lighting_and_sconces() -> void:
 
 func _create_doors() -> void:
 	doors.clear()
-	var door_configs = [
-		{"pos": Vector2i(6, 10), "room_id": 1},
-		{"pos": Vector2i(7, 10), "room_id": 1},
-		{"pos": Vector2i(6, 13), "room_id": 2},
-		{"pos": Vector2i(7, 13), "room_id": 2},
-		{"pos": Vector2i(19, 10), "room_id": 3},
-		{"pos": Vector2i(20, 10), "room_id": 3},
-		{"pos": Vector2i(19, 13), "room_id": 4},
-		{"pos": Vector2i(20, 13), "room_id": 4},
-		{"pos": Vector2i(28, 11), "room_id": 5},
-		{"pos": Vector2i(28, 12), "room_id": 5}
-	]
-	
 	var door_tex = load("res://assets/sprites/door_closed.svg")
-	for cfg in door_configs:
+	for cfg in dungeon_data.get("doors", []):
 		var sprite = Sprite2D.new()
 		sprite.texture = door_tex
 		sprite.position = grid_to_world(cfg["pos"])
@@ -623,23 +475,17 @@ func _create_doors() -> void:
 
 func _create_fog_of_war() -> void:
 	fog_overlays.clear()
-	
-	var room_bounds = [
-		{"id": 1, "x": 3, "y": 3, "w": 7, "h": 7},
-		{"id": 2, "x": 3, "y": 14, "w": 7, "h": 7},
-		{"id": 3, "x": 16, "y": 3, "w": 8, "h": 7},
-		{"id": 4, "x": 16, "y": 14, "w": 8, "h": 7},
-		{"id": 5, "x": 29, "y": 7, "w": 11, "h": 10}
-	]
-	
-	for rb in room_bounds:
+	for r in dungeon_rooms:
+		if r["id"] == 0:
+			continue # Entrance room starts revealed
+		var rect: Rect2i = r["rect"]
 		var fog = ColorRect.new()
-		fog.position = Vector2(rb["x"] * TILE_SIZE, rb["y"] * TILE_SIZE)
-		fog.size = Vector2(rb["w"] * TILE_SIZE, rb["h"] * TILE_SIZE)
-		fog.color = Color(0.04, 0.05, 0.07, 0.98)
+		fog.position = Vector2(rect.position.x * TILE_SIZE, rect.position.y * TILE_SIZE)
+		fog.size = Vector2(rect.size.x * TILE_SIZE, rect.size.y * TILE_SIZE)
+		fog.color = Color(0.027, 0.035, 0.055, 0.98)
 		fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		fog_container.add_child(fog)
-		fog_overlays[rb["id"]] = fog
+		fog_overlays[r["id"]] = fog
 
 func _spawn_units() -> void:
 	all_enemies.clear()
@@ -647,11 +493,12 @@ func _spawn_units() -> void:
 	backpack_weapons.clear()
 	backpack_relics.clear()
 	
-	# Hero (Starts in Entrance of Hallway)
+	# Hero (Starts in Entrance Room)
+	var spawn_pos = dungeon_data.get("player_spawn", Vector2i(6, 30))
 	player = CombatUnit.new()
 	unit_container.add_child(player)
 	var start_sword = DieData.create_default_d6_sword()
-	player.setup("Knight", true, 35, load("res://assets/sprites/hero.svg"), Vector2i(2, 11), start_sword)
+	player.setup("Knight", true, 35, load("res://assets/sprites/hero.svg"), spawn_pos, start_sword)
 	player.position = grid_to_world(player.grid_pos)
 	player.died.connect(_on_player_died)
 	player.hp_changed.connect(func(_u, new_hp, m_hp):
@@ -665,39 +512,16 @@ func _spawn_units() -> void:
 	backpack_weapons.append(start_sword.duplicate_die())
 	backpack_weapons.append(DieData.create_warhammer())
 	
-	# ROOM 1: Goblin Den (1 Charger + 2 Grunts)
-	var c1 = _create_enemy("Goblin Charger", 16, "res://assets/sprites/monster_charger.svg", Vector2i(6, 5), 1, "charger")
-	var g1 = _create_enemy("Goblin Scout", 12, "res://assets/sprites/monster_goblin.svg", Vector2i(4, 7), 1, "grunt")
-	var g2 = _create_enemy("Goblin Scout", 12, "res://assets/sprites/monster_goblin.svg", Vector2i(8, 7), 1, "grunt")
-	all_enemies.append_array([c1, g1, g2])
+	# Populate procedural enemies
+	for e in dungeon_data.get("enemies", []):
+		var en = _create_enemy(e["name"], e["hp"], e["tex"], e["pos"], e["room_id"], e.get("type", "grunt"))
+		if e.has("facing"):
+			en.facing_dir = e["facing"]
+		all_enemies.append(en)
 	
-	# ROOM 2: Crypt of the Phalanx (1 Skeleton Shieldbearer + 2 Skeleton Grunts)
-	var s1 = _create_enemy("Skeleton Shieldbearer", 24, "res://assets/sprites/monster_shieldbearer.svg", Vector2i(6, 17), 2, "shieldbearer")
-	s1.facing_dir = Vector2i(0, -1) # Facing North toward Door 2!
-	var sk1 = _create_enemy("Skeleton Warrior", 16, "res://assets/sprites/monster_skeleton.svg", Vector2i(4, 18), 2, "grunt")
-	var sk2 = _create_enemy("Skeleton Warrior", 16, "res://assets/sprites/monster_skeleton.svg", Vector2i(8, 18), 2, "grunt")
-	all_enemies.append_array([s1, sk1, sk2])
-	
-	# ROOM 3: Pyromancer's Sanctum (1 Cultist Pyromancer + 2 Berserkers)
-	var p1 = _create_enemy("Cultist Pyromancer", 18, "res://assets/sprites/monster_pyromancer.svg", Vector2i(20, 5), 3, "pyromancer")
-	var b1 = _create_enemy("Goblin Berserker", 15, "res://assets/sprites/monster_goblin.svg", Vector2i(18, 7), 3, "grunt")
-	var b2 = _create_enemy("Goblin Berserker", 15, "res://assets/sprites/monster_goblin.svg", Vector2i(22, 7), 3, "grunt")
-	all_enemies.append_array([p1, b1, b2])
-	
-	# ROOM 4: Brawler's Arena (1 Orc Brawler + 1 Charger + 1 Skeleton)
-	var ob1 = _create_enemy("Orc Brawler", 28, "res://assets/sprites/monster_orcbrawler.svg", Vector2i(20, 17), 4, "brawler")
-	ob1.facing_dir = Vector2i(0, -1)
-	var c2 = _create_enemy("Goblin Rusher", 16, "res://assets/sprites/monster_charger.svg", Vector2i(18, 18), 4, "charger")
-	var sk3 = _create_enemy("Skeleton Guard", 18, "res://assets/sprites/monster_skeleton.svg", Vector2i(22, 18), 4, "grunt")
-	all_enemies.append_array([ob1, c2, sk3])
-	
-	# ROOM 5: Grand Boss Vault (Orc Warlord + Shieldbearer + Pyromancer + Charger)
-	var boss = _create_enemy("Orc Warlord", 38, "res://assets/sprites/monster_orcbrawler.svg", Vector2i(35, 11), 5, "brawler")
-	var bs1 = _create_enemy("Phalanx Captain", 26, "res://assets/sprites/monster_shieldbearer.svg", Vector2i(32, 10), 5, "shieldbearer")
-	bs1.facing_dir = Vector2i(-1, 0) # Facing West toward Entrance
-	var bp1 = _create_enemy("Grand Pyromancer", 22, "res://assets/sprites/monster_pyromancer.svg", Vector2i(37, 13), 5, "pyromancer")
-	var bc1 = _create_enemy("Elite Charger", 18, "res://assets/sprites/monster_charger.svg", Vector2i(32, 13), 5, "charger")
-	all_enemies.append_array([boss, bs1, bp1, bc1])
+	for enemy in all_enemies:
+		enemy.visible = true
+		enemy.is_active_in_combat = false
 	
 	for enemy in all_enemies:
 		enemy.visible = true
@@ -789,8 +613,9 @@ func _setup_hud() -> void:
 	exp_title.add_theme_color_override("font_color", Color(0.3, 0.85, 0.55))
 	obj_vbox.add_child(exp_title)
 
+	var total_hostile = maxi(1, dungeon_rooms.size() - 1)
 	exp_chambers_label = Label.new()
-	exp_chambers_label.text = "Chambers Breached: 0 / 5  |  Move with [WASD]  |  Breach chamber doors to engage"
+	exp_chambers_label.text = "Chambers Breached: 0 / %d  |  Move with [WASD]  |  Breach chamber doors to engage" % total_hostile
 	exp_chambers_label.add_theme_font_size_override("font_size", 12)
 	exp_chambers_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
 	obj_vbox.add_child(exp_chambers_label)
@@ -2153,22 +1978,27 @@ func _check_door_interaction(door_grid_pos: Vector2i) -> void:
 			break
 
 func _get_room_breach_entrance_tile(r_id: int, door_pos: Vector2i) -> Vector2i:
-	if r_id == 1 or r_id == 3: # North rooms
-		return Vector2i(door_pos.x, 8)
-	elif r_id == 2 or r_id == 4: # South rooms
-		return Vector2i(door_pos.x, 15)
-	elif r_id == 5: # East Vault
-		return Vector2i(31, door_pos.y)
+	for r in dungeon_rooms:
+		if r["id"] == r_id:
+			var rect: Rect2i = r["rect"]
+			# Look for an adjacent floor tile inside this room's rectangular bounds
+			var dirs = [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
+			for d in dirs:
+				var candidate = door_pos + d
+				if rect.has_point(candidate) and grid[candidate.y][candidate.x] == 0:
+					return candidate
+			return r["center"]
 	return door_pos
 
 func _open_door(door: Dictionary) -> void:
 	play_door_creak_sfx()
 	var r_id = door["room_id"]
 	current_combat_room_id = r_id
+	var total_hostile = maxi(1, dungeon_rooms.size() - 1)
 	if not breached_rooms.has(r_id):
 		breached_rooms.append(r_id)
 		if is_instance_valid(exp_chambers_label):
-			exp_chambers_label.text = "Chambers Breached: %d / 5  |  Move with [WASD]" % breached_rooms.size()
+			exp_chambers_label.text = "Chambers Breached: %d / %d  |  Move with [WASD]" % [breached_rooms.size(), total_hostile]
 	
 	# Open all door tiles associated with this room (supports double doors)
 	for d in doors:
@@ -3300,23 +3130,28 @@ func _process_hazard_tiles() -> void:
 			hazard_tiles.erase(p)
 
 func _on_active_room_cleared() -> void:
+	var total_hostile = maxi(1, dungeon_rooms.size() - 1)
 	if not cleared_rooms.has(current_combat_room_id):
 		cleared_rooms.append(current_combat_room_id)
 		if is_instance_valid(exp_chambers_label):
-			exp_chambers_label.text = "Chambers Conquered: %d / 5  |  Move with [WASD]" % cleared_rooms.size()
+			exp_chambers_label.text = "Chambers Conquered: %d / %d  |  Move with [WASD]" % [cleared_rooms.size(), total_hostile]
 	all_enemies = all_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
 	
 	# Spawn chest for the room that was cleared
-	if current_combat_room_id == 1:
-		_spawn_treasure_chest(Vector2i(6, 4), "flame_rune")
-	elif current_combat_room_id == 2:
-		_spawn_treasure_chest(Vector2i(6, 19), "shield_basher")
-	elif current_combat_room_id == 3:
-		_spawn_treasure_chest(Vector2i(20, 4), "chaos_blast")
-	elif current_combat_room_id == 4:
-		_spawn_treasure_chest(Vector2i(20, 19), "executioner_edge")
-	elif current_combat_room_id == 5:
-		_spawn_treasure_chest(Vector2i(38, 11), "dungeon_crown")
+	var chest_pos = player.grid_pos
+	for r in dungeon_rooms:
+		if r["id"] == current_combat_room_id:
+			chest_pos = r["center"]
+			break
+			
+	var reward_type = "flame_rune"
+	if current_combat_room_id >= dungeon_rooms.size() - 1:
+		reward_type = "dungeon_crown" # Final Boss Vault
+	else:
+		var reward_pool = ["flame_rune", "shield_basher", "chaos_blast", "executioner_edge"]
+		reward_type = reward_pool[(current_combat_room_id - 1) % reward_pool.size()]
+		
+	_spawn_treasure_chest(chest_pos, reward_type)
 		
 	var any_remaining = not all_enemies.is_empty()
 	if not any_remaining:

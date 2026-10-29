@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Base Dark Stone Floor -->
+  <rect width="64" height="64" fill="#12151c"/>
+  
+  <!-- Flagstone seams -->
+  <line x1="0" y1="32" x2="64" y2="32" stroke="#080a0e" stroke-width="2"/>
+  <line x1="32" y1="0" x2="32" y2="32" stroke="#080a0e" stroke-width="2"/>
+  <line x1="32" y1="32" x2="32" y2="64" stroke="#080a0e" stroke-width="2"/>
+
+  <!-- Dried dark crimson bloodstain -->
+  <path d="M 22 24 C 28 18 42 16 48 24 C 54 32 50 44 42 46 C 36 48 34 56 28 54 C 20 52 14 42 16 34 C 18 28 16 26 22 24 Z" fill="#450a0a" opacity="0.85"/>
+  <path d="M 26 26 C 30 22 40 20 44 26 C 48 32 44 40 38 42 C 32 44 28 40 24 36 C 22 30 22 28 26 26 Z" fill="#7f1d1d" opacity="0.6"/>
+  <!-- Dark splatters & droplets -->
+  <circle cx="52" cy="20" r="2" fill="#581c87" opacity="0.7"/>
+  <circle cx="56" cy="28" r="1.5" fill="#450a0a" opacity="0.8"/>
+  <circle cx="12" cy="46" r="2.2" fill="#450a0a" opacity="0.8"/>
+  <circle cx="18" cy="56" r="1.2" fill="#7f1d1d" opacity="0.7"/>
+</svg>

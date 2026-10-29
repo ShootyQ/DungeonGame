@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Deep stone backing -->
+  <rect width="64" height="64" fill="#1b202c"/>
+  
+  <!-- Outer horizontal stone ledge / wall top -->
+  <rect x="0" y="0" width="64" height="12" fill="#3a4456"/>
+  <rect x="0" y="0" width="64" height="3" fill="#52607a"/>
+  <rect x="0" y="9" width="64" height="3" fill="#252c38"/>
+
+  <!-- Left & Right Stone Bricks -->
+  <rect x="2" y="16" width="16" height="20" rx="1" fill="#232938"/>
+  <rect x="2" y="38" width="16" height="22" rx="1" fill="#1f2431"/>
+  <rect x="46" y="16" width="16" height="20" rx="1" fill="#232938"/>
+  <rect x="46" y="38" width="16" height="22" rx="1" fill="#1f2431"/>
+
+  <!-- Carved Stone Arched Alcove -->
+  <path d="M 20 58 L 20 28 C 20 18 44 18 44 28 L 44 58 Z" fill="#0b0d12"/>
+  <path d="M 19 58 L 19 28 C 19 16 45 16 45 28 L 45 58" fill="none" stroke="#2b3244" stroke-width="2"/>
+  
+  <!-- Small stone shrine shelf -->
+  <rect x="22" y="48" width="20" height="4" rx="1" fill="#3a4456"/>
+
+  <!-- Burning Shrine Candles with Warm Glow -->
+  <!-- Candle 1 -->
+  <rect x="25" y="40" width="4" height="8" rx="0.5" fill="#f8fafc"/>
+  <circle cx="27" cy="38" r="4.5" fill="#f59e0b" opacity="0.3"/>
+  <ellipse cx="27" cy="38" rx="1.5" ry="2.5" fill="#facc15"/>
+  <circle cx="27" cy="38" r="0.8" fill="#ffffff"/>
+  <!-- Candle 2 -->
+  <rect x="34" y="42" width="4" height="6" rx="0.5" fill="#f8fafc"/>
+  <circle cx="36" cy="40" r="4" fill="#f59e0b" opacity="0.3"/>
+  <ellipse cx="36" cy="40" rx="1.5" ry="2.2" fill="#facc15"/>
+  <circle cx="36" cy="40" r="0.8" fill="#ffffff"/>
+
+  <!-- Bottom drop shadow -->
+  <rect x="0" y="60" width="64" height="4" fill="#080a0e" opacity="0.8"/>
+</svg>

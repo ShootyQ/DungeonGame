@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Deep stone backing -->
+  <rect width="64" height="64" fill="#1b202c"/>
+  
+  <!-- Outer horizontal stone ledge / wall top -->
+  <rect x="0" y="0" width="64" height="12" fill="#3a4456"/>
+  <rect x="0" y="0" width="64" height="3" fill="#52607a"/>
+  <rect x="0" y="9" width="64" height="3" fill="#252c38"/>
+
+  <!-- Stone bricks -->
+  <rect x="2" y="14" width="28" height="22" rx="1" fill="#232938"/>
+  <rect x="32" y="14" width="30" height="22" rx="1" fill="#1f2431"/>
+  <rect x="2" y="38" width="20" height="22" rx="1" fill="#202533"/>
+  <rect x="24" y="38" width="38" height="22" rx="1" fill="#232938"/>
+
+  <!-- Heavy Iron Wall Ring & Bolted Bracket -->
+  <circle cx="32" cy="22" r="5" fill="#080a0e"/>
+  <circle cx="32" cy="22" r="3.5" fill="none" stroke="#64748b" stroke-width="2"/>
+  <circle cx="32" cy="22" r="1.5" fill="#334155"/>
+
+  <!-- Hanging Chain Links -->
+  <ellipse cx="32" cy="29" rx="2.5" ry="4" fill="none" stroke="#64748b" stroke-width="1.8"/>
+  <ellipse cx="32" cy="35" rx="2.5" ry="4" fill="none" stroke="#475569" stroke-width="1.8"/>
+  <ellipse cx="32" cy="41" rx="2.5" ry="4" fill="none" stroke="#64748b" stroke-width="1.8"/>
+  <ellipse cx="32" cy="47" rx="2.5" ry="4" fill="none" stroke="#475569" stroke-width="1.8"/>
+  <!-- Iron Manacle at Bottom -->
+  <path d="M 27 52 C 27 49 37 49 37 52 L 37 57 C 37 60 27 60 27 57 Z" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <circle cx="32" cy="54" r="1.5" fill="#f59e0b" opacity="0.6"/> <!-- Rust speck -->
+
+  <!-- Bottom drop shadow -->
+  <rect x="0" y="60" width="64" height="4" fill="#080a0e" opacity="0.8"/>
+</svg>

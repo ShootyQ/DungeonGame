@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Base Dark Stone Floor -->
+  <rect width="64" height="64" fill="#12151c"/>
+  
+  <!-- Flagstone grid seams -->
+  <line x1="0" y1="32" x2="64" y2="32" stroke="#080a0e" stroke-width="2"/>
+  <line x1="32" y1="0" x2="32" y2="32" stroke="#080a0e" stroke-width="2"/>
+  <line x1="16" y1="32" x2="16" y2="64" stroke="#080a0e" stroke-width="2"/>
+  <line x1="48" y1="32" x2="48" y2="64" stroke="#080a0e" stroke-width="2"/>
+
+  <!-- Subterranean Water Puddle with reflective highlights -->
+  <path d="M 14 18 C 18 10 38 12 48 16 C 56 20 54 36 44 42 C 34 48 20 44 14 36 C 8 28 10 24 14 18 Z" fill="#0d1f2d" opacity="0.85"/>
+  <path d="M 18 20 C 22 14 36 15 44 18 C 50 22 48 34 40 38 C 32 42 22 38 18 32 C 14 26 15 23 18 20 Z" fill="#163852" opacity="0.6"/>
+  <!-- Specular Torchlight Reflections on Water Surface -->
+  <ellipse cx="26" cy="22" rx="6" ry="2.5" fill="#facc15" opacity="0.35"/>
+  <ellipse cx="38" cy="28" rx="8" ry="3" fill="#38bdf8" opacity="0.45"/>
+  <circle cx="28" cy="22" r="1.5" fill="#ffffff" opacity="0.7"/>
+  <!-- Ripple rings -->
+  <path d="M 22 26 Q 30 30 38 26" stroke="#38bdf8" stroke-width="1" fill="none" opacity="0.5"/>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Polished Royal Flagstone (Deep Obsidian with Bronze/Gold Trim) -->
+  <rect width="64" height="64" fill="#151821"/>
+  
+  <!-- Outer Gold/Bronze Inlay Border -->
+  <rect x="4" y="4" width="56" height="56" fill="none" stroke="#ca8a04" stroke-width="2" opacity="0.85"/>
+  <rect x="8" y="8" width="48" height="48" fill="#181c27" stroke="#713f12" stroke-width="1.5"/>
+
+  <!-- Centered Diamond Inlay -->
+  <polygon points="32,14 50,32 32,50 14,32" fill="#1b202c" stroke="#eab308" stroke-width="2" opacity="0.9"/>
+  <polygon points="32,20 44,32 32,44 20,32" fill="#242b3b" stroke="#ca8a04" stroke-width="1.5"/>
+
+  <!-- Center Jewel / Crest Core -->
+  <rect x="29" y="29" width="6" height="6" fill="#eab308"/>
+  <rect x="30.5" y="30.5" width="3" height="3" fill="#fef08a"/>
+
+  <!-- Corner rosette studs -->
+  <circle cx="8" cy="8" r="2.5" fill="#ca8a04"/>
+  <circle cx="56" cy="8" r="2.5" fill="#ca8a04"/>
+  <circle cx="8" cy="56" r="2.5" fill="#ca8a04"/>
+  <circle cx="56" cy="56" r="2.5" fill="#ca8a04"/>
+</svg>

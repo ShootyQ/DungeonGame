@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Arcane Obsidian Stone Floor -->
+  <rect width="64" height="64" fill="#0f1118"/>
+  
+  <!-- Outer Runic Ring -->
+  <circle cx="32" cy="32" r="26" fill="none" stroke="#0284c7" stroke-width="2" opacity="0.6"/>
+  <circle cx="32" cy="32" r="24" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.8"/>
+  <circle cx="32" cy="32" r="16" fill="none" stroke="#7dd3fc" stroke-width="1" opacity="0.75"/>
+
+  <!-- Ancient Etched Runes along ring -->
+  <path d="M 32 8 L 32 14 M 30 11 L 34 11" stroke="#38bdf8" stroke-width="1.5"/>
+  <path d="M 32 50 L 32 56 M 30 53 L 34 53" stroke="#38bdf8" stroke-width="1.5"/>
+  <path d="M 8 32 L 14 32 M 11 30 L 11 34" stroke="#38bdf8" stroke-width="1.5"/>
+  <path d="M 50 32 L 56 32 M 53 30 L 53 34" stroke="#38bdf8" stroke-width="1.5"/>
+
+  <!-- Inner Mystic Seal Triquetra -->
+  <path d="M 32 20 Q 42 32 32 44 Q 22 32 32 20 Z" fill="#0284c7" opacity="0.25" stroke="#38bdf8" stroke-width="1.5"/>
+  <circle cx="32" cy="32" r="4" fill="#38bdf8"/>
+  <circle cx="32" cy="32" r="2" fill="#ffffff"/>
+</svg>

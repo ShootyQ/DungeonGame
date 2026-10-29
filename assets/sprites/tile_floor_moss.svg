@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Base Dark Stone Floor -->
+  <rect width="64" height="64" fill="#12151c"/>
+  
+  <!-- Flagstone seams -->
+  <line x1="0" y1="32" x2="64" y2="32" stroke="#080a0e" stroke-width="2"/>
+  <line x1="32" y1="0" x2="32" y2="32" stroke="#080a0e" stroke-width="2"/>
+  <line x1="32" y1="32" x2="32" y2="64" stroke="#080a0e" stroke-width="2"/>
+
+  <!-- Creeping moss clusters in the damp grout lines -->
+  <path d="M 6 30 Q 14 26 22 30 Q 30 34 38 30 Q 48 26 56 31 L 58 35 Q 46 38 36 34 Q 24 38 14 34 Z" fill="#14532d" opacity="0.85"/>
+  <path d="M 8 31 Q 16 28 24 31 Q 32 35 40 31 L 42 34 Q 30 37 18 33 Z" fill="#22c55e" opacity="0.6"/>
+
+  <!-- Corner moss patches with small subterranean mushrooms -->
+  <path d="M 28 2 Q 36 8 34 16 Q 30 22 24 18 Q 22 8 28 2 Z" fill="#15803d" opacity="0.8"/>
+  <circle cx="28" cy="10" r="3" fill="#ec4899" opacity="0.9"/>
+  <rect x="27" y="11" width="2" height="4" fill="#fbcfe8"/>
+  <circle cx="34" cy="14" r="2.2" fill="#06b6d4" opacity="0.9"/>
+  <rect x="33" y="15" width="1.5" height="3" fill="#cffafe"/>
+
+  <!-- Spore specks -->
+  <circle cx="12" cy="33" r="1" fill="#86efac"/>
+  <circle cx="46" cy="32" r="1.2" fill="#86efac"/>
+  <circle cx="50" cy="48" r="1.5" fill="#15803d" opacity="0.7"/>
+</svg>
