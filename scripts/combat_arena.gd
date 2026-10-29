@@ -38,12 +38,18 @@ var camera: Camera2D
 var board_container: Node2D
 var tile_sprites: Node2D
 var hazard_container: Node2D
+var prop_container: Node2D
 var door_container: Node2D
 var chest_container: Node2D
 var reticle_container: Node2D
 var unit_container: Node2D
+var lighting_container: Node2D
 var fog_container: Node2D
 var effects_container: Node2D
+
+# Atmospheric Lighting References
+var torch_lights: Array[Dictionary] = [] # [{glow: Sprite2D, base_scale: Vector2, seed: float, base_alpha: float}]
+var player_light: Sprite2D
 
 # Reticle indicators
 var move_indicator: Sprite2D
@@ -95,9 +101,11 @@ func _ready() -> void:
 	_setup_dungeon_layout()
 	_create_scene_hierarchy()
 	_build_board_visuals()
+	_spawn_props_and_decorations()
 	_create_doors()
 	_create_fog_of_war()
 	_spawn_units()
+	_setup_lighting_and_sconces()
 	_setup_hud()
 	_setup_backpack_ui()
 	_enter_exploration_mode()
@@ -185,21 +193,29 @@ func _create_scene_hierarchy() -> void:
 	hazard_container.z_index = 1
 	board_container.add_child(hazard_container)
 	
+	prop_container = Node2D.new()
+	prop_container.z_index = 2
+	board_container.add_child(prop_container)
+	
 	door_container = Node2D.new()
-	door_container.z_index = 2
+	door_container.z_index = 3
 	board_container.add_child(door_container)
 	
 	chest_container = Node2D.new()
-	chest_container.z_index = 3
+	chest_container.z_index = 4
 	board_container.add_child(chest_container)
 	
 	reticle_container = Node2D.new()
-	reticle_container.z_index = 4
+	reticle_container.z_index = 5
 	board_container.add_child(reticle_container)
 	
 	unit_container = Node2D.new()
 	unit_container.z_index = 6
 	board_container.add_child(unit_container)
+	
+	lighting_container = Node2D.new()
+	lighting_container.z_index = 8
+	board_container.add_child(lighting_container)
 	
 	fog_container = Node2D.new()
 	fog_container.z_index = 10
@@ -223,16 +239,252 @@ func _create_scene_hierarchy() -> void:
 	reticle_container.add_child(attack_indicator)
 
 func _build_board_visuals() -> void:
-	var floor_tex = load("res://assets/sprites/tile_floor.svg")
-	var wall_tex = load("res://assets/sprites/tile_wall.svg")
+	var tex_floor_clean = load("res://assets/sprites/tile_floor.svg")
+	var tex_floor_cracked = load("res://assets/sprites/tile_floor_cracked.svg")
+	var tex_floor_rubble = load("res://assets/sprites/tile_floor_rubble.svg")
+	var tex_floor_bones = load("res://assets/sprites/tile_floor_bones.svg")
+	var tex_floor_sigil = load("res://assets/sprites/tile_floor_sigil.svg")
 	
+	var tex_wall_clean = load("res://assets/sprites/tile_wall.svg")
+	var tex_wall_crumbled = load("res://assets/sprites/tile_wall_crumbled.svg")
+	var tex_wall_moss = load("res://assets/sprites/tile_wall_moss.svg")
+
+	# Pre-designated thematic floor tiles
+	var special_floors: Dictionary = {
+		# Room 3 Pyromancer Sanctum Core Arcane Sigils & Scorched Cracks
+		Vector2i(19, 6): tex_floor_sigil,
+		Vector2i(20, 6): tex_floor_sigil,
+		Vector2i(18, 5): tex_floor_cracked,
+		Vector2i(21, 5): tex_floor_cracked,
+		Vector2i(18, 7): tex_floor_cracked,
+		Vector2i(21, 7): tex_floor_cracked,
+
+		# Room 5 Grand Boss Vault Core Sigils & Cracks
+		Vector2i(34, 11): tex_floor_sigil,
+		Vector2i(34, 12): tex_floor_sigil,
+		Vector2i(33, 11): tex_floor_cracked,
+		Vector2i(33, 12): tex_floor_cracked,
+		Vector2i(35, 11): tex_floor_cracked,
+		Vector2i(35, 12): tex_floor_cracked,
+		Vector2i(37, 10): tex_floor_rubble,
+		Vector2i(37, 13): tex_floor_bones,
+
+		# Room 1 Goblin Den Bones & Rubble
+		Vector2i(5, 4): tex_floor_bones,
+		Vector2i(8, 8): tex_floor_bones,
+		Vector2i(4, 8): tex_floor_rubble,
+		Vector2i(7, 5): tex_floor_rubble,
+		Vector2i(6, 6): tex_floor_cracked,
+		Vector2i(8, 4): tex_floor_cracked,
+
+		# Room 2 Crypt of the Phalanx Ancient Bones & Slabs
+		Vector2i(5, 16): tex_floor_bones,
+		Vector2i(7, 18): tex_floor_bones,
+		Vector2i(8, 15): tex_floor_bones,
+		Vector2i(4, 17): tex_floor_cracked,
+		Vector2i(6, 19): tex_floor_cracked,
+		Vector2i(7, 15): tex_floor_rubble,
+
+		# Room 4 Brawler Arena Shattered Flagstones
+		Vector2i(18, 16): tex_floor_cracked,
+		Vector2i(21, 18): tex_floor_cracked,
+		Vector2i(19, 15): tex_floor_cracked,
+		Vector2i(17, 18): tex_floor_rubble,
+		Vector2i(22, 17): tex_floor_rubble,
+		Vector2i(20, 16): tex_floor_bones,
+
+		# Main Hallway Foot-trafficked Cracks & Rubble
+		Vector2i(4, 12): tex_floor_cracked,
+		Vector2i(9, 11): tex_floor_rubble,
+		Vector2i(12, 11): tex_floor_cracked,
+		Vector2i(15, 12): tex_floor_bones,
+		Vector2i(17, 12): tex_floor_rubble,
+		Vector2i(21, 12): tex_floor_cracked,
+		Vector2i(24, 11): tex_floor_rubble,
+		Vector2i(26, 11): tex_floor_cracked,
+	}
+
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
 			var tile_type = grid[y][x]
 			var sprite = Sprite2D.new()
-			sprite.texture = wall_tex if tile_type == 1 else floor_tex
+			var cell = Vector2i(x, y)
+			
+			if tile_type == 1:
+				# Wall tile: Choose clean, crumbled, or mossy based on room atmosphere & hash
+				var h = (x * 17 + y * 31) % 100
+				var is_crypt = (x >= 2 and x <= 10 and y >= 13 and y <= 21)
+				var is_goblin = (x >= 2 and x <= 10 and y >= 2 and y <= 10)
+				var is_brawler = (x >= 15 and x <= 24 and y >= 13 and y <= 21)
+				
+				if is_crypt:
+					# Crypt has lots of moss and cracked/crumbled walls
+					if h < 45:
+						sprite.texture = tex_wall_moss
+					elif h < 70:
+						sprite.texture = tex_wall_crumbled
+					else:
+						sprite.texture = tex_wall_clean
+				elif is_goblin or is_brawler:
+					# Dens have broken, crumbled brickwork
+					if h < 40:
+						sprite.texture = tex_wall_crumbled
+					elif h < 55:
+						sprite.texture = tex_wall_moss
+					else:
+						sprite.texture = tex_wall_clean
+				else:
+					# Hallways & boss vault: mostly solid with occasional crumbling/moss
+					if h < 14:
+						sprite.texture = tex_wall_crumbled
+					elif h < 22:
+						sprite.texture = tex_wall_moss
+					else:
+						sprite.texture = tex_wall_clean
+			else:
+				# Floor tile
+				if special_floors.has(cell):
+					sprite.texture = special_floors[cell]
+				else:
+					# Natural variance across standard stone slabs
+					var fh = (x * 13 + y * 29) % 100
+					if fh < 8:
+						sprite.texture = tex_floor_cracked
+					elif fh < 14:
+						sprite.texture = tex_floor_rubble
+					else:
+						sprite.texture = tex_floor_clean
+						
 			sprite.position = Vector2(x * TILE_SIZE + TILE_SIZE * 0.5, y * TILE_SIZE + TILE_SIZE * 0.5)
 			tile_sprites.add_child(sprite)
+
+func _spawn_props_and_decorations() -> void:
+	var tex_pillar = load("res://assets/sprites/prop_pillar.svg")
+	var tex_crates = load("res://assets/sprites/prop_crates.svg")
+	var tex_chains = load("res://assets/sprites/prop_chains.svg")
+	var tex_web = load("res://assets/sprites/prop_cobweb.svg")
+
+	# 1. Ornamental Pillars (Framing grand hallways and boss vault)
+	var pillar_positions = [
+		Vector2i(2, 10), Vector2i(2, 13),
+		Vector2i(13, 10), Vector2i(13, 13),
+		Vector2i(25, 10), Vector2i(25, 13),
+		Vector2i(31, 9), Vector2i(31, 14),
+		Vector2i(36, 9), Vector2i(36, 14)
+	]
+	for pos in pillar_positions:
+		var spr = Sprite2D.new()
+		spr.texture = tex_pillar
+		spr.position = grid_to_world(pos)
+		prop_container.add_child(spr)
+
+	# 2. Wooden Crates & Barrels (Corner supplies & loot stashes)
+	var crate_positions = [
+		Vector2i(9, 4),   # Goblin Den stash
+		Vector2i(2, 12),  # Hallway entrance supplies
+		Vector2i(16, 19), # Brawler Arena corner
+		Vector2i(23, 15), # Brawler Arena weapon cache
+		Vector2i(30, 8),  # Boss Vault treasury corner
+		Vector2i(38, 15)  # Boss Vault treasury corner
+	]
+	for pos in crate_positions:
+		var spr = Sprite2D.new()
+		spr.texture = tex_crates
+		spr.position = grid_to_world(pos)
+		prop_container.add_child(spr)
+
+	# 3. Hanging Wall Chains & Manacles
+	var chain_positions = [
+		Vector2i(4, 14), Vector2i(8, 14),   # Crypt shackles
+		Vector2i(17, 14), Vector2i(22, 14), # Brawler pit chains
+		Vector2i(33, 7), Vector2i(35, 7)    # Boss vault back wall chains
+	]
+	for pos in chain_positions:
+		var spr = Sprite2D.new()
+		spr.texture = tex_chains
+		spr.position = grid_to_world(pos) + Vector2(0, -18)
+		prop_container.add_child(spr)
+
+	# 4. Spooky Cobwebs in Dark Corners
+	var web_positions = [
+		Vector2i(3, 3),   # Goblin den top-left
+		Vector2i(3, 20),  # Crypt bottom-left
+		Vector2i(23, 3),  # Pyromancer sanctum corner
+		Vector2i(1, 11),  # Hallway western terminus
+		Vector2i(39, 7)   # Boss vault far corner
+	]
+	for pos in web_positions:
+		var spr = Sprite2D.new()
+		spr.texture = tex_web
+		spr.position = grid_to_world(pos) + Vector2(-12, -12)
+		prop_container.add_child(spr)
+
+func _setup_lighting_and_sconces() -> void:
+	torch_lights.clear()
+	var tex_sconce = load("res://assets/sprites/torch_sconce.svg")
+	var tex_glow = load("res://assets/sprites/light_glow.svg")
+
+	# Sconce Wall Positions across hallways and chambers
+	var sconce_positions = [
+		# Hallway Northern & Southern Wall Torches
+		Vector2i(4, 10), Vector2i(10, 10), Vector2i(16, 10), Vector2i(22, 10), Vector2i(27, 10),
+		Vector2i(4, 13), Vector2i(10, 13), Vector2i(16, 13), Vector2i(22, 13), Vector2i(27, 13),
+
+		# Room 1 Goblin Den
+		Vector2i(5, 3), Vector2i(8, 3),
+
+		# Room 2 Crypt of the Phalanx
+		Vector2i(5, 14), Vector2i(8, 14),
+
+		# Room 3 Pyromancer's Sanctum (Altar Flanks)
+		Vector2i(18, 3), Vector2i(22, 3), Vector2i(18, 9), Vector2i(22, 9),
+
+		# Room 4 Brawler's Arena
+		Vector2i(18, 14), Vector2i(22, 14), Vector2i(18, 20), Vector2i(22, 20),
+
+		# Room 5 Grand Boss Vault Torches
+		Vector2i(30, 7), Vector2i(34, 7), Vector2i(39, 7),
+		Vector2i(30, 16), Vector2i(34, 16), Vector2i(39, 16)
+	]
+
+	for pos in sconce_positions:
+		var world_pos = grid_to_world(pos)
+		
+		# Wall Sconce Iron Bracket & Torch
+		var sconce_spr = Sprite2D.new()
+		sconce_spr.texture = tex_sconce
+		sconce_spr.position = world_pos + Vector2(0, -18)
+		lighting_container.add_child(sconce_spr)
+
+		# Warm Radial Light Aura
+		var glow = Sprite2D.new()
+		glow.texture = tex_glow
+		var mat = CanvasItemMaterial.new()
+		mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		glow.material = mat
+		glow.modulate = Color(1.0, 0.72, 0.35, 0.48)
+		glow.scale = Vector2(0.95, 0.95)
+		glow.position = world_pos + Vector2(0, -10)
+		lighting_container.add_child(glow)
+
+		torch_lights.append({
+			"glow": glow,
+			"base_scale": Vector2(0.95, 0.95),
+			"base_alpha": 0.48,
+			"seed": randf_range(0.0, 100.0)
+		})
+
+	# Knight's Personal Travel Torch / Lantern
+	player_light = Sprite2D.new()
+	player_light.texture = tex_glow
+	var p_mat = CanvasItemMaterial.new()
+	p_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	player_light.material = p_mat
+	player_light.modulate = Color(1.0, 0.84, 0.52, 0.42)
+	player_light.scale = Vector2(0.85, 0.85)
+	if player:
+		player_light.position = player.position
+	lighting_container.add_child(player_light)
 
 func _create_doors() -> void:
 	doors.clear()
@@ -965,11 +1217,28 @@ func _process(delta: float) -> void:
 	if player and is_instance_valid(player):
 		var target_pos = player.position + BOARD_OFFSET
 		camera.position = camera.position.lerp(target_pos, delta * 6.0)
+		if player_light and is_instance_valid(player_light):
+			player_light.position = player.position
+		
+	# Dynamic gentle torch flickering
+	_process_torch_flicker(delta)
 		
 	if current_mode == GameMode.EXPLORATION:
 		_process_exploration_movement(delta)
 	elif current_mode == GameMode.COMBAT_PULSE:
 		_process_combat_pulse(delta)
+
+func _process_torch_flicker(_delta: float) -> void:
+	var time_ms = Time.get_ticks_msec()
+	for t in torch_lights:
+		var glow = t["glow"]
+		if not is_instance_valid(glow):
+			continue
+		var s = t["seed"]
+		var flicker_scale = 1.0 + sin(time_ms * 0.005 + s) * 0.03 + sin(time_ms * 0.012 + s * 1.8) * 0.015
+		glow.scale = t["base_scale"] * flicker_scale
+		var flicker_alpha = t["base_alpha"] * (1.0 + sin(time_ms * 0.007 + s * 1.4) * 0.06 + (randf() - 0.5) * 0.02)
+		glow.modulate.a = clamp(flicker_alpha, 0.25, 0.65)
 
 func _process_exploration_movement(delta: float) -> void:
 	if is_backpack_open:

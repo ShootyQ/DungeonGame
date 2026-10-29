@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="lightAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffe699" stop-opacity="0.85"/>
+      <stop offset="20%" stop-color="#ffb833" stop-opacity="0.6"/>
+      <stop offset="45%" stop-color="#ff8811" stop-opacity="0.32"/>
+      <stop offset="70%" stop-color="#e65500" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#cc3300" stop-opacity="0.0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="128" cy="128" r="128" fill="url(#lightAura)"/>
+</svg>

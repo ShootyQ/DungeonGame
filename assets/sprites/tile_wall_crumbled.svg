@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Deep shadow backing -->
+  <rect width="64" height="64" fill="#0c0e14"/>
+  
+  <!-- Wall top rim (broken/jagged ledge) -->
+  <path d="M0 0 L18 0 L20 4 L34 2 L38 0 L64 0 L64 12 L50 14 L46 11 L28 13 L22 10 L0 12 Z" fill="#474f61"/>
+  <path d="M0 0 L18 0 L20 3 L34 1 L38 0 L64 0 L64 3 L40 3 L34 2 L20 4 L0 3 Z" fill="#646e85"/>
+  <path d="M0 10 L22 10 L28 13 L46 11 L50 14 L64 12 L64 14 L48 16 L26 14 L0 13 Z" fill="#222733"/>
+  
+  <!-- Row 1 Bricks with missing chunk and cracks -->
+  <rect x="2" y="16" width="16" height="13" rx="1" fill="#383f4f"/>
+  <rect x="2" y="16" width="16" height="2" fill="#4d566b"/>
+  <!-- Gap / crumbled cavity exposing dark stone behind -->
+  <polygon points="20,16 30,19 32,27 24,29 19,25" fill="#141720"/>
+  <polygon points="22,18 29,20 30,25 24,27" fill="#0a0c10"/>
+  
+  <rect x="34" y="16" width="28" height="13" rx="1" fill="#343b4a"/>
+  <rect x="34" y="16" width="28" height="2" fill="#485165"/>
+  <!-- Fissure crack through right brick -->
+  <path d="M44 16 L46 22 L42 26 L45 29" stroke="#1d222c" stroke-width="1.2" fill="none"/>
+  
+  <!-- Row 2 Bricks (offset, broken jagged corners) -->
+  <rect x="2" y="31" width="14" height="14" rx="1" fill="#333947"/>
+  <rect x="2" y="31" width="14" height="2" fill="#474f63"/>
+  
+  <rect x="18" y="31" width="24" height="14" rx="1" fill="#3a4151"/>
+  <rect x="18" y="31" width="24" height="2" fill="#505a70"/>
+  <path d="M26 31 L29 38 L25 45" stroke="#1f2530" stroke-width="1" fill="none"/>
+  
+  <!-- Crumbling right side of row 2 -->
+  <polygon points="44,32 58,31 62,35 60,45 44,45" fill="#2d3340"/>
+  <polygon points="56,36 62,37 60,44 54,43" fill="#181c24"/>
+  
+  <!-- Row 3 Bricks and Fallen Rubble on floor ledge -->
+  <rect x="2" y="47" width="22" height="15" rx="1" fill="#2b313d"/>
+  <rect x="26" y="47" width="22" height="15" rx="1" fill="#292f3a"/>
+  
+  <!-- Rubble pile / crumbled chunks at bottom corner -->
+  <polygon points="48,56 56,50 62,54 58,62 46,62" fill="#3c4454"/>
+  <polygon points="50,58 55,52 60,55 52,60" fill="#4d576a"/>
+  <polygon points="38,59 44,55 49,60 42,63" fill="#323846"/>
+  <polygon points="58,58 64,57 63,62 57,62" fill="#2a303c"/>
+  
+  <!-- Creeping moss in cracks -->
+  <circle cx="21" cy="27" r="1.5" fill="#244d32"/>
+  <circle cx="23" cy="28" r="1.2" fill="#2f6341"/>
+  <circle cx="43" cy="60" r="1.5" fill="#244d32"/>
+  
+  <!-- Bottom cast shadow -->
+  <rect x="0" y="60" width="64" height="4" fill="#0a0c10" opacity="0.85"/>
+</svg>

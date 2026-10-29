@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="torchCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="35%" stop-color="#ffea75"/>
+      <stop offset="70%" stop-color="#ff9922"/>
+      <stop offset="100%" stop-color="#e64411" stop-opacity="0.9"/>
+    </radialGradient>
+    <filter id="flameGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.5" result="glow"/>
+      <feComposite in="SourceGraphic" in2="glow" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Wall mounting iron plate -->
+  <rect x="21" y="22" width="6" height="18" rx="2" fill="#1c202a"/>
+  <rect x="22" y="24" width="4" height="2" fill="#3a4254"/>
+  <circle cx="24" cy="38" r="1.5" fill="#3a4254"/>
+
+  <!-- Forged curved iron arm/bracket -->
+  <path d="M24 36 Q24 28 30 25 L30 20" stroke="#252b38" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <path d="M24 36 Q24 28 30 25 L30 20" stroke="#48536c" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+
+  <!-- Iron sconce basket / cup -->
+  <polygon points="26,19 34,19 33,25 27,25" fill="#1b1f28"/>
+  <rect x="25" y="18" width="10" height="2" rx="1" fill="#3f485b"/>
+
+  <!-- Wood torch handle inside basket -->
+  <rect x="28" y="14" width="4" height="7" fill="#5c3c1e"/>
+
+  <!-- Outer flame halo -->
+  <ellipse cx="30" cy="11" rx="8" ry="10" fill="#ff7711" opacity="0.45" filter="url(#flameGlow)"/>
+
+  <!-- Dynamic flame body -->
+  <path d="M30 3 C34 7 37 11 35 15 C33 18 27 18 25 15 C23 11 27 8 28 6 C28 4 30 3 30 3 Z" fill="url(#torchCore)" filter="url(#flameGlow)"/>
+
+  <!-- Inner bright flame tongue -->
+  <path d="M30 6 C32 9 33 12 32 14 C31 16 28 16 27 14 C26 12 28 10 29 8 Z" fill="#ffffff" opacity="0.9"/>
+
+  <!-- Sparks / embers drifting upward -->
+  <circle cx="31" cy="2" r="0.9" fill="#ffd044"/>
+  <circle cx="27" cy="4" r="0.8" fill="#ff9922"/>
+  <circle cx="34" cy="5" r="0.7" fill="#ff6611"/>
+</svg>
