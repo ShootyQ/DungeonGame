@@ -97,6 +97,9 @@ var sfx_pyro_flame: AudioStream
 var sfx_door_creak: AudioStream
 var sfx_torch_crackle: AudioStream
 var sfx_wind_whisper: AudioStream
+var sfx_chest_open: AudioStream
+var sfx_loot_pickup: AudioStream
+var sfx_backpack_equip: AudioStream
 var ambient_wind_player: AudioStreamPlayer
 var ambient_torch_player: AudioStreamPlayer
 var last_pulse_tick_sec: int = -1
@@ -1079,6 +1082,12 @@ func _setup_audio_system() -> void:
 		sfx_torch_crackle = load("res://assets/audio/torch_crackle_ambient.wav")
 	if ResourceLoader.exists("res://assets/audio/dungeon_wind_whisper.wav"):
 		sfx_wind_whisper = load("res://assets/audio/dungeon_wind_whisper.wav")
+	if ResourceLoader.exists("res://assets/audio/chest_open_creak.wav"):
+		sfx_chest_open = load("res://assets/audio/chest_open_creak.wav")
+	if ResourceLoader.exists("res://assets/audio/loot_pickup_jingle.wav"):
+		sfx_loot_pickup = load("res://assets/audio/loot_pickup_jingle.wav")
+	if ResourceLoader.exists("res://assets/audio/backpack_equip_snap.wav"):
+		sfx_backpack_equip = load("res://assets/audio/backpack_equip_snap.wav")
 		
 	# Music Player (Plays the fantasy clarinet dungeon music)
 	music_player = AudioStreamPlayer.new()
@@ -1190,6 +1199,18 @@ func play_wind_whisper_sfx() -> void:
 		# Wind kept fairly quiet
 		play_sfx(sfx_wind_whisper, randf_range(0.95, 1.05), -14.0)
 
+func play_chest_open_sfx() -> void:
+	if sfx_chest_open:
+		play_sfx(sfx_chest_open, randf_range(0.97, 1.03), 1.5)
+
+func play_loot_pickup_sfx() -> void:
+	if sfx_loot_pickup:
+		play_sfx(sfx_loot_pickup, randf_range(0.98, 1.02), 1.0)
+
+func play_backpack_equip_sfx() -> void:
+	if sfx_backpack_equip:
+		play_sfx(sfx_backpack_equip, randf_range(0.96, 1.04), 1.0)
+
 func set_music_volume(val: float) -> void:
 	music_volume = clamp(val, 0.0, 1.0)
 	if music_player:
@@ -1236,11 +1257,11 @@ func _toggle_audio_settings() -> void:
 func _setup_audio_ui() -> void:
 	audio_settings_modal = PanelContainer.new()
 	audio_settings_modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	audio_settings_modal.custom_minimum_size = Vector2(580, 450)
-	audio_settings_modal.offset_left = -290
-	audio_settings_modal.offset_top = -225
-	audio_settings_modal.offset_right = 290
-	audio_settings_modal.offset_bottom = 225
+	audio_settings_modal.custom_minimum_size = Vector2(600, 480)
+	audio_settings_modal.offset_left = -300
+	audio_settings_modal.offset_top = -240
+	audio_settings_modal.offset_right = 300
+	audio_settings_modal.offset_bottom = 240
 	audio_settings_modal.visible = false
 	
 	var a_style = StyleBoxFlat.new()
@@ -1461,13 +1482,28 @@ func _setup_audio_ui() -> void:
 	test_wind_btn.pressed.connect(play_wind_whisper_sfx)
 	test_hbox3.add_child(test_wind_btn)
 
-	# Quick Action Buttons Row 4: Master Mute
+	# Quick Action Buttons Row 4: Loot, Inventory & Master Mute
 	var test_hbox4 = HBoxContainer.new()
 	test_hbox4.add_theme_constant_override("separation", 6)
 	vbox.add_child(test_hbox4)
 
+	var test_chest_btn = Button.new()
+	test_chest_btn.text = "🎁 Chest"
+	test_chest_btn.pressed.connect(play_chest_open_sfx)
+	test_hbox4.add_child(test_chest_btn)
+
+	var test_loot_btn = Button.new()
+	test_loot_btn.text = "✨ Loot"
+	test_loot_btn.pressed.connect(play_loot_pickup_sfx)
+	test_hbox4.add_child(test_loot_btn)
+
+	var test_equip_btn = Button.new()
+	test_equip_btn.text = "🎒 Equip"
+	test_equip_btn.pressed.connect(play_backpack_equip_sfx)
+	test_hbox4.add_child(test_equip_btn)
+
 	var mute_btn = Button.new()
-	mute_btn.text = "🔇 Master Mute / Unmute"
+	mute_btn.text = "🔇 Master Mute"
 	mute_btn.pressed.connect(func():
 		if music_volume > 0.0 or sfx_volume > 0.0 or ambience_volume > 0.0:
 			set_music_volume(0.0)
@@ -1705,6 +1741,7 @@ func _render_backpack_ui() -> void:
 func _equip_weapon_from_backpack(weapon: DieData) -> void:
 	player.die = weapon.duplicate_die()
 	player.roll_next_face()
+	play_backpack_equip_sfx()
 	play_dice_lock_sfx()
 	_update_hud_display()
 	_render_backpack_ui()
@@ -1877,6 +1914,8 @@ func _open_door(door: Dictionary) -> void:
 		_start_combat_countdown(engaged_monsters)
 
 func _open_chest(chest: Dictionary) -> void:
+	play_chest_open_sfx()
+	play_loot_pickup_sfx()
 	chest["is_open"] = true
 	chest["sprite"].texture = load("res://assets/sprites/chest_open.svg")
 	_show_floating_text(grid_to_world(chest["pos"]), "LOOT UNLOCKED!", Color(0.98, 0.85, 0.2))
