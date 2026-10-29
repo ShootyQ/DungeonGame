@@ -29,11 +29,13 @@ var player_attack_target: Vector2i = Vector2i(-1, -1)
 var grid: Array = []
 var doors: Array[Dictionary] = [] # [{pos, room_id, is_open, sprite}]
 var fog_overlays: Dictionary = {} # room_id -> ColorRect
+var chests: Array[Dictionary] = [] # [{pos, is_open, sprite}]
 
 # Node references
 var board_container: Node2D
 var tile_sprites: Node2D
 var door_container: Node2D
+var chest_container: Node2D
 var reticle_container: Node2D
 var unit_container: Node2D
 var fog_container: Node2D
@@ -119,21 +121,31 @@ func _create_scene_hierarchy() -> void:
 	add_child(board_container)
 	
 	tile_sprites = Node2D.new()
+	tile_sprites.z_index = 0
 	board_container.add_child(tile_sprites)
 	
 	door_container = Node2D.new()
+	door_container.z_index = 1
 	board_container.add_child(door_container)
 	
+	chest_container = Node2D.new()
+	chest_container.z_index = 2
+	board_container.add_child(chest_container)
+	
 	reticle_container = Node2D.new()
+	reticle_container.z_index = 3
 	board_container.add_child(reticle_container)
 	
 	unit_container = Node2D.new()
+	unit_container.z_index = 5
 	board_container.add_child(unit_container)
 	
 	fog_container = Node2D.new()
+	fog_container.z_index = 10
 	board_container.add_child(fog_container)
 	
 	effects_container = Node2D.new()
+	effects_container.z_index = 15
 	board_container.add_child(effects_container)
 	
 	# Reticle Sprites
@@ -190,7 +202,7 @@ func _create_fog_of_war() -> void:
 	var r1_fog = ColorRect.new()
 	r1_fog.position = Vector2(2 * TILE_SIZE, 2 * TILE_SIZE)
 	r1_fog.size = Vector2(7 * TILE_SIZE, 4 * TILE_SIZE)
-	r1_fog.color = Color(0.04, 0.05, 0.07, 0.96)
+	r1_fog.color = Color(0.04, 0.05, 0.07, 0.98)
 	r1_fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fog_container.add_child(r1_fog)
 	fog_overlays[1] = r1_fog
@@ -199,7 +211,7 @@ func _create_fog_of_war() -> void:
 	var r2_fog = ColorRect.new()
 	r2_fog.position = Vector2(12 * TILE_SIZE, 2 * TILE_SIZE)
 	r2_fog.size = Vector2(6 * TILE_SIZE, 4 * TILE_SIZE)
-	r2_fog.color = Color(0.04, 0.05, 0.07, 0.96)
+	r2_fog.color = Color(0.04, 0.05, 0.07, 0.98)
 	r2_fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fog_container.add_child(r2_fog)
 	fog_overlays[2] = r2_fog
@@ -216,19 +228,19 @@ func _spawn_units() -> void:
 	player.died.connect(_on_player_died)
 	
 	# Room 1 Enemies (2 Monsters: 1 Goblin, 1 Skeleton)
-	var gob1 = _create_enemy("Goblin Scout", 14, "res://assets/sprites/monster_goblin.svg", Vector2i(3, 3), 1)
-	var skel1 = _create_enemy("Skeleton Warrior", 18, "res://assets/sprites/monster_skeleton.svg", Vector2i(7, 4), 1)
+	var gob1 = _create_enemy("Goblin Scout", 14, "res://assets/sprites/monster_goblin.svg", Vector2i(4, 3), 1)
+	var skel1 = _create_enemy("Skeleton Warrior", 18, "res://assets/sprites/monster_skeleton.svg", Vector2i(6, 4), 1)
 	all_enemies.append_array([gob1, skel1])
 	
-	# Room 2 Enemies (3 Monsters: 2 Goblins, 1 Skeleton Guard)
+	# Room 2 Enemies (3 Monsters: Skeleton Guard right in direct line with Door 2 + 2 Goblins flanking)
+	var skel2 = _create_enemy("Skeleton Guard", 22, "res://assets/sprites/monster_skeleton.svg", Vector2i(14, 4), 2)
 	var gob2 = _create_enemy("Goblin Berserker", 16, "res://assets/sprites/monster_goblin.svg", Vector2i(13, 3), 2)
 	var gob3 = _create_enemy("Goblin Sneak", 14, "res://assets/sprites/monster_goblin.svg", Vector2i(16, 3), 2)
-	var skel2 = _create_enemy("Skeleton Guard", 22, "res://assets/sprites/monster_skeleton.svg", Vector2i(15, 4), 2)
-	all_enemies.append_array([gob2, gob3, skel2])
+	all_enemies.append_array([skel2, gob2, gob3])
 	
-	# Initially hide room enemies until doors open
+	# All enemies remain active inside their rooms (completely hidden by the Fog of War overlays above them)
 	for enemy in all_enemies:
-		enemy.visible = false
+		enemy.visible = true
 		enemy.is_active_in_combat = false
 
 func _create_enemy(p_name: String, hp: int, tex_path: String, pos: Vector2i, p_room_id: int) -> CombatUnit:
@@ -436,7 +448,7 @@ func _setup_hud() -> void:
 	log_label = RichTextLabel.new()
 	log_label.bbcode_enabled = true
 	log_label.scroll_following = true
-	log_label.text = "[color=#38bdf8]Dungeon loaded.[/color] [color=#94a3b8]Walk through hallway and breach doors.[/color]\n"
+	log_label.text = "[color=#38bdf8]Dungeon loaded.[/color] [color=#94a3b8]Walk through hallway with WASD and breach doors.[/color]\n"
 	log_panel.add_child(log_label)
 
 func _process(delta: float) -> void:
@@ -461,7 +473,6 @@ func _process_exploration_movement(delta: float) -> void:
 		var speed = 190.0
 		var desired_pos = player.position + move_vec * speed * delta
 		
-		# Collision check against walls and closed doors
 		var p_grid = world_to_grid(desired_pos)
 		if is_valid_grid_pos(p_grid):
 			var tile = grid[p_grid.y][p_grid.x]
@@ -471,7 +482,6 @@ func _process_exploration_movement(delta: float) -> void:
 				player.position = desired_pos
 				player.grid_pos = p_grid
 			else:
-				# Wall slide
 				var slide_x = Vector2(desired_pos.x, player.position.y)
 				var grid_x = world_to_grid(slide_x)
 				if is_valid_grid_pos(grid_x) and grid[grid_x.y][grid_x.x] == 0:
@@ -484,12 +494,19 @@ func _process_exploration_movement(delta: float) -> void:
 						player.position = slide_y
 						player.grid_pos = grid_y
 						
-	# Also check proximity to any closed door
+	# Check proximity to doors
 	for door in doors:
 		if not door["is_open"]:
 			var d_world = grid_to_world(door["pos"])
-			if player.position.distance_to(d_world) < 56.0:
+			if player.position.distance_to(d_world) < 60.0:
 				_open_door(door)
+				
+	# Check proximity to chests
+	for chest in chests:
+		if not chest["is_open"]:
+			var c_world = grid_to_world(chest["pos"])
+			if player.position.distance_to(c_world) < 48.0:
+				_open_chest(chest)
 
 func _check_door_interaction(door_grid_pos: Vector2i) -> void:
 	for door in doors:
@@ -500,7 +517,7 @@ func _check_door_interaction(door_grid_pos: Vector2i) -> void:
 func _open_door(door: Dictionary) -> void:
 	door["is_open"] = true
 	door["sprite"].texture = load("res://assets/sprites/door_open.svg")
-	grid[door["pos"].y][door["pos"].x] = 0 # Door tile is now walkable floor!
+	grid[door["pos"].y][door["pos"].x] = 0 # Doorway is now walkable floor
 	
 	var r_id = door["room_id"]
 	_log("[color=#f59e0b]🚪 Door breached! Room %d revealed![/color]" % r_id)
@@ -509,20 +526,41 @@ func _open_door(door: Dictionary) -> void:
 	if fog_overlays.has(r_id):
 		var fog = fog_overlays[r_id]
 		var tween = create_tween()
-		tween.tween_property(fog, "modulate:a", 0.0, 0.7)
+		tween.tween_property(fog, "modulate:a", 0.0, 0.5)
 		tween.tween_callback(fog.queue_free)
 		fog_overlays.erase(r_id)
 		
-	# Reveal and activate monsters in this room
+	# Find and activate living monsters in this room
 	var engaged_monsters: Array[CombatUnit] = []
 	for enemy in all_enemies:
-		if enemy.room_id == r_id and is_instance_valid(enemy) and enemy.is_alive:
-			enemy.visible = true
+		if enemy.room_id == r_id and is_instance_valid(enemy) and enemy.is_alive and enemy.current_hp > 0:
 			enemy.is_active_in_combat = true
 			engaged_monsters.append(enemy)
+			# Alert indicator
+			_show_floating_text(enemy.position, "!", Color(0.95, 0.2, 0.2))
 			
 	if not engaged_monsters.is_empty():
 		_start_combat_countdown(engaged_monsters)
+
+func _open_chest(chest: Dictionary) -> void:
+	chest["is_open"] = true
+	chest["sprite"].texture = load("res://assets/sprites/chest_open.svg")
+	_show_floating_text(grid_to_world(chest["pos"]), "LOOT UNLOCKED!", Color(0.98, 0.85, 0.2))
+	
+	# Reward: Modify D6 Sword! Add Flaming Rune face
+	if player and player.die and not player.die.faces.is_empty():
+		var fire_face = {
+			"roll": 4,
+			"title": "FLAME RUNE",
+			"desc": "8 Damage + Burn!",
+			"damage": 8,
+			"knockback": false,
+			"icon": "res://assets/ui/die_face_fire.svg"
+		}
+		player.die.faces[3] = fire_face # Replace face 4 with Flaming Rune!
+		player.loaded_face = fire_face
+		_update_hud_display()
+		_log("[color=#f97316][b]🔥 TREASURE FOUND: Flame Rune etched into your D6 Sword! (Face 4 replaced with 8 DMG + BURN)[/b][/color]")
 
 func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	current_mode = GameMode.COMBAT_COUNTDOWN
@@ -532,17 +570,14 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	var snap_target = grid_to_world(world_to_grid(player.position))
 	var snap_tween = create_tween()
 	snap_tween.tween_property(player, "position", snap_target, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	player.grid_pos = world_to_grid(player.position)
+	player.grid_pos = world_to_grid(snap_target)
 	
-	# Switch UI
 	explore_banner.visible = false
 	countdown_overlay.visible = true
 	
-	# Dramatic 3-2-1 Countdown Animation
 	_log("[color=#ef4444][b]⚔️ COMBAT STARTING IN 3... 2... 1...[/b][/color]")
 	
 	var count_seq = create_tween()
-	# "3"
 	count_seq.tween_callback(func():
 		countdown_number.text = "3"
 		countdown_number.scale = Vector2(1.5, 1.5)
@@ -551,7 +586,6 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	)
 	count_seq.tween_interval(0.65)
 	
-	# "2"
 	count_seq.tween_callback(func():
 		countdown_number.text = "2"
 		countdown_number.scale = Vector2(1.5, 1.5)
@@ -560,7 +594,6 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	)
 	count_seq.tween_interval(0.65)
 	
-	# "1"
 	count_seq.tween_callback(func():
 		countdown_number.text = "1"
 		countdown_number.scale = Vector2(1.5, 1.5)
@@ -569,7 +602,6 @@ func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	)
 	count_seq.tween_interval(0.65)
 	
-	# "FIGHT!"
 	count_seq.tween_callback(func():
 		countdown_number.text = "BATTLE!"
 		countdown_number.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4))
@@ -649,20 +681,17 @@ func _input(event: InputEvent) -> void:
 					_handle_combat_right_click(clicked_grid)
 
 func _handle_combat_left_click(pos: Vector2i) -> void:
-	# Click on active enemy: target attack
 	for enemy in active_combat_enemies:
 		if is_instance_valid(enemy) and enemy.is_alive and enemy.grid_pos == pos:
 			_toggle_attack_target(pos, enemy.unit_name)
 			return
 
-	# Click on player tile: cancel move
 	if pos == player.grid_pos:
 		player_move_target = Vector2i(-1, -1)
 		move_indicator.visible = false
 		_log("[color=#94a3b8]Holding position.[/color]")
 		return
 
-	# Click adjacent floor: set move
 	if grid[pos.y][pos.x] == 0:
 		var diff = (pos - player.grid_pos).abs()
 		if diff.x <= 1 and diff.y <= 1:
@@ -928,7 +957,6 @@ func _resolve_pulse() -> void:
 		_start_planning_phase()
 
 func _on_active_room_cleared() -> void:
-	# Check if all dungeon enemies are dead
 	var any_remaining = false
 	for enemy in all_enemies:
 		if is_instance_valid(enemy) and enemy.is_alive and enemy.current_hp > 0:
@@ -936,13 +964,34 @@ func _on_active_room_cleared() -> void:
 			break
 			
 	if not any_remaining:
+		# Spawn final reward chest in Room 2!
+		_spawn_treasure_chest(Vector2i(15, 3))
 		_game_conquered()
 	else:
-		_log("[color=#22c55e][b]🏆 ROOM CLEARED! Returning to Exploration mode...[/b][/color]")
+		# Spawn chest in Room 1!
+		_spawn_treasure_chest(Vector2i(5, 3))
+		_log("[color=#22c55e][b]🏆 ROOM CLEARED! A treasure chest has appeared! Returning to Exploration mode...[/b][/color]")
 		_show_floating_text(player.position, "ROOM CLEARED!", Color(0.2, 0.9, 0.4))
 		var t = create_tween()
-		t.tween_interval(1.2)
+		t.tween_interval(1.0)
 		t.tween_callback(_enter_exploration_mode)
+
+func _spawn_treasure_chest(pos: Vector2i) -> void:
+	var sprite = Sprite2D.new()
+	sprite.texture = load("res://assets/sprites/chest_closed.svg")
+	sprite.position = grid_to_world(pos)
+	chest_container.add_child(sprite)
+	
+	# Spawn bounce animation
+	sprite.scale = Vector2(0.2, 0.2)
+	var tween = create_tween()
+	tween.tween_property(sprite, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	
+	chests.append({
+		"pos": pos,
+		"is_open": false,
+		"sprite": sprite
+	})
 
 func _show_floating_text(world_pos: Vector2, text: String, color: Color) -> void:
 	var label = Label.new()
@@ -974,7 +1023,9 @@ func _game_conquered() -> void:
 	current_mode = GameMode.GAME_OVER
 	phase_title.text = "🏆 DUNGEON CONQUERED!"
 	phase_title.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4))
-	_log("[color=#22c55e][b]🎉 VICTORY! All rooms purged. The dungeon is conquered! Press R to replay.[/b][/color]")
+	_log("[color=#22c55e][b]🎉 VICTORY! All rooms purged. The dungeon is conquered! Walk up to the golden chest to claim your relic![/b][/color]")
+	# Allow walking to the chest in exploration
+	_enter_exploration_mode()
 
 func _game_over() -> void:
 	current_mode = GameMode.GAME_OVER
