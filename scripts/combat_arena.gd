@@ -78,6 +78,20 @@ var last_action_label: Label
 var backpack_weapons: Array[DieData] = []
 var backpack_relics: Array[Dictionary] = [] # [{name, desc}]
 var is_backpack_open: bool = false
+
+# Audio System & Volume Settings
+var music_player: AudioStreamPlayer
+var music_stream: AudioStreamMP3
+var dice_tumble_sounds: Array[AudioStream] = []
+var sfx_dice_lock: AudioStream
+var music_volume: float = 0.65
+var sfx_volume: float = 0.85
+var is_audio_settings_open: bool = false
+var audio_settings_modal: PanelContainer
+var music_slider: HSlider
+var sfx_slider: HSlider
+var music_val_label: Label
+var sfx_val_label: Label
 var backpack_modal: PanelContainer
 var dice_rack_container: HBoxContainer
 var backpack_items_container: VBoxContainer
@@ -98,6 +112,7 @@ var cached_die_textures: Array[Texture2D] = []
 func _ready() -> void:
 	randomize()
 	_cache_die_textures()
+	_setup_audio_system()
 	_setup_dungeon_layout()
 	_create_scene_hierarchy()
 	_build_board_visuals()
@@ -108,6 +123,7 @@ func _ready() -> void:
 	_setup_lighting_and_sconces()
 	_setup_hud()
 	_setup_backpack_ui()
+	_setup_audio_ui()
 	_enter_exploration_mode()
 
 func _cache_die_textures() -> void:
@@ -692,6 +708,11 @@ func _setup_hud() -> void:
 	exp_bag_btn.pressed.connect(_toggle_backpack)
 	exp_hbox.add_child(exp_bag_btn)
 	
+	var exp_audio_btn = Button.new()
+	exp_audio_btn.text = "🔊 Sound (V)"
+	exp_audio_btn.pressed.connect(_toggle_audio_settings)
+	exp_hbox.add_child(exp_audio_btn)
+	
 	# 2. Combat HUD (Top-Wide Dock)
 	combat_hud = PanelContainer.new()
 	combat_hud.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -817,6 +838,11 @@ func _setup_hud() -> void:
 	restart_button.text = "🔄 Restart (R)"
 	restart_button.pressed.connect(_on_restart_pressed)
 	btn_hbox.add_child(restart_button)
+	
+	var c_audio_btn = Button.new()
+	c_audio_btn.text = "🔊 Sound (V)"
+	c_audio_btn.pressed.connect(_toggle_audio_settings)
+	btn_hbox.add_child(c_audio_btn)
 	
 	enemy_intel_label = Label.new()
 	enemy_intel_label.text = "Monsters engaged"
@@ -1000,10 +1026,213 @@ func _setup_backpack_ui() -> void:
 	relics_container.add_theme_constant_override("separation", 10)
 	main_vbox.add_child(relics_container)
 
+func _setup_audio_system() -> void:
+	dice_tumble_sounds.clear()
+	for i in range(1, 4):
+		var p = "res://assets/audio/dice_tumble_%d.wav" % i
+		if ResourceLoader.exists(p):
+			dice_tumble_sounds.append(load(p))
+	if ResourceLoader.exists("res://assets/audio/dice_slam_lock.wav"):
+		sfx_dice_lock = load("res://assets/audio/dice_slam_lock.wav")
+		
+	# Music Player (Plays the fantasy clarinet dungeon music)
+	music_player = AudioStreamPlayer.new()
+	if ResourceLoader.exists("res://assets/audio/music_dungeon_clarinet.mp3"):
+		music_stream = load("res://assets/audio/music_dungeon_clarinet.mp3") as AudioStreamMP3
+		if music_stream:
+			music_stream.loop = true
+			music_player.stream = music_stream
+	music_player.volume_db = linear_to_db(music_volume)
+	add_child(music_player)
+	if music_stream:
+		music_player.play()
+
+func play_sfx(stream: AudioStream, pitch_scale: float = 1.0, volume_offset_db: float = 0.0) -> void:
+	if not stream or sfx_volume <= 0.01:
+		return
+	var player_sfx = AudioStreamPlayer.new()
+	player_sfx.stream = stream
+	player_sfx.pitch_scale = pitch_scale
+	player_sfx.volume_db = linear_to_db(sfx_volume) + volume_offset_db
+	add_child(player_sfx)
+	player_sfx.play()
+	player_sfx.finished.connect(player_sfx.queue_free)
+
+func play_dice_tumble_sfx() -> void:
+	if dice_tumble_sounds.is_empty():
+		return
+	var s = dice_tumble_sounds.pick_random()
+	play_sfx(s, randf_range(0.96, 1.04))
+
+func play_dice_lock_sfx() -> void:
+	if sfx_dice_lock:
+		play_sfx(sfx_dice_lock, randf_range(0.97, 1.03))
+
+func set_music_volume(val: float) -> void:
+	music_volume = clamp(val, 0.0, 1.0)
+	if music_player:
+		if music_volume <= 0.01:
+			music_player.volume_db = -80.0
+		else:
+			music_player.volume_db = linear_to_db(music_volume)
+	if music_slider:
+		music_slider.value = music_volume
+	if music_val_label:
+		music_val_label.text = "%d%%" % int(music_volume * 100)
+
+func set_sfx_volume(val: float) -> void:
+	sfx_volume = clamp(val, 0.0, 1.0)
+	if sfx_slider:
+		sfx_slider.value = sfx_volume
+	if sfx_val_label:
+		sfx_val_label.text = "%d%%" % int(sfx_volume * 100)
+
+func _toggle_audio_settings() -> void:
+	is_audio_settings_open = !is_audio_settings_open
+	if audio_settings_modal:
+		audio_settings_modal.visible = is_audio_settings_open
+	if is_audio_settings_open:
+		play_dice_tumble_sfx()
+
+func _setup_audio_ui() -> void:
+	audio_settings_modal = PanelContainer.new()
+	audio_settings_modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	audio_settings_modal.custom_minimum_size = Vector2(490, 310)
+	audio_settings_modal.offset_left = -245
+	audio_settings_modal.offset_top = -155
+	audio_settings_modal.offset_right = 245
+	audio_settings_modal.offset_bottom = 155
+	audio_settings_modal.visible = false
+	
+	var a_style = StyleBoxFlat.new()
+	a_style.bg_color = Color(0.08, 0.10, 0.16, 0.98)
+	a_style.border_color = Color(0.38, 0.74, 0.97)
+	a_style.set_border_width_all(2)
+	a_style.set_corner_radius_all(10)
+	a_style.content_margin_left = 22
+	a_style.content_margin_right = 22
+	a_style.content_margin_top = 18
+	a_style.content_margin_bottom = 18
+	audio_settings_modal.add_theme_stylebox_override("panel", a_style)
+	hud_root.add_child(audio_settings_modal)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 16)
+	audio_settings_modal.add_child(vbox)
+
+	# Header Row
+	var head_hbox = HBoxContainer.new()
+	vbox.add_child(head_hbox)
+
+	var title = Label.new()
+	title.text = "🔊 AUDIO & VOLUME SETTINGS"
+	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	head_hbox.add_child(title)
+
+	var sp = Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head_hbox.add_child(sp)
+
+	var close_btn = Button.new()
+	close_btn.text = "✕ Close"
+	close_btn.pressed.connect(_toggle_audio_settings)
+	head_hbox.add_child(close_btn)
+
+	# Music Volume Row
+	var mus_vbox = VBoxContainer.new()
+	mus_vbox.add_theme_constant_override("separation", 4)
+	vbox.add_child(mus_vbox)
+
+	var mus_head = HBoxContainer.new()
+	mus_vbox.add_child(mus_head)
+	var mus_lbl = Label.new()
+	mus_lbl.text = "🎵 Dungeon Music (Clarinet Groove)"
+	mus_lbl.add_theme_font_size_override("font_size", 14)
+	mus_lbl.add_theme_color_override("font_color", Color(0.9, 0.92, 0.98))
+	mus_head.add_child(mus_lbl)
+
+	var m_sp = Control.new()
+	m_sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mus_head.add_child(m_sp)
+
+	music_val_label = Label.new()
+	music_val_label.text = "%d%%" % int(music_volume * 100)
+	music_val_label.add_theme_font_size_override("font_size", 14)
+	music_val_label.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	mus_head.add_child(music_val_label)
+
+	music_slider = HSlider.new()
+	music_slider.min_value = 0.0
+	music_slider.max_value = 1.0
+	music_slider.step = 0.02
+	music_slider.value = music_volume
+	music_slider.value_changed.connect(set_music_volume)
+	mus_vbox.add_child(music_slider)
+
+	# Sound FX Volume Row
+	var sfx_vbox = VBoxContainer.new()
+	sfx_vbox.add_theme_constant_override("separation", 4)
+	vbox.add_child(sfx_vbox)
+
+	var sfx_head = HBoxContainer.new()
+	sfx_vbox.add_child(sfx_head)
+	var sfx_lbl = Label.new()
+	sfx_lbl.text = "🎲 Dice Tumbler, Slam & Combat SFX"
+	sfx_lbl.add_theme_font_size_override("font_size", 14)
+	sfx_lbl.add_theme_color_override("font_color", Color(0.9, 0.92, 0.98))
+	sfx_head.add_child(sfx_lbl)
+
+	var s_sp = Control.new()
+	s_sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sfx_head.add_child(s_sp)
+
+	sfx_val_label = Label.new()
+	sfx_val_label.text = "%d%%" % int(sfx_volume * 100)
+	sfx_val_label.add_theme_font_size_override("font_size", 14)
+	sfx_val_label.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	sfx_head.add_child(sfx_val_label)
+
+	sfx_slider = HSlider.new()
+	sfx_slider.min_value = 0.0
+	sfx_slider.max_value = 1.0
+	sfx_slider.step = 0.02
+	sfx_slider.value = sfx_volume
+	sfx_slider.value_changed.connect(set_sfx_volume)
+	sfx_vbox.add_child(sfx_slider)
+
+	# Quick Action Buttons Row
+	var test_hbox = HBoxContainer.new()
+	test_hbox.add_theme_constant_override("separation", 10)
+	vbox.add_child(test_hbox)
+
+	var test_roll_btn = Button.new()
+	test_roll_btn.text = "🎲 Test Dice Roll"
+	test_roll_btn.pressed.connect(play_dice_tumble_sfx)
+	test_hbox.add_child(test_roll_btn)
+
+	var test_lock_btn = Button.new()
+	test_lock_btn.text = "⚡ Test Dice Slam"
+	test_lock_btn.pressed.connect(play_dice_lock_sfx)
+	test_hbox.add_child(test_lock_btn)
+
+	var mute_btn = Button.new()
+	mute_btn.text = "🔇 Mute / Unmute (M)"
+	mute_btn.pressed.connect(func():
+		if music_volume > 0.0 or sfx_volume > 0.0:
+			set_music_volume(0.0)
+			set_sfx_volume(0.0)
+		else:
+			set_music_volume(0.65)
+			set_sfx_volume(0.85)
+	)
+	test_hbox.add_child(mute_btn)
+
 func _toggle_backpack() -> void:
 	is_backpack_open = !is_backpack_open
 	backpack_modal.visible = is_backpack_open
 	if is_backpack_open:
+		play_dice_tumble_sfx()
 		_render_backpack_ui()
 
 func _render_backpack_ui() -> void:
@@ -1224,6 +1453,7 @@ func _render_backpack_ui() -> void:
 func _equip_weapon_from_backpack(weapon: DieData) -> void:
 	player.die = weapon.duplicate_die()
 	player.roll_next_face()
+	play_dice_lock_sfx()
 	_update_hud_display()
 	_render_backpack_ui()
 	_animate_hud_die_tumbler()
@@ -1578,17 +1808,32 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_B or event.keycode == KEY_I:
 			_toggle_backpack()
 			return
-		elif event.keycode == KEY_ESCAPE and is_backpack_open:
-			_toggle_backpack()
+		elif event.keycode == KEY_V:
+			_toggle_audio_settings()
 			return
+		elif event.keycode == KEY_M:
+			if music_volume > 0.0:
+				set_music_volume(0.0)
+				_log("[color=#94a3b8]🎵 Music muted (Press M to unmute)[/color]")
+			else:
+				set_music_volume(0.65)
+				_log("[color=#38bdf8]🎵 Music unmuted (65%)[/color]")
+			return
+		elif event.keycode == KEY_ESCAPE:
+			if is_audio_settings_open:
+				_toggle_audio_settings()
+				return
+			elif is_backpack_open:
+				_toggle_backpack()
+				return
 		elif current_mode == GameMode.COMBAT_PULSE and pulse_state == PulseState.PLANNING:
 			if event.keycode == KEY_SPACE:
 				_on_commit_pressed()
 			elif event.keycode == KEY_T:
 				_on_toggle_telegraphs()
 				
-	# If backpack is open, don't register clicks on the floor
-	if is_backpack_open:
+	# If backpack or audio modal is open, don't register clicks on the floor
+	if is_backpack_open or is_audio_settings_open:
 		return
 				
 	# Board clicks in combat planning mode (board_container handles camera offset automatically!)
@@ -2256,6 +2501,9 @@ func _trigger_pulse_roll() -> void:
 	if not player or not player.die:
 		return
 		
+	# Play acoustic dice tumbling clatter
+	play_dice_tumble_sfx()
+		
 	# 1. Roll actual next faces
 	player.roll_next_face()
 	for enemy in active_combat_enemies:
@@ -2453,8 +2701,9 @@ func _play_attack_impact_animation(target_world_pos: Vector2, face: Dictionary, 
 	tween.parallel().tween_property(impact_node, "position:y", final_impact_pos.y, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(impact_node, "rotation", 0.0, 0.12)
 	
-	# Camera shake on slam!
+	# Camera shake and slam audio!
 	_shake_camera(5.0 if is_crit else (2.0 if is_blocked else 3.5), 0.15)
+	play_dice_lock_sfx()
 	
 	# Update HUD Last Action Callout
 	if last_action_label:
@@ -2514,6 +2763,7 @@ func _game_over() -> void:
 
 func _on_commit_pressed() -> void:
 	if current_mode == GameMode.COMBAT_PULSE and pulse_state == PulseState.PLANNING:
+		play_dice_lock_sfx()
 		_resolve_pulse()
 
 func _on_toggle_telegraphs() -> void:
