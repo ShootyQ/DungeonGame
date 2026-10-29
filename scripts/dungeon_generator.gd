@@ -161,7 +161,9 @@ static func generate() -> Dictionary:
 				grid[y][x] = 0
 
 	# 7. Identify clean 2-tile wide double-door entrances on walls of each room
-	# Ensure at most 1 double-door per wall face, and spaced at least 5 tiles apart
+	# Seal excess width and corner clips so every entrance is an exact 2-tile double door
+	placed_door_positions.clear()
+
 	for r in rooms:
 		if r["id"] == 0:
 			continue # Room 0 (Entrance) has open archways
@@ -169,87 +171,126 @@ static func generate() -> Dictionary:
 		var rect: Rect2i = r["rect"]
 		var r_doors: Array[Dictionary] = []
 		
-		# Helper to test if a candidate door is far enough from already placed doors
-		var is_far_from_doors = func(pos: Vector2i) -> bool:
-			for existing in doors:
-				if pos.distance_to(existing["pos"]) < 4.0:
-					return false
-			for d in r_doors:
-				if pos.distance_to(d["pos"]) < 4.0:
-					return false
-			return true
-		
+		# Helper to try placing a horizontal double-door at (dx, y) and (dx+1, y)
+		var try_place_horiz = func(dx: int, y: int, x_start: int, x_end: int) -> bool:
+			var p1 = Vector2i(dx, y)
+			var p2 = Vector2i(dx + 1, y)
+			if not placed_door_positions.has(p1) and not placed_door_positions.has(p2):
+				var d1 = {"pos": p1, "room_id": r["id"], "orientation": "horizontal", "part": "left"}
+				var d2 = {"pos": p2, "room_id": r["id"], "orientation": "horizontal", "part": "right"}
+				r_doors.append(d1)
+				r_doors.append(d2)
+				placed_door_positions[p1] = true
+				placed_door_positions[p2] = true
+				# Seal extra opening tiles along this contiguous run so doorway is strictly 2-tiles wide
+				for ex in range(x_start, x_end + 1):
+					if ex != dx and ex != dx + 1:
+						grid[y][ex] = 1
+				return true
+			else:
+				# If door already placed or conflict, seal remaining open tiles
+				for ex in range(x_start, x_end + 1):
+					if not placed_door_positions.has(Vector2i(ex, y)):
+						grid[y][ex] = 1
+				return false
+
+		# Helper to try placing a vertical double-door at (x, dy) and (x, dy+1)
+		var try_place_vert = func(x: int, dy: int, y_start: int, y_end: int) -> bool:
+			var p1 = Vector2i(x, dy)
+			var p2 = Vector2i(x, dy + 1)
+			if not placed_door_positions.has(p1) and not placed_door_positions.has(p2):
+				var d1 = {"pos": p1, "room_id": r["id"], "orientation": "vertical", "part": "top"}
+				var d2 = {"pos": p2, "room_id": r["id"], "orientation": "vertical", "part": "bottom"}
+				r_doors.append(d1)
+				r_doors.append(d2)
+				placed_door_positions[p1] = true
+				placed_door_positions[p2] = true
+				for ey in range(y_start, y_end + 1):
+					if ey != dy and ey != dy + 1:
+						grid[ey][x] = 1
+				return true
+			else:
+				for ey in range(y_start, y_end + 1):
+					if not placed_door_positions.has(Vector2i(x, ey)):
+						grid[ey][x] = 1
+				return false
+
 		# Top wall (corridor enters from North)
 		var y_top = rect.position.y
 		if y_top - 1 >= 0:
-			var best_x = -1
-			var min_dist_center = 999.0
-			for x in range(rect.position.x + 1, rect.end.x - 2):
-				if grid[y_top - 1][x] == 0 and grid[y_top - 1][x + 1] == 0 and grid[y_top][x] == 0 and grid[y_top][x + 1] == 0:
-					var p_left = Vector2i(x, y_top)
-					var p_right = Vector2i(x + 1, y_top)
-					if is_far_from_doors.call(p_left) and is_far_from_doors.call(p_right):
-						var dc = abs(x - r["center"].x)
-						if dc < min_dist_center:
-							min_dist_center = dc
-							best_x = x
-			if best_x != -1:
-				r_doors.append({"pos": Vector2i(best_x, y_top), "room_id": r["id"], "orientation": "horizontal", "part": "left"})
-				r_doors.append({"pos": Vector2i(best_x + 1, y_top), "room_id": r["id"], "orientation": "horizontal", "part": "right"})
+			var x = rect.position.x
+			while x < rect.end.x:
+				if grid[y_top - 1][x] == 0:
+					var x_start = x
+					while x < rect.end.x and grid[y_top - 1][x] == 0:
+						x += 1
+					var x_end = x - 1
+					var run_len = x_end - x_start + 1
+					if run_len >= 2:
+						var dx = x_start + int((run_len - 2) * 0.5)
+						try_place_horiz.call(dx, y_top, x_start, x_end)
+					else:
+						# 1-tile accidental clip at corner: seal it with wall
+						grid[y_top][x_start] = 1
+				else:
+					x += 1
 
 		# Bottom wall (corridor enters from South)
 		var y_bot = rect.end.y - 1
 		if y_bot + 1 < GRID_HEIGHT:
-			var best_x = -1
-			var min_dist_center = 999.0
-			for x in range(rect.position.x + 1, rect.end.x - 2):
-				if grid[y_bot + 1][x] == 0 and grid[y_bot + 1][x + 1] == 0 and grid[y_bot][x] == 0 and grid[y_bot][x + 1] == 0:
-					var p_left = Vector2i(x, y_bot)
-					var p_right = Vector2i(x + 1, y_bot)
-					if is_far_from_doors.call(p_left) and is_far_from_doors.call(p_right):
-						var dc = abs(x - r["center"].x)
-						if dc < min_dist_center:
-							min_dist_center = dc
-							best_x = x
-			if best_x != -1:
-				r_doors.append({"pos": Vector2i(best_x, y_bot), "room_id": r["id"], "orientation": "horizontal", "part": "left"})
-				r_doors.append({"pos": Vector2i(best_x + 1, y_bot), "room_id": r["id"], "orientation": "horizontal", "part": "right"})
+			var x = rect.position.x
+			while x < rect.end.x:
+				if grid[y_bot + 1][x] == 0:
+					var x_start = x
+					while x < rect.end.x and grid[y_bot + 1][x] == 0:
+						x += 1
+					var x_end = x - 1
+					var run_len = x_end - x_start + 1
+					if run_len >= 2:
+						var dx = x_start + int((run_len - 2) * 0.5)
+						try_place_horiz.call(dx, y_bot, x_start, x_end)
+					else:
+						grid[y_bot][x_start] = 1
+				else:
+					x += 1
 
-		# Left wall (corridor enters from West)
+		# West wall (corridor enters from West)
 		var x_left = rect.position.x
 		if x_left - 1 >= 0:
-			var best_y = -1
-			var min_dist_center = 999.0
-			for y in range(rect.position.y + 1, rect.end.y - 2):
-				if grid[y][x_left - 1] == 0 and grid[y + 1][x_left - 1] == 0 and grid[y][x_left] == 0 and grid[y + 1][x_left] == 0:
-					var p_top = Vector2i(x_left, y)
-					var p_bot = Vector2i(x_left, y + 1)
-					if is_far_from_doors.call(p_top) and is_far_from_doors.call(p_bot):
-						var dc = abs(y - r["center"].y)
-						if dc < min_dist_center:
-							min_dist_center = dc
-							best_y = y
-			if best_y != -1:
-				r_doors.append({"pos": Vector2i(x_left, best_y), "room_id": r["id"], "orientation": "vertical", "part": "top"})
-				r_doors.append({"pos": Vector2i(x_left, best_y + 1), "room_id": r["id"], "orientation": "vertical", "part": "bottom"})
+			var y = rect.position.y
+			while y < rect.end.y:
+				if grid[y][x_left - 1] == 0:
+					var y_start = y
+					while y < rect.end.y and grid[y][x_left - 1] == 0:
+						y += 1
+					var y_end = y - 1
+					var run_len = y_end - y_start + 1
+					if run_len >= 2:
+						var dy = y_start + int((run_len - 2) * 0.5)
+						try_place_vert.call(x_left, dy, y_start, y_end)
+					else:
+						grid[y_start][x_left] = 1
+				else:
+					y += 1
 
-		# Right wall (corridor enters from East)
+		# East wall (corridor enters from East)
 		var x_right = rect.end.x - 1
 		if x_right + 1 < GRID_WIDTH:
-			var best_y = -1
-			var min_dist_center = 999.0
-			for y in range(rect.position.y + 1, rect.end.y - 2):
-				if grid[y][x_right + 1] == 0 and grid[y + 1][x_right + 1] == 0 and grid[y][x_right] == 0 and grid[y + 1][x_right] == 0:
-					var p_top = Vector2i(x_right, y)
-					var p_bot = Vector2i(x_right, y + 1)
-					if is_far_from_doors.call(p_top) and is_far_from_doors.call(p_bot):
-						var dc = abs(y - r["center"].y)
-						if dc < min_dist_center:
-							min_dist_center = dc
-							best_y = y
-			if best_y != -1:
-				r_doors.append({"pos": Vector2i(x_right, best_y), "room_id": r["id"], "orientation": "vertical", "part": "top"})
-				r_doors.append({"pos": Vector2i(x_right, best_y + 1), "room_id": r["id"], "orientation": "vertical", "part": "bottom"})
+			var y = rect.position.y
+			while y < rect.end.y:
+				if grid[y][x_right + 1] == 0:
+					var y_start = y
+					while y < rect.end.y and grid[y][x_right + 1] == 0:
+						y += 1
+					var y_end = y - 1
+					var run_len = y_end - y_start + 1
+					if run_len >= 2:
+						var dy = y_start + int((run_len - 2) * 0.5)
+						try_place_vert.call(x_right, dy, y_start, y_end)
+					else:
+						grid[y_start][x_right] = 1
+				else:
+					y += 1
 
 		# Mark door tiles in grid and record in room
 		for d in r_doors:
@@ -257,6 +298,7 @@ static func generate() -> Dictionary:
 			grid[p.y][p.x] = 2 # Door tile
 			doors.append(d)
 			r["door_positions"].append(p)
+			r["doors"].append(d)
 
 	# 8. Decorate rooms with themed special floors, walls, props, chests & monsters
 	var special_floors: Dictionary = {}
@@ -272,7 +314,7 @@ static func generate() -> Dictionary:
 				return true
 		return false
 
-	# Place corridor torches every few steps ONLY on solid walls with floor below (never near doors)
+	# Place corridor torches every few steps ONLY on solid walls with floor below (never near doors or hostile rooms)
 	for y in range(2, GRID_HEIGHT - 2):
 		for x in range(2, GRID_WIDTH - 2):
 			if grid[y][x] == 0:
@@ -285,7 +327,16 @@ static func generate() -> Dictionary:
 					# Wall north of this corridor floor
 					var wall_pos = Vector2i(x, y - 1)
 					if grid[wall_pos.y][wall_pos.x] == 1 and (x % 8 == 0) and not is_near_door.call(wall_pos) and not is_near_door.call(Vector2i(x, y)):
-						torches.append({"pos": wall_pos, "room_id": -1})
+						# Ensure wall is not adjacent to an unbreached hostile room to prevent light leaking into dark rooms
+						var adj_room = false
+						for r in rooms:
+							if r["id"] > 0:
+								var expanded = Rect2i(r["rect"].position - Vector2i(1, 1), r["rect"].size + Vector2i(2, 2))
+								if expanded.has_point(wall_pos):
+									adj_room = true
+									break
+						if not adj_room:
+							torches.append({"pos": wall_pos, "room_id": -1})
 					# Puddle or drain in corridor occasionally
 					var ch = (x * 37 + y * 19) % 100
 					if ch < 5:

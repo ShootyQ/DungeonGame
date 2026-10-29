@@ -2451,6 +2451,15 @@ func _process_exploration_movement(delta: float) -> void:
 			var d_world = grid_to_world(door["pos"])
 			if player.position.distance_to(d_world) < 48.0:
 				_open_door(door)
+				break
+
+	# Check if player stepped into any unbreached hostile chamber (front, back, or side)
+	for r in dungeon_rooms:
+		var r_id = r["id"]
+		if r_id > 0 and not breached_rooms.has(r_id):
+			if r["rect"].has_point(player.grid_pos):
+				_breach_chamber(r_id, player.grid_pos, false)
+				break
 				
 	# Check proximity to chests
 	for chest in chests:
@@ -2479,14 +2488,18 @@ func _get_room_breach_entrance_tile(r_id: int, door_pos: Vector2i) -> Vector2i:
 	return door_pos
 
 func _open_door(door: Dictionary) -> void:
-	play_door_creak_sfx()
-	var r_id = door["room_id"]
+	_breach_chamber(door["room_id"], door["pos"], true)
+
+func _breach_chamber(r_id: int, breach_origin: Vector2i, should_stride: bool = false) -> void:
+	if r_id <= 0 or breached_rooms.has(r_id):
+		return
+	breached_rooms.append(r_id)
 	current_combat_room_id = r_id
+	play_door_creak_sfx()
+	
 	var total_hostile = maxi(1, dungeon_rooms.size() - 1)
-	if not breached_rooms.has(r_id):
-		breached_rooms.append(r_id)
-		if is_instance_valid(exp_chambers_label):
-			exp_chambers_label.text = "Chambers Breached: %d / %d  |  Move with [WASD]" % [breached_rooms.size(), total_hostile]
+	if is_instance_valid(exp_chambers_label):
+		exp_chambers_label.text = "Chambers Breached: %d / %d  |  Move with [WASD]" % [breached_rooms.size(), total_hostile]
 	
 	var paired_open_textures = {
 		"horizontal": {
@@ -2499,7 +2512,7 @@ func _open_door(door: Dictionary) -> void:
 		}
 	}
 
-	# Open all door tiles associated with this room (supports double doors)
+	# Open all door tiles associated with this room (supports double doors on all entrances)
 	for d in doors:
 		if d["room_id"] == r_id and not d["is_open"]:
 			d["is_open"] = true
@@ -2515,10 +2528,11 @@ func _open_door(door: Dictionary) -> void:
 	_log("[color=#f59e0b]🚪 Chamber %d breached! Fog fades away![/color]" % r_id)
 	
 	# Hero strides cleanly inside the room past the doorway chokepoint
-	var breach_tile = _get_room_breach_entrance_tile(r_id, door["pos"])
-	player.grid_pos = breach_tile
-	var stride_tween = create_tween()
-	stride_tween.tween_property(player, "position", grid_to_world(breach_tile), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if should_stride and player:
+		var breach_tile = _get_room_breach_entrance_tile(r_id, breach_origin)
+		player.grid_pos = breach_tile
+		var stride_tween = create_tween()
+		stride_tween.tween_property(player, "position", grid_to_world(breach_tile), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	
 	# Fade Fog of War
 	if fog_overlays.has(r_id):
