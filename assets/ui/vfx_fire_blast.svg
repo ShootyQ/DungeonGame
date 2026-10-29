@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="72" height="72">
+  <!-- Explosive Fire Blast -->
+  <circle cx="36" cy="36" r="30" fill="#f97316" opacity="0.35"/>
+  <circle cx="36" cy="36" r="22" fill="#ea580c" opacity="0.6"/>
+  <circle cx="36" cy="36" r="14" fill="#facc15" opacity="0.9"/>
+  <circle cx="36" cy="36" r="6" fill="#ffffff"/>
+  <!-- Flame Spikes / Billows -->
+  <path d="M 36 4 Q 42 22 56 16 Q 46 28 64 36 Q 46 44 56 56 Q 42 50 36 68 Q 30 50 16 56 Q 26 44 8 36 Q 26 28 16 16 Q 30 22 36 4 Z" fill="#f97316" stroke="#ca8a04" stroke-width="1.5" opacity="0.85"/>
+</svg>

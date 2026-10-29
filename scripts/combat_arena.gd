@@ -58,6 +58,7 @@ var attack_indicator: Sprite2D
 var attack_reticle_tween: Tween
 var danger_indicators: Array[Sprite2D] = []
 var combat_targeting_mode: String = "AUTO" # "AUTO" or "STRIKE"
+var exploration_dust_timer: float = 0.0
 
 # UI references (in CanvasLayer)
 var canvas_layer: CanvasLayer
@@ -2077,6 +2078,8 @@ func _process_torch_flicker(_delta: float) -> void:
 
 func _process_exploration_movement(delta: float) -> void:
 	if is_backpack_open or is_audio_settings_open or is_main_menu_open:
+		if is_instance_valid(player):
+			player.is_moving = false
 		return
 		
 	var move_vec = Vector2.ZERO
@@ -2091,6 +2094,17 @@ func _process_exploration_movement(delta: float) -> void:
 		
 	if move_vec != Vector2.ZERO:
 		move_vec = move_vec.normalized()
+		player.is_moving = true
+		if move_vec.x < -0.1 and player.sprite:
+			player.sprite.flip_h = true
+		elif move_vec.x > 0.1 and player.sprite:
+			player.sprite.flip_h = false
+			
+		exploration_dust_timer -= delta
+		if exploration_dust_timer <= 0.0:
+			exploration_dust_timer = 0.22
+			_spawn_dust_puff(player.position + Vector2(0, 16))
+			
 		var speed = 200.0
 		var desired_pos = player.position + move_vec * speed * delta
 		
@@ -2115,6 +2129,8 @@ func _process_exploration_movement(delta: float) -> void:
 					if is_valid_grid_pos(grid_y) and grid[grid_y.y][grid_y.x] == 0:
 						player.position = slide_y
 						player.grid_pos = grid_y
+	else:
+		player.is_moving = false
 						
 	# Check proximity to closed doors
 	for door in doors:
@@ -2160,6 +2176,10 @@ func _open_door(door: Dictionary) -> void:
 			d["is_open"] = true
 			d["sprite"].texture = load("res://assets/sprites/door_open.svg")
 			grid[d["pos"].y][d["pos"].x] = 0
+			_spawn_dust_puff(d["sprite"].position)
+			var d_tween = create_tween()
+			d_tween.tween_property(d["sprite"], "scale", Vector2(1.2, 1.2), 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			d_tween.tween_property(d["sprite"], "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			
 	_log("[color=#f59e0b]🚪 Chamber %d breached! Fog fades away![/color]" % r_id)
 	
@@ -2193,6 +2213,12 @@ func _open_chest(chest: Dictionary) -> void:
 	play_loot_pickup_sfx()
 	chest["is_open"] = true
 	chest["sprite"].texture = load("res://assets/sprites/chest_open.svg")
+	var c_spr = chest["sprite"]
+	var c_tween = create_tween()
+	c_tween.tween_property(c_spr, "scale", Vector2(1.3, 0.7), 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	c_tween.tween_property(c_spr, "scale", Vector2(0.85, 1.25), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	c_tween.tween_property(c_spr, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	_spawn_chest_loot_burst(grid_to_world(chest["pos"]))
 	_show_floating_text(grid_to_world(chest["pos"]), "LOOT UNLOCKED!", Color(0.98, 0.85, 0.2))
 	
 	var reward_type = chest.get("reward", "flame_rune")
@@ -2376,6 +2402,10 @@ func _process_combat_pulse(delta: float) -> void:
 			if current_sec <= 2 and current_sec > 0 and current_sec != last_pulse_tick_sec:
 				last_pulse_tick_sec = current_sec
 				play_pulse_tick_sfx()
+				if phase_title:
+					var p_tween = create_tween()
+					p_tween.tween_property(phase_title, "scale", Vector2(1.1, 1.1), 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+					p_tween.tween_property(phase_title, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
@@ -3098,8 +3128,16 @@ func _resolve_pulse() -> void:
 							_show_floating_text(hit_enemy.position, "BLOCKED BY SHIELD!", Color(0.38, 0.74, 0.97))
 							
 				await _play_attack_impact_animation(hit_enemy.position, face, attack_blocked)
+				var attack_dir = (hit_enemy.position - player.position).normalized()
+				if attack_blocked:
+					_spawn_shield_barrier_vfx(hit_enemy.position)
+				elif is_knockback or dmg >= 8:
+					_spawn_shockwave(hit_enemy.position, Color(0.96, 0.72, 0.2))
+				else:
+					_spawn_slash_vfx(hit_enemy.position, attack_dir)
+					
 				if not attack_blocked:
-					hit_enemy.take_damage(dmg)
+					hit_enemy.take_damage(dmg, attack_dir)
 					_log("[color=#22c55e]Hero struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
 					_show_floating_text(hit_enemy.position, "-%d DMG" % dmg, Color(0.95, 0.85, 0.2))
 					
@@ -3148,18 +3186,20 @@ func _resolve_pulse() -> void:
 			play_pyro_flame_sfx()
 			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
 			_log("[color=#f97316]🔥 %s detonated a Flame Blast![/color]" % enemy.unit_name)
+			_spawn_fire_blast_vfx(enemy.telegraphed_tiles)
+			_shake_camera(6.0, 0.2)
 			for b_tile in enemy.telegraphed_tiles:
 				_spawn_hazard_tile(b_tile)
 				if player.grid_pos == b_tile:
 					var blast_face = {"title": "FLAME BLAST", "damage": 7, "icon": "res://assets/ui/die_face_fire.svg", "roll": 5}
 					await _play_attack_impact_animation(player.position, blast_face, false)
-					player.take_damage(7)
+					player.take_damage(7, (player.position - grid_to_world(enemy.target_grid_pos)).normalized())
 					_log("[color=#ef4444]Hero caught in flame blast! (-7 HP)[/color]")
 					_show_floating_text(player.position, "-7 HP (FIRE)", Color(0.95, 0.25, 0.25))
 				# Friendly fire on any other monster in blast!
 				for other in active_combat_enemies:
 					if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == b_tile:
-						other.take_damage(7)
+						other.take_damage(7, (other.position - grid_to_world(enemy.target_grid_pos)).normalized())
 						_log("[color=#f97316]Friendly fire! %s caught in blast (-7 HP)[/color]" % other.unit_name)
 						_show_floating_text(other.position, "-7 HP (FIRE)", Color(0.95, 0.6, 0.1))
 						
@@ -3167,16 +3207,18 @@ func _resolve_pulse() -> void:
 		elif enemy.intent_type == "SWEEP":
 			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
 			_log("[color=#ef4444]🪓 %s unleashes a WIDE CLEAVE SWEEP![/color]" % enemy.unit_name)
+			_spawn_cleave_sweep_vfx(grid_to_world(enemy.target_grid_pos), enemy.facing_dir)
+			_shake_camera(5.0, 0.18)
 			for s_tile in enemy.telegraphed_tiles:
 				if player.grid_pos == s_tile:
 					var cleave_face = {"title": "CLEAVE SWEEP", "damage": 6, "icon": "res://assets/ui/icon_axe.svg", "roll": 5}
 					await _play_attack_impact_animation(player.position, cleave_face, false)
-					player.take_damage(6)
+					player.take_damage(6, (player.position - enemy.position).normalized())
 					_log("[color=#ef4444]Hero caught in cleave arc! (-6 HP)[/color]")
 					_show_floating_text(player.position, "-6 HP", Color(0.95, 0.25, 0.25))
 				for other in active_combat_enemies:
 					if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == s_tile:
-						other.take_damage(6)
+						other.take_damage(6, (other.position - enemy.position).normalized())
 						_log("[color=#f97316]Friendly fire! %s caught in cleave (-6 HP)[/color]" % other.unit_name)
 						_show_floating_text(other.position, "-6 HP", Color(0.95, 0.6, 0.1))
 						
@@ -3185,10 +3227,13 @@ func _resolve_pulse() -> void:
 			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
 			var face = enemy.loaded_face
 			var dmg = face.get("damage", 4)
+			var e_dir = (grid_to_world(enemy.target_grid_pos) - enemy.position).normalized()
 			
 			if player.grid_pos == enemy.target_grid_pos:
+				_spawn_slash_vfx(player.position, e_dir, Color(0.95, 0.35, 0.35))
+				_shake_camera(4.0, 0.15)
 				await _play_attack_impact_animation(player.position, face, false)
-				player.take_damage(dmg)
+				player.take_damage(dmg, e_dir)
 				_log("[color=#ef4444]%s struck Hero for %d damage![/color]" % [enemy.unit_name, dmg])
 				_show_floating_text(player.position, "-%d HP" % dmg, Color(0.95, 0.25, 0.25))
 			else:
@@ -3320,6 +3365,121 @@ func _show_floating_text(world_pos: Vector2, text: String, color: Color) -> void
 	tween.tween_property(label, "position", label.position + Vector2(10, -28), 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.7)
 	tween.tween_callback(label.queue_free)
+
+func _spawn_slash_vfx(target_pos: Vector2, dir: Vector2, color: Color = Color(0.38, 0.85, 1.0), scale_mult: float = 1.0) -> void:
+	if not effects_container: return
+	var spr = Sprite2D.new()
+	spr.texture = load("res://assets/ui/vfx_slash_arc.svg")
+	spr.position = target_pos
+	spr.rotation = dir.angle() if dir != Vector2.ZERO else randf_range(-0.4, 0.4)
+	spr.modulate = color
+	spr.scale = Vector2(0.2, 0.2)
+	effects_container.add_child(spr)
+	
+	var t = create_tween()
+	t.tween_property(spr, "scale", Vector2(1.25 * scale_mult, 1.25 * scale_mult), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(spr, "rotation", spr.rotation + 0.4, 0.16)
+	t.tween_property(spr, "modulate:a", 0.0, 0.12)
+	t.tween_callback(spr.queue_free)
+
+func _spawn_shockwave(target_pos: Vector2, color: Color = Color(0.96, 0.72, 0.2)) -> void:
+	if not effects_container: return
+	var spr = Sprite2D.new()
+	spr.texture = load("res://assets/ui/vfx_shockwave.svg")
+	spr.position = target_pos
+	spr.modulate = color
+	spr.scale = Vector2(0.2, 0.2)
+	effects_container.add_child(spr)
+	
+	var t = create_tween()
+	t.tween_property(spr, "scale", Vector2(1.6, 1.6), 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(spr, "modulate:a", 0.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(spr.queue_free)
+
+func _spawn_shield_barrier_vfx(target_pos: Vector2) -> void:
+	if not effects_container: return
+	var spr = Sprite2D.new()
+	spr.texture = load("res://assets/ui/vfx_shield_barrier.svg")
+	spr.position = target_pos
+	spr.scale = Vector2(0.4, 0.4)
+	effects_container.add_child(spr)
+	
+	var t = create_tween()
+	t.tween_property(spr, "scale", Vector2(1.3, 1.3), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(spr, "scale", Vector2.ONE, 0.1)
+	t.tween_property(spr, "modulate:a", 0.0, 0.18)
+	t.tween_callback(spr.queue_free)
+
+func _spawn_fire_blast_vfx(target_tiles: Array) -> void:
+	if not effects_container: return
+	for i in range(target_tiles.size()):
+		var tile = target_tiles[i]
+		var spr = Sprite2D.new()
+		spr.texture = load("res://assets/ui/vfx_fire_blast.svg")
+		spr.position = grid_to_world(tile)
+		spr.scale = Vector2(0.2, 0.2)
+		spr.rotation = randf_range(0.0, TAU)
+		effects_container.add_child(spr)
+		
+		var t = create_tween()
+		if i > 0:
+			t.tween_interval(i * 0.03)
+		t.tween_property(spr, "scale", Vector2(1.3, 1.3), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.parallel().tween_property(spr, "rotation", spr.rotation + 0.8, 0.22)
+		t.tween_property(spr, "modulate:a", 0.0, 0.15)
+		t.tween_callback(spr.queue_free)
+
+func _spawn_cleave_sweep_vfx(target_pos: Vector2, facing: Vector2i) -> void:
+	if not effects_container: return
+	var spr = Sprite2D.new()
+	spr.texture = load("res://assets/ui/vfx_slash_arc.svg")
+	spr.position = target_pos
+	spr.modulate = Color(1.0, 0.35, 0.2)
+	spr.scale = Vector2(0.3, 0.3)
+	spr.rotation = Vector2(facing).angle() if facing != Vector2i.ZERO else 0.0
+	effects_container.add_child(spr)
+	
+	var t = create_tween()
+	t.tween_property(spr, "scale", Vector2(2.0, 2.0), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(spr, "rotation", spr.rotation + 1.2, 0.22)
+	t.tween_property(spr, "modulate:a", 0.0, 0.14)
+	t.tween_callback(spr.queue_free)
+
+func _spawn_dust_puff(pos: Vector2) -> void:
+	if not effects_container: return
+	var spr = Sprite2D.new()
+	spr.texture = load("res://assets/ui/vfx_dust_puff.svg")
+	spr.position = pos + Vector2(randf_range(-4, 4), randf_range(-2, 2))
+	spr.scale = Vector2(0.3, 0.3)
+	spr.modulate = Color(1.0, 1.0, 1.0, 0.6)
+	effects_container.add_child(spr)
+	
+	var t = create_tween()
+	t.tween_property(spr, "scale", Vector2(0.9, 0.9), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(spr, "position:y", spr.position.y - 8.0, 0.24)
+	t.parallel().tween_property(spr, "modulate:a", 0.0, 0.24)
+	t.tween_callback(spr.queue_free)
+
+func _spawn_chest_loot_burst(pos: Vector2) -> void:
+	if not effects_container: return
+	for i in range(6):
+		var spr = Sprite2D.new()
+		spr.texture = load("res://assets/ui/vfx_coin_sparkle.svg")
+		spr.position = pos
+		spr.scale = Vector2(0.4, 0.4)
+		effects_container.add_child(spr)
+		
+		var angle = deg_to_rad(-140.0 + (i * 20.0) + randf_range(-6.0, 6.0))
+		var dist = randf_range(30.0, 55.0)
+		var dest = pos + Vector2(cos(angle), sin(angle)) * dist
+		
+		var t = create_tween()
+		t.tween_property(spr, "position", dest, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.parallel().tween_property(spr, "scale", Vector2(1.2, 1.2), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.parallel().tween_property(spr, "rotation", randf_range(-3.0, 3.0), 0.45)
+		t.tween_property(spr, "position:y", dest.y + 12.0, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.parallel().tween_property(spr, "modulate:a", 0.0, 0.2)
+		t.tween_callback(spr.queue_free)
 
 func _shake_camera(intensity: float = 4.0, duration: float = 0.18) -> void:
 	if not camera:
@@ -3587,9 +3747,10 @@ func _on_enemy_died(enemy: CombatUnit) -> void:
 	all_enemies.erase(enemy)
 	_log("[color=#fbbf24]💀 %s has been slain![/color]" % enemy.unit_name)
 	_show_floating_text(enemy.position, "SLAIN!", Color(0.95, 0.8, 0.1))
-	var tween = create_tween()
-	tween.tween_property(enemy, "modulate:a", 0.0, 0.4)
-	tween.tween_callback(func():
+	_spawn_shockwave(enemy.position, Color(0.85, 0.25, 0.25))
+	_shake_camera(4.5, 0.18)
+	var death_tween = enemy.animate_death_collapse()
+	death_tween.tween_callback(func():
 		if is_instance_valid(enemy):
 			enemy.queue_free()
 	)

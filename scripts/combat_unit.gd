@@ -28,6 +28,15 @@ var intent_type: String = "NONE" # "NONE", "MOVE", "ATTACK", "CHARGE", "SWEEP", 
 var target_grid_pos: Vector2i = Vector2i.ZERO
 var is_targeted: bool = false
 
+# Procedural Animation State
+var anim_time: float = 0.0
+var idle_seed: float = 0.0
+var base_sprite_scale: Vector2 = Vector2.ONE
+var is_moving: bool = false
+var walk_cycle_time: float = 0.0
+var is_flinching: bool = false
+var is_dying: bool = false
+
 var sprite: Sprite2D
 var hp_bar: ProgressBar
 var intent_plate: PanelContainer
@@ -48,6 +57,8 @@ func setup(p_name: String, p_is_player: bool, p_max_hp: int, p_texture: Texture2
 	die = p_die
 	unit_type = p_type
 	has_shield = (p_type == "shieldbearer")
+	idle_seed = randf_range(0.0, 100.0)
+	base_sprite_scale = Vector2.ONE
 	
 	# Sprite
 	sprite = Sprite2D.new()
@@ -279,37 +290,109 @@ func set_targeted(val: bool) -> void:
 		else:
 			sprite.modulate = Color.WHITE
 
-func take_damage(dmg: int) -> void:
-	if not is_alive:
+func _process(delta: float) -> void:
+	if not is_alive or is_dying or not sprite:
+		return
+		
+	anim_time += delta
+	
+	if is_flinching:
+		return
+		
+	if is_moving:
+		walk_cycle_time += delta
+		var hop = -abs(sin(walk_cycle_time * 16.0)) * 5.0
+		sprite.position.y = hop
+		sprite.rotation = sin(walk_cycle_time * 16.0) * 0.09
+		sprite.scale.y = base_sprite_scale.y * (1.0 + abs(sin(walk_cycle_time * 16.0)) * 0.08)
+		sprite.scale.x = base_sprite_scale.x * (1.0 - abs(sin(walk_cycle_time * 16.0)) * 0.06)
+	else:
+		var breath = sin(anim_time * 3.2 + idle_seed)
+		sprite.position.y = breath * 1.5
+		sprite.rotation = lerpf(sprite.rotation, 0.0, delta * 12.0)
+		sprite.scale.y = base_sprite_scale.y * (1.0 + breath * 0.04)
+		sprite.scale.x = base_sprite_scale.x * (1.0 - breath * 0.03)
+
+func take_damage(dmg: int, impact_dir: Vector2 = Vector2.ZERO) -> void:
+	if not is_alive or is_dying:
 		return
 	current_hp = max(0, current_hp - dmg)
 	hp_bar.value = current_hp
 	hp_changed.emit(self, current_hp, max_hp)
 	
-	# Hit flash
-	var tween = create_tween()
-	tween.tween_property(sprite, "modulate", Color(2.5, 0.4, 0.4), 0.1)
-	tween.tween_property(sprite, "modulate", Color.WHITE, 0.15)
+	animate_hit_flinch(impact_dir)
 	
 	if current_hp <= 0:
 		is_alive = false
 		clear_intent()
 		died.emit(self)
 
+func animate_hit_flinch(impact_dir: Vector2 = Vector2.ZERO) -> Tween:
+	is_flinching = true
+	var tween = create_tween()
+	var recoil_offset = impact_dir.normalized() * 8.0 if impact_dir != Vector2.ZERO else Vector2(0, -6.0)
+	
+	# Squash horizontally, stretch vertically with flinch recoil
+	tween.tween_property(sprite, "scale", Vector2(base_sprite_scale.x * 1.25, base_sprite_scale.y * 0.72), 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(sprite, "position", recoil_offset, 0.07)
+	tween.parallel().tween_property(sprite, "modulate", Color(3.0, 0.4, 0.4), 0.07)
+	
+	# Elastic rebound back to normal
+	tween.tween_property(sprite, "scale", base_sprite_scale, 0.22).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(sprite, "position", Vector2.ZERO, 0.22).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(sprite, "modulate", Color(1.3, 0.75, 0.75) if is_targeted else Color.WHITE, 0.15)
+	
+	tween.tween_callback(func(): is_flinching = false)
+	return tween
+
+func animate_death_collapse() -> Tween:
+	is_dying = true
+	is_alive = false
+	var tween = create_tween()
+	var spin_dir = 1.0 if randf() > 0.5 else -1.0
+	
+	# Hop up with red flash and spin
+	tween.tween_property(sprite, "position:y", -20.0, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(sprite, "rotation", spin_dir * 1.4, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(sprite, "modulate", Color(2.5, 0.3, 0.3), 0.12)
+	
+	# Slam down and squash flat into the floor
+	tween.tween_property(sprite, "position:y", 8.0, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(sprite, "scale", Vector2(base_sprite_scale.x * 1.5, base_sprite_scale.y * 0.15), 0.14)
+	
+	# Dissolve / sink
+	tween.tween_property(self, "modulate:a", 0.0, 0.25)
+	return tween
+
 func animate_move_to(target_world_pos: Vector2, duration: float = 0.35) -> Tween:
 	var tween = create_tween()
-	# Slight hop arc
+	is_moving = true
 	var mid_pos = (position + target_world_pos) * 0.5 + Vector2(0, -14)
 	tween.tween_property(self, "position", mid_pos, duration * 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(self, "position", target_world_pos, duration * 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func(): 
+		is_moving = false
+		walk_cycle_time = 0.0
+	)
 	return tween
 
 func animate_attack_thrust(target_world_pos: Vector2, duration: float = 0.35) -> Tween:
 	var original_pos = position
-	var thrust_dir = (target_world_pos - original_pos).normalized() * 24.0
+	var thrust_dir = (target_world_pos - original_pos).normalized() * 26.0
 	var tween = create_tween()
-	tween.tween_property(self, "position", original_pos + thrust_dir, duration * 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(self, "position", original_pos, duration * 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	
+	# 1. Brief anticipatory wind-up pullback
+	tween.tween_property(self, "position", original_pos - thrust_dir * 0.25, duration * 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(sprite, "scale", Vector2(base_sprite_scale.x * 0.85, base_sprite_scale.y * 1.15), duration * 0.2)
+	
+	# 2. Explosive forward snap strike
+	tween.tween_property(self, "position", original_pos + thrust_dir, duration * 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(sprite, "scale", Vector2(base_sprite_scale.x * 1.25, base_sprite_scale.y * 0.8), duration * 0.35)
+	
+	# 3. Smooth return with settle
+	tween.tween_property(self, "position", original_pos, duration * 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(sprite, "scale", base_sprite_scale, duration * 0.45)
+	
 	return tween
 
 func animate_bump_back(origin_world_pos: Vector2, duration: float = 0.3) -> Tween:
