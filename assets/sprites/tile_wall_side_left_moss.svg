@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Deep shadow backing -->
+  <rect width="64" height="64" fill="#0c0f14"/>
+  
+  <!-- Outer left rim / ledge (depth viewed from side) with moss -->
+  <rect x="0" y="0" width="12" height="64" fill="#2d373f"/>
+  <rect x="0" y="0" width="3" height="64" fill="#44545e"/>
+  <!-- Moss creeping down left ledge -->
+  <path d="M0 8 Q8 10 10 16 Q12 12 12 6 Z" fill="#234a31"/>
+  <path d="M0 34 Q7 38 9 44 Q11 40 12 36 Z" fill="#234a31"/>
+  <circle cx="8" cy="14" r="1.5" fill="#36744c"/>
+  <circle cx="7" cy="42" r="1.5" fill="#36744c"/>
+
+  <!-- Bricks running vertically with moss in mortar -->
+  <rect x="14" y="2" width="18" height="28" rx="1" fill="#222b2f"/>
+  <rect x="14" y="2" width="2" height="28" fill="#333f44"/>
+  <rect x="14" y="32" width="18" height="30" rx="1" fill="#1f262a"/>
+  <rect x="14" y="32" width="2" height="30" fill="#2f3a3f"/>
+
+  <!-- Column 2 Bricks with moss -->
+  <rect x="34" y="2" width="16" height="28" rx="1" fill="#242e32"/>
+  <rect x="34" y="2" width="2" height="28" fill="#364349"/>
+  <path d="M28 20 Q34 26 38 24 Q36 30 32 30 Z" fill="#1f442c"/>
+  <rect x="34" y="32" width="16" height="30" rx="1" fill="#20272b"/>
+  <rect x="34" y="32" width="2" height="30" fill="#303a40"/>
+
+  <!-- Right edge: Drop shadow cast onto floor -->
+  <rect x="52" y="0" width="12" height="64" fill="#080a0d" opacity="0.85"/>
+</svg>

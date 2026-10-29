@@ -187,6 +187,7 @@ func _create_scene_hierarchy() -> void:
 	
 	tile_sprites = Node2D.new()
 	tile_sprites.z_index = 0
+	tile_sprites.modulate = Color(0.44, 0.46, 0.54) # Atmospheric shadowy dungeon ambient base
 	board_container.add_child(tile_sprites)
 	
 	hazard_container = Node2D.new()
@@ -195,6 +196,7 @@ func _create_scene_hierarchy() -> void:
 	
 	prop_container = Node2D.new()
 	prop_container.z_index = 2
+	prop_container.modulate = Color(0.58, 0.60, 0.68)
 	board_container.add_child(prop_container)
 	
 	door_container = Node2D.new()
@@ -245,9 +247,21 @@ func _build_board_visuals() -> void:
 	var tex_floor_bones = load("res://assets/sprites/tile_floor_bones.svg")
 	var tex_floor_sigil = load("res://assets/sprites/tile_floor_sigil.svg")
 	
+	# Horizontal Top Walls
 	var tex_wall_clean = load("res://assets/sprites/tile_wall.svg")
 	var tex_wall_crumbled = load("res://assets/sprites/tile_wall_crumbled.svg")
 	var tex_wall_moss = load("res://assets/sprites/tile_wall_moss.svg")
+
+	# Vertical Side Walls (turned sideways for up/down walls)
+	var tex_wall_side_left = load("res://assets/sprites/tile_wall_side_left.svg")
+	var tex_wall_side_left_crumbled = load("res://assets/sprites/tile_wall_side_left_crumbled.svg")
+	var tex_wall_side_left_moss = load("res://assets/sprites/tile_wall_side_left_moss.svg")
+	var tex_wall_side_right = load("res://assets/sprites/tile_wall_side_right.svg")
+	var tex_wall_side_right_crumbled = load("res://assets/sprites/tile_wall_side_right_crumbled.svg")
+	var tex_wall_side_right_moss = load("res://assets/sprites/tile_wall_side_right_moss.svg")
+
+	# Deep interior solid bedrock (no horizontal stripes)
+	var tex_wall_solid = load("res://assets/sprites/tile_wall_solid.svg")
 
 	# Pre-designated thematic floor tiles
 	var special_floors: Dictionary = {
@@ -311,36 +325,67 @@ func _build_board_visuals() -> void:
 			var cell = Vector2i(x, y)
 			
 			if tile_type == 1:
-				# Wall tile: Choose clean, crumbled, or mossy based on room atmosphere & hash
+				var floor_east = (x + 1 < GRID_WIDTH) and (grid[y][x + 1] == 0 or grid[y][x + 1] == 2)
+				var floor_west = (x - 1 >= 0) and (grid[y][x - 1] == 0 or grid[y][x - 1] == 2)
+				var floor_south = (y + 1 < GRID_HEIGHT) and (grid[y + 1][x] == 0 or grid[y + 1][x] == 2)
+				var floor_north = (y - 1 >= 0) and (grid[y - 1][x] == 0 or grid[y - 1][x] == 2)
+
 				var h = (x * 17 + y * 31) % 100
 				var is_crypt = (x >= 2 and x <= 10 and y >= 13 and y <= 21)
 				var is_goblin = (x >= 2 and x <= 10 and y >= 2 and y <= 10)
 				var is_brawler = (x >= 15 and x <= 24 and y >= 13 and y <= 21)
-				
-				if is_crypt:
-					# Crypt has lots of moss and cracked/crumbled walls
-					if h < 45:
+
+				if floor_east and not floor_south and not floor_west:
+					# Vertical wall running up/down on the left side of room/hallway (turned sideways!)
+					if is_crypt and h < 55:
+						sprite.texture = tex_wall_side_left_moss
+					elif (is_goblin or is_brawler) and h < 45:
+						sprite.texture = tex_wall_side_left_crumbled
+					elif h < 18:
+						sprite.texture = tex_wall_side_left_crumbled
+					elif h < 32:
+						sprite.texture = tex_wall_side_left_moss
+					else:
+						sprite.texture = tex_wall_side_left
+				elif floor_west and not floor_south and not floor_east:
+					# Vertical wall running up/down on the right side of room/hallway (turned sideways!)
+					if is_crypt and h < 55:
+						sprite.texture = tex_wall_side_right_moss
+					elif (is_goblin or is_brawler) and h < 45:
+						sprite.texture = tex_wall_side_right_crumbled
+					elif h < 18:
+						sprite.texture = tex_wall_side_right_crumbled
+					elif h < 32:
+						sprite.texture = tex_wall_side_right_moss
+					else:
+						sprite.texture = tex_wall_side_right
+				elif floor_south:
+					# Horizontal top wall facing south into room
+					if is_crypt and h < 55:
 						sprite.texture = tex_wall_moss
-					elif h < 70:
+					elif (is_goblin or is_brawler) and h < 45:
+						sprite.texture = tex_wall_crumbled
+					elif h < 18:
+						sprite.texture = tex_wall_crumbled
+					elif h < 32:
+						sprite.texture = tex_wall_moss
+					else:
+						sprite.texture = tex_wall_clean
+				elif floor_north:
+					# Horizontal bottom wall facing north into room
+					if is_crypt and h < 55:
+						sprite.texture = tex_wall_moss
+					elif (is_goblin or is_brawler) and h < 45:
 						sprite.texture = tex_wall_crumbled
 					else:
 						sprite.texture = tex_wall_clean
-				elif is_goblin or is_brawler:
-					# Dens have broken, crumbled brickwork
-					if h < 40:
-						sprite.texture = tex_wall_crumbled
-					elif h < 55:
-						sprite.texture = tex_wall_moss
-					else:
-						sprite.texture = tex_wall_clean
+				elif floor_east:
+					sprite.texture = tex_wall_side_left
+				elif floor_west:
+					sprite.texture = tex_wall_side_right
 				else:
-					# Hallways & boss vault: mostly solid with occasional crumbling/moss
-					if h < 14:
-						sprite.texture = tex_wall_crumbled
-					elif h < 22:
-						sprite.texture = tex_wall_moss
-					else:
-						sprite.texture = tex_wall_clean
+					# Solid interior bedrock (no horizontal ladder lines)
+					sprite.texture = tex_wall_solid
 			else:
 				# Floor tile
 				if special_floors.has(cell):
@@ -462,15 +507,15 @@ func _setup_lighting_and_sconces() -> void:
 		var mat = CanvasItemMaterial.new()
 		mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 		glow.material = mat
-		glow.modulate = Color(1.0, 0.72, 0.35, 0.48)
-		glow.scale = Vector2(0.95, 0.95)
+		glow.modulate = Color(1.0, 0.70, 0.30, 0.70)
+		glow.scale = Vector2(1.2, 1.2)
 		glow.position = world_pos + Vector2(0, -10)
 		lighting_container.add_child(glow)
 
 		torch_lights.append({
 			"glow": glow,
-			"base_scale": Vector2(0.95, 0.95),
-			"base_alpha": 0.48,
+			"base_scale": Vector2(1.2, 1.2),
+			"base_alpha": 0.70,
 			"seed": randf_range(0.0, 100.0)
 		})
 
@@ -480,8 +525,8 @@ func _setup_lighting_and_sconces() -> void:
 	var p_mat = CanvasItemMaterial.new()
 	p_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	player_light.material = p_mat
-	player_light.modulate = Color(1.0, 0.84, 0.52, 0.42)
-	player_light.scale = Vector2(0.85, 0.85)
+	player_light.modulate = Color(1.0, 0.82, 0.52, 0.55)
+	player_light.scale = Vector2(1.05, 1.05)
 	if player:
 		player_light.position = player.position
 	lighting_container.add_child(player_light)

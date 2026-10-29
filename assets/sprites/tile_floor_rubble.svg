@@ -1,55 +1,49 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Base dark stone -->
-  <rect width="64" height="64" fill="#181b22"/>
+  <!-- Deep mortar bed -->
+  <rect width="64" height="64" fill="#141822"/>
   
   <!-- Flagstone slabs -->
-  <rect x="2" y="2" width="28" height="28" rx="2" fill="#292f3b"/>
-  <rect x="2" y="2" width="28" height="2" fill="#3b4252"/>
-  <rect x="2" y="2" width="2" height="28" fill="#3b4252"/>
-  <rect x="2" y="28" width="28" height="2" fill="#181b22"/>
-  <rect x="28" y="2" width="2" height="28" fill="#181b22"/>
+  <rect x="2" y="2" width="28" height="28" rx="2" fill="#384152"/>
+  <rect x="2" y="2" width="28" height="2" fill="#54617a"/>
+  <rect x="2" y="2" width="2" height="28" fill="#54617a"/>
+  <rect x="2" y="28" width="28" height="2" fill="#242a36"/>
+  <rect x="28" y="2" width="2" height="28" fill="#242a36"/>
 
-  <rect x="34" y="2" width="28" height="20" rx="2" fill="#262b37"/>
-  <rect x="34" y="2" width="28" height="2" fill="#363e4e"/>
-  <rect x="34" y="2" width="2" height="20" fill="#363e4e"/>
-  <rect x="34" y="20" width="28" height="2" fill="#161921"/>
-  <rect x="60" y="2" width="2" height="20" fill="#161921"/>
+  <rect x="34" y="2" width="28" height="20" rx="2" fill="#353e4e"/>
+  <rect x="34" y="2" width="28" height="2" fill="#505c74"/>
+  <rect x="34" y="2" width="2" height="20" fill="#505c74"/>
+  <rect x="34" y="20" width="28" height="2" fill="#212732"/>
+  <rect x="60" y="2" width="2" height="20" fill="#212732"/>
 
-  <rect x="34" y="26" width="28" height="36" rx="2" fill="#2b323f"/>
-  <rect x="34" y="26" width="28" height="2" fill="#3d4658"/>
-  <rect x="34" y="26" width="2" height="36" fill="#3d4658"/>
-  <rect x="34" y="60" width="28" height="2" fill="#181b23"/>
-  <rect x="60" y="26" width="2" height="36" fill="#181b23"/>
+  <rect x="34" y="26" width="28" height="36" rx="2" fill="#3c4658"/>
+  <rect x="34" y="26" width="28" height="2" fill="#5a6882"/>
+  <rect x="34" y="26" width="2" height="36" fill="#5a6882"/>
+  <rect x="34" y="60" width="28" height="2" fill="#242a36"/>
+  <rect x="60" y="26" width="2" height="36" fill="#242a36"/>
 
-  <rect x="2" y="34" width="28" height="28" rx="2" fill="#242934"/>
-  <rect x="2" y="34" width="28" height="2" fill="#333b49"/>
-  <rect x="2" y="34" width="2" height="28" fill="#333b49"/>
-  <rect x="2" y="60" width="28" height="2" fill="#14171d"/>
-  <rect x="28" y="34" width="2" height="28" fill="#14171d"/>
+  <rect x="2" y="34" width="28" height="28" rx="2" fill="#323b4b"/>
+  <rect x="2" y="34" width="28" height="2" fill="#4d5970"/>
+  <rect x="2" y="34" width="2" height="28" fill="#4d5970"/>
+  <rect x="2" y="60" width="28" height="2" fill="#1f2530"/>
+  <rect x="28" y="34" width="2" height="28" fill="#1f2530"/>
 
   <!-- Dust / dirt spill -->
-  <ellipse cx="32" cy="34" rx="22" ry="16" fill="#1c1f28" opacity="0.6"/>
+  <ellipse cx="32" cy="34" rx="22" ry="16" fill="#171b26" opacity="0.6"/>
 
   <!-- Scattered gravel & rubble chunks -->
-  <!-- Chunk 1: Larger rock -->
-  <polygon points="26,30 33,26 38,31 35,37 28,36" fill="#434b5c"/>
-  <polygon points="27,31 32,28 36,31 31,34" fill="#59637a"/>
-  <!-- Shadow under Chunk 1 -->
-  <ellipse cx="33" cy="38" rx="6" ry="2" fill="#101217" opacity="0.7"/>
+  <polygon points="26,30 33,26 38,31 35,37 28,36" fill="#546078"/>
+  <polygon points="27,31 32,28 36,31 31,34" fill="#6f7e9c"/>
+  <ellipse cx="33" cy="38" rx="6" ry="2" fill="#0d0f15" opacity="0.7"/>
 
-  <!-- Chunk 2: Medium stone -->
-  <polygon points="18,38 23,35 25,40 20,43" fill="#3b4252"/>
-  <polygon points="19,39 22,37 24,40 21,41" fill="#4e576c"/>
+  <polygon points="18,38 23,35 25,40 20,43" fill="#4c566c"/>
+  <polygon points="19,39 22,37 24,40 21,41" fill="#65738f"/>
 
-  <!-- Chunk 3: Pointy rock -->
-  <polygon points="38,40 43,36 46,42 41,44" fill="#3e4657"/>
-  <polygon points="39,40 42,38 44,41 41,43" fill="#525d73"/>
+  <polygon points="38,40 43,36 46,42 41,44" fill="#4f5a70"/>
+  <polygon points="39,40 42,38 44,41 41,43" fill="#677694"/>
 
   <!-- Pebbles -->
-  <circle cx="15" cy="27" r="2.2" fill="#4a5266"/>
-  <circle cx="28" cy="22" r="1.8" fill="#394050"/>
-  <circle cx="44" cy="28" r="2" fill="#485063"/>
-  <circle cx="34" cy="46" r="1.6" fill="#3d4454"/>
-  <circle cx="24" cy="46" r="1.4" fill="#464e61"/>
-  <circle cx="47" cy="46" r="1.5" fill="#363c4a"/>
+  <circle cx="15" cy="27" r="2.2" fill="#5c6a84"/>
+  <circle cx="28" cy="22" r="1.8" fill="#4a556b"/>
+  <circle cx="44" cy="28" r="2" fill="#586680"/>
+  <circle cx="34" cy="46" r="1.6" fill="#4c576d"/>
 </svg>

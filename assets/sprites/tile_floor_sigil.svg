@@ -1,35 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Base dark stone -->
-  <rect width="64" height="64" fill="#15171e"/>
+  <!-- Deep mortar bed -->
+  <rect width="64" height="64" fill="#141822"/>
   
-  <!-- Flagstone slabs -->
-  <rect x="2" y="2" width="60" height="60" rx="3" fill="#20242e"/>
-  <rect x="4" y="4" width="56" height="56" rx="2" fill="#1b1e27"/>
+  <!-- Flagstone slab -->
+  <rect x="2" y="2" width="60" height="60" rx="3" fill="#2d3544"/>
+  <rect x="4" y="4" width="56" height="56" rx="2" fill="#262d3a"/>
 
   <!-- Arcane Glowing Sigil Inscribed in Stone -->
-  <!-- Outer rune ring -->
-  <circle cx="32" cy="32" r="24" stroke="#ff7722" stroke-width="1.2" fill="none" opacity="0.6"/>
-  <circle cx="32" cy="32" r="21" stroke="#ffaa33" stroke-width="0.8" fill="none" opacity="0.8"/>
-  <circle cx="32" cy="32" r="13" stroke="#ffd066" stroke-width="1.2" fill="none" opacity="0.9"/>
+  <circle cx="32" cy="32" r="24" stroke="#ff7722" stroke-width="1.4" fill="none" opacity="0.7"/>
+  <circle cx="32" cy="32" r="21" stroke="#ffaa33" stroke-width="1.0" fill="none" opacity="0.85"/>
+  <circle cx="32" cy="32" r="13" stroke="#ffd066" stroke-width="1.4" fill="none" opacity="0.95"/>
 
-  <!-- Geometric star / occult triangle -->
-  <polygon points="32,12 49,42 15,42" stroke="#ff8822" stroke-width="1.2" fill="none" opacity="0.7"/>
-  <polygon points="32,52 49,22 15,22" stroke="#ff8822" stroke-width="1.2" fill="none" opacity="0.7"/>
+  <!-- Geometric star -->
+  <polygon points="32,12 49,42 15,42" stroke="#ff8822" stroke-width="1.4" fill="none" opacity="0.8"/>
+  <polygon points="32,52 49,22 15,22" stroke="#ff8822" stroke-width="1.4" fill="none" opacity="0.8"/>
 
-  <!-- Center core eye / ember -->
-  <circle cx="32" cy="32" r="5" fill="#ff5511" opacity="0.7"/>
+  <circle cx="32" cy="32" r="5" fill="#ff5511" opacity="0.8"/>
   <circle cx="32" cy="32" r="3" fill="#ffcc44"/>
   <circle cx="32" cy="32" r="1.5" fill="#ffffff"/>
 
-  <!-- Cardinal rune notches -->
-  <line x1="32" y1="8" x2="32" y2="12" stroke="#ffbb44" stroke-width="1.8"/>
-  <line x1="32" y1="52" x2="32" y2="56" stroke="#ffbb44" stroke-width="1.8"/>
-  <line x1="8" y1="32" x2="12" y2="32" stroke="#ffbb44" stroke-width="1.8"/>
-  <line x1="52" y1="32" x2="56" y2="32" stroke="#ffbb44" stroke-width="1.8"/>
+  <line x1="32" y1="8" x2="32" y2="12" stroke="#ffbb44" stroke-width="2.0"/>
+  <line x1="32" y1="52" x2="32" y2="56" stroke="#ffbb44" stroke-width="2.0"/>
+  <line x1="8" y1="32" x2="12" y2="32" stroke="#ffbb44" stroke-width="2.0"/>
+  <line x1="52" y1="32" x2="56" y2="32" stroke="#ffbb44" stroke-width="2.0"/>
 
-  <!-- Mystic glyph dots around perimeter -->
-  <circle cx="20" cy="18" r="1.5" fill="#ffa033"/>
-  <circle cx="44" cy="18" r="1.5" fill="#ffa033"/>
-  <circle cx="44" cy="46" r="1.5" fill="#ffa033"/>
-  <circle cx="20" cy="46" r="1.5" fill="#ffa033"/>
+  <circle cx="20" cy="18" r="1.6" fill="#ffa033"/>
+  <circle cx="44" cy="18" r="1.6" fill="#ffa033"/>
+  <circle cx="44" cy="46" r="1.6" fill="#ffa033"/>
+  <circle cx="20" cy="46" r="1.6" fill="#ffa033"/>
 </svg>
