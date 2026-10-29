@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Shadow -->
+  <ellipse cx="32" cy="56" rx="16" ry="5" fill="#0a0c10" opacity="0.6"/>
+  
+  <!-- Goblin Body (Hunched) -->
+  <!-- Ragged leather tunic -->
+  <path d="M24 32 L40 32 L44 50 L20 50 Z" fill="#78350f"/>
+  <rect x="22" y="43" width="20" height="3" fill="#451a03"/>
+  
+  <!-- Legs -->
+  <rect x="23" y="49" width="6" height="7" rx="1" fill="#22c55e"/>
+  <rect x="35" y="49" width="6" height="7" rx="1" fill="#22c55e"/>
+  <!-- Claws/feet -->
+  <rect x="21" y="54" width="9" height="3" rx="1" fill="#15803d"/>
+  <rect x="34" y="54" width="9" height="3" rx="1" fill="#15803d"/>
+
+  <!-- Goblin Head -->
+  <!-- Left Ear -->
+  <polygon points="12,18 24,24 22,29" fill="#16a34a"/>
+  <!-- Right Ear -->
+  <polygon points="52,18 40,24 42,29" fill="#16a34a"/>
+  <!-- Head shape -->
+  <ellipse cx="32" cy="24" rx="11" ry="10" fill="#22c55e"/>
+  <!-- Beady Yellow Eyes -->
+  <ellipse cx="28" cy="23" rx="2.5" ry="2" fill="#fef08a"/>
+  <circle cx="28.5" cy="23" r="1.2" fill="#b45309"/>
+  <ellipse cx="36" cy="23" rx="2.5" ry="2" fill="#fef08a"/>
+  <circle cx="36.5" cy="23" r="1.2" fill="#b45309"/>
+  <!-- Big Grin / Sharp Teeth -->
+  <path d="M27 29 Q32 34 37 29" stroke="#14532d" stroke-width="2" fill="none"/>
+  <polygon points="29,29 30,31 31,29" fill="#fef9c3"/>
+  <polygon points="33,29 34,31 35,29" fill="#fef9c3"/>
+
+  <!-- Left Hand / Bone Dagger -->
+  <g transform="translate(42, 28) rotate(15)">
+    <!-- Arm -->
+    <rect x="0" y="2" width="6" height="8" rx="2" fill="#22c55e"/>
+    <!-- Bone blade -->
+    <path d="M3 10 L5 8 L7 10 L6 26 L4 26 Z" fill="#e2e8f0"/>
+    <polygon points="5,26 3,28 7,28" fill="#cbd5e1"/>
+    <!-- Crude leather wrap -->
+    <rect x="3" y="10" width="4" height="4" fill="#92400e"/>
+  </g>
+</svg>

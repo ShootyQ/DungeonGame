@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Character Shadow / Base -->
+  <ellipse cx="32" cy="56" rx="18" ry="6" fill="#0a0c10" opacity="0.6"/>
+  
+  <!-- Royal Blue Cloak (behind) -->
+  <path d="M22 28 L16 52 L48 52 L42 28 Z" fill="#1d4ed8"/>
+  <path d="M22 28 L16 52 L26 52 Z" fill="#1e40af"/>
+
+  <!-- Body / Armor Breastplate -->
+  <rect x="24" y="26" width="16" height="18" rx="3" fill="#94a3b8"/>
+  <rect x="26" y="28" width="12" height="14" rx="2" fill="#cbd5e1"/>
+  <!-- Gold trim belt -->
+  <rect x="23" y="41" width="18" height="4" rx="1" fill="#f59e0b"/>
+  <rect x="30" y="40" width="4" height="6" fill="#fbbf24"/>
+  
+  <!-- Legs / Greaves -->
+  <rect x="25" y="45" width="6" height="10" rx="1" fill="#64748b"/>
+  <rect x="33" y="45" width="6" height="10" rx="1" fill="#64748b"/>
+  <rect x="24" y="53" width="8" height="4" rx="1" fill="#475569"/>
+  <rect x="32" y="53" width="8" height="4" rx="1" fill="#475569"/>
+
+  <!-- Helmet & Plume -->
+  <!-- Blue plume -->
+  <path d="M30 4 C28 1, 38 0, 36 12 Z" fill="#3b82f6"/>
+  <path d="M32 4 C34 1, 42 2, 38 12 Z" fill="#60a5fa"/>
+  <!-- Steel Greathelm -->
+  <rect x="23" y="10" width="18" height="16" rx="4" fill="#94a3b8"/>
+  <rect x="25" y="12" width="14" height="12" rx="2" fill="#e2e8f0"/>
+  <!-- Visor slit (T-shape) -->
+  <rect x="26" y="18" width="12" height="3" fill="#0f172a"/>
+  <rect x="31" y="18" width="2" height="7" fill="#0f172a"/>
+
+  <!-- Left Hand: Heater Shield -->
+  <g transform="translate(10, 24)">
+    <!-- Shield body -->
+    <path d="M2 0 L14 0 C14 8, 12 16, 8 20 C4 16, 2 8, 2 0 Z" fill="#2563eb"/>
+    <path d="M2 0 L14 0 C14 8, 12 16, 8 20 C4 16, 2 8, 2 0 Z" stroke="#fbbf24" stroke-width="1.5" fill="none"/>
+    <!-- Gold heraldry cross -->
+    <rect x="7" y="3" width="2" height="12" fill="#fbbf24"/>
+    <rect x="4" y="6" width="8" height="2" fill="#fbbf24"/>
+  </g>
+
+  <!-- Right Hand: Steel Longsword -->
+  <g transform="translate(44, 14)">
+    <!-- Blade -->
+    <path d="M4 2 L6 0 L8 2 L7 24 L5 24 Z" fill="#f8fafc"/>
+    <line x1="6" y1="2" x2="6" y2="24" stroke="#94a3b8" stroke-width="1"/>
+    <!-- Crossguard -->
+    <rect x="1" y="24" width="10" height="3" rx="1" fill="#f59e0b"/>
+    <!-- Grip & Pommel -->
+    <rect x="4.5" y="27" width="3" height="6" fill="#78350f"/>
+    <circle cx="6" cy="34" r="2" fill="#f59e0b"/>
+  </g>
+</svg>

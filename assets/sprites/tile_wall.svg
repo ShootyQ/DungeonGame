@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Deep shadow backing -->
+  <rect width="64" height="64" fill="#0f1117"/>
+  
+  <!-- Wall top rim (ledge depth) -->
+  <rect x="0" y="0" width="64" height="14" fill="#474f61"/>
+  <rect x="0" y="0" width="64" height="3" fill="#646e85"/>
+  <rect x="0" y="11" width="64" height="3" fill="#2c3240"/>
+  
+  <!-- Row 1 Bricks -->
+  <rect x="2" y="16" width="28" height="13" rx="1" fill="#383f4f"/>
+  <rect x="2" y="16" width="28" height="2" fill="#4d566b"/>
+  <rect x="32" y="16" width="30" height="13" rx="1" fill="#343b4a"/>
+  <rect x="32" y="16" width="30" height="2" fill="#485165"/>
+  
+  <!-- Row 2 Bricks (offset) -->
+  <rect x="2" y="31" width="14" height="14" rx="1" fill="#333947"/>
+  <rect x="2" y="31" width="14" height="2" fill="#474f63"/>
+  <rect x="18" y="31" width="28" height="14" rx="1" fill="#3a4151"/>
+  <rect x="18" y="31" width="28" height="2" fill="#505a70"/>
+  <rect x="48" y="31" width="14" height="14" rx="1" fill="#313745"/>
+  <rect x="48" y="31" width="14" height="2" fill="#454d60"/>
+  
+  <!-- Row 3 Bricks -->
+  <rect x="2" y="47" width="26" height="15" rx="1" fill="#2b313d"/>
+  <rect x="30" y="47" width="32" height="15" rx="1" fill="#292f3a"/>
+  
+  <!-- Bottom cast shadow -->
+  <rect x="0" y="60" width="64" height="4" fill="#0a0c10" opacity="0.8"/>
+</svg>

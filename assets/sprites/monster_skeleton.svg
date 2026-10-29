@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Shadow -->
+  <ellipse cx="32" cy="56" rx="16" ry="5" fill="#0a0c10" opacity="0.6"/>
+
+  <!-- Rusty Tattered Loincloth -->
+  <polygon points="26,40 38,40 35,48 29,48" fill="#991b1b"/>
+
+  <!-- Ribcage & Spine -->
+  <line x1="32" y1="26" x2="32" y2="42" stroke="#e2e8f0" stroke-width="3"/>
+  <!-- Ribs -->
+  <path d="M26 29 Q32 31 38 29" stroke="#cbd5e1" stroke-width="2" fill="none"/>
+  <path d="M25 33 Q32 35 39 33" stroke="#cbd5e1" stroke-width="2" fill="none"/>
+  <path d="M27 37 Q32 39 37 37" stroke="#cbd5e1" stroke-width="2" fill="none"/>
+
+  <!-- Pelvis -->
+  <ellipse cx="32" cy="41" rx="6" ry="2" fill="#cbd5e1"/>
+
+  <!-- Bone Legs -->
+  <line x1="28" y1="42" x2="27" y2="54" stroke="#e2e8f0" stroke-width="2.5"/>
+  <line x1="36" y1="42" x2="37" y2="54" stroke="#e2e8f0" stroke-width="2.5"/>
+  <ellipse cx="26" cy="55" rx="3" ry="1.5" fill="#94a3b8"/>
+  <ellipse cx="38" cy="55" rx="3" ry="1.5" fill="#94a3b8"/>
+
+  <!-- Skull -->
+  <rect x="26" y="12" width="12" height="11" rx="4" fill="#f8fafc"/>
+  <rect x="28" y="21" width="8" height="5" rx="1" fill="#f1f5f9"/>
+  <!-- Eye sockets (Glowing evil red) -->
+  <circle cx="29.5" cy="17" r="2.2" fill="#18181b"/>
+  <circle cx="29.5" cy="17" r="1.1" fill="#ef4444"/>
+  <circle cx="34.5" cy="17" r="2.2" fill="#18181b"/>
+  <circle cx="34.5" cy="17" r="1.1" fill="#ef4444"/>
+  <!-- Nose cavity & teeth -->
+  <polygon points="32,19 31,21 33,21" fill="#18181b"/>
+  <line x1="29" y1="24" x2="35" y2="24" stroke="#334155" stroke-width="1"/>
+  <line x1="30" y1="23" x2="30" y2="25" stroke="#334155" stroke-width="0.8"/>
+  <line x1="32" y1="23" x2="32" y2="25" stroke="#334155" stroke-width="0.8"/>
+  <line x1="34" y1="23" x2="34" y2="25" stroke="#334155" stroke-width="0.8"/>
+
+  <!-- Cracked Bronze Helmet -->
+  <path d="M25 14 C25 6, 39 6, 39 14 Z" fill="#b45309"/>
+  <rect x="24" y="12" width="16" height="3" rx="1" fill="#d97706"/>
+  <line x1="30" y1="8" x2="33" y2="12" stroke="#451a03" stroke-width="1"/>
+
+  <!-- Notched Scimitar in Hand -->
+  <g transform="translate(42, 22)">
+    <line x1="0" y1="0" x2="-6" y2="6" stroke="#e2e8f0" stroke-width="2"/> <!-- arm -->
+    <path d="M-2 4 Q12 6 8 26 Q4 20 0 10 Z" fill="#94a3b8"/>
+    <!-- Scimitar notches -->
+    <polygon points="5,14 7,16 6,17" fill="#18181b"/>
+    <rect x="-3" y="4" width="4" height="2" fill="#b45309"/>
+  </g>
+</svg>

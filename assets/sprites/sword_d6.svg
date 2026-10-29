@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Glowing magical aura backing -->
+  <circle cx="32" cy="32" r="28" fill="#1e293b"/>
+  <circle cx="32" cy="32" r="26" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+
+  <!-- Diagonal Blade -->
+  <g transform="rotate(45, 32, 32)">
+    <!-- Blade tip & fuller -->
+    <path d="M30 6 L32 2 L34 6 L33 36 L31 36 Z" fill="#f1f5f9"/>
+    <line x1="32" y1="6" x2="32" y2="35" stroke="#94a3b8" stroke-width="1"/>
+    
+    <!-- D6 Crossguard: A literal isometric D6 embedded as the crossguard! -->
+    <!-- Brass guard wings -->
+    <rect x="20" y="36" width="24" height="4" rx="2" fill="#d97706"/>
+    <!-- Central D6 cube -->
+    <rect x="27" y="34" width="10" height="10" rx="2" fill="#f8fafc" stroke="#1e293b" stroke-width="1"/>
+    <!-- Pips on the D6 crossguard (Face showing 6 pips) -->
+    <circle cx="29.5" cy="36.5" r="1" fill="#dc2626"/>
+    <circle cx="29.5" cy="39" r="1" fill="#dc2626"/>
+    <circle cx="29.5" cy="41.5" r="1" fill="#dc2626"/>
+    <circle cx="34.5" cy="36.5" r="1" fill="#dc2626"/>
+    <circle cx="34.5" cy="39" r="1" fill="#dc2626"/>
+    <circle cx="34.5" cy="41.5" r="1" fill="#dc2626"/>
+
+    <!-- Grip & Pommel -->
+    <rect x="30.5" y="44" width="3" height="10" fill="#7c2d12"/>
+    <circle cx="32" cy="56" r="3" fill="#d97706"/>
+    <circle cx="32" cy="56" r="1.5" fill="#f59e0b"/>
+  </g>
+</svg>

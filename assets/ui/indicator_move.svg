@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Glowing cyan border brackets -->
+  <path d="M4 18 L4 6 C4 4.9 4.9 4 6 4 L18 4" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M46 4 L58 4 C59.1 4 60 4.9 60 6 L60 18" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M60 46 L60 58 C60 59.1 59.1 60 58 60 L46 60" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M18 60 L6 60 C4.9 60 4 59.1 4 58 L4 46" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- Central pulse circle -->
+  <circle cx="32" cy="32" r="8" fill="#38bdf8" opacity="0.3"/>
+  <circle cx="32" cy="32" r="4" fill="#38bdf8"/>
+</svg>
