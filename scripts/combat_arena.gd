@@ -226,10 +226,6 @@ func _create_scene_hierarchy() -> void:
 	prop_container.modulate = Color(0.58, 0.60, 0.68)
 	board_container.add_child(prop_container)
 	
-	door_container = Node2D.new()
-	door_container.z_index = 3
-	board_container.add_child(door_container)
-	
 	chest_container = Node2D.new()
 	chest_container.z_index = 4
 	board_container.add_child(chest_container)
@@ -238,17 +234,21 @@ func _create_scene_hierarchy() -> void:
 	reticle_container.z_index = 5
 	board_container.add_child(reticle_container)
 	
+	fog_container = Node2D.new()
+	fog_container.z_index = 8
+	board_container.add_child(fog_container)
+	
+	door_container = Node2D.new()
+	door_container.z_index = 9 # Closed doors render crisply on top of fog so they are fully visible!
+	board_container.add_child(door_container)
+	
 	unit_container = Node2D.new()
-	unit_container.z_index = 6
+	unit_container.z_index = 10 # Units render on top of doors and fog
 	board_container.add_child(unit_container)
 	
 	lighting_container = Node2D.new()
-	lighting_container.z_index = 8
+	lighting_container.z_index = 12
 	board_container.add_child(lighting_container)
-	
-	fog_container = Node2D.new()
-	fog_container.z_index = 10
-	board_container.add_child(fog_container)
 	
 	effects_container = Node2D.new()
 	effects_container.z_index = 15
@@ -465,12 +465,12 @@ func _get_door_orientation(door_pos: Vector2i, room_id: int) -> String:
 			# Vertical side walls (Left or Right wall of room: runs up-and-down!)
 			if door_pos.x == rect.position.x or door_pos.x == rect.end.x - 1:
 				return "vertical"
-			# Horizontal top wall (North entrance: walking up into room)
+			# Horizontal top wall (corridor is North of room, moving DOWN into room)
 			elif door_pos.y == rect.position.y:
-				return "north"
-			# Horizontal bottom wall (South entrance: walking down into room)
-			elif door_pos.y == rect.end.y - 1:
 				return "south"
+			# Horizontal bottom wall (corridor is South of room, moving UP into room)
+			elif door_pos.y == rect.end.y - 1:
+				return "north"
 				
 	return "vertical"
 
@@ -552,11 +552,7 @@ func _spawn_units() -> void:
 		all_enemies.append(en)
 	
 	for enemy in all_enemies:
-		enemy.visible = true
-		enemy.is_active_in_combat = false
-	
-	for enemy in all_enemies:
-		enemy.visible = true
+		enemy.visible = false # Hidden in the fog until room is breached!
 		enemy.is_active_in_combat = false
 
 func _create_enemy(p_name: String, hp: int, tex_path: String, pos: Vector2i, p_room_id: int, p_type: String = "grunt") -> CombatUnit:
@@ -2070,6 +2066,7 @@ func _open_door(door: Dictionary) -> void:
 	var engaged_monsters: Array[CombatUnit] = []
 	for enemy in all_enemies:
 		if is_instance_valid(enemy) and enemy.is_alive and enemy.current_hp > 0 and enemy.room_id == r_id:
+			enemy.visible = true
 			enemy.is_active_in_combat = true
 			engaged_monsters.append(enemy)
 			_show_floating_text(enemy.position, "!", Color(0.95, 0.2, 0.2))

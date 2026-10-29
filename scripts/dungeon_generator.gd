@@ -146,28 +146,12 @@ static func generate() -> Dictionary:
 	var doors: Array[Dictionary] = []
 	var placed_door_positions: Dictionary = {} # Vector2i -> int (room_id)
 
-	# Carve 2-tile wide corridors between connected room centers and place double-doors at room boundaries
+	# Carve 2-tile wide corridors between connected room centers
 	for conn in active_connections:
-		var r_a = rooms[conn["a"]]
-		var r_b = rooms[conn["b"]]
-		var c1: Vector2i = r_a["center"]
-		var c2: Vector2i = r_b["center"]
+		var c1: Vector2i = rooms[conn["a"]]["center"]
+		var c2: Vector2i = rooms[conn["b"]]["center"]
 		var h_first = (conn["a"] + conn["b"]) % 2 == 0
 		_carve_corridor_with_mode(grid, c1, c2, h_first)
-
-		# Find doorway into Room A (if not Room 0 entrance)
-		if r_a["id"] > 0:
-			var d_tiles_a = _find_corridor_exit_tiles(r_a["rect"], c1, c2, h_first, true)
-			for dt in d_tiles_a:
-				if not placed_door_positions.has(dt):
-					placed_door_positions[dt] = r_a["id"]
-
-		# Find doorway into Room B (if not Room 0 entrance)
-		if r_b["id"] > 0:
-			var d_tiles_b = _find_corridor_exit_tiles(r_b["rect"], c2, c1, not h_first, false)
-			for dt in d_tiles_b:
-				if not placed_door_positions.has(dt):
-					placed_door_positions[dt] = r_b["id"]
 
 	# 6. Re-carve rooms to ensure clean rectangular boundaries after corridor cuts
 	for r in rooms:
@@ -176,7 +160,42 @@ static func generate() -> Dictionary:
 			for x in range(rect.position.x, rect.end.x):
 				grid[y][x] = 0
 
-	# 7. Apply doors to grid
+	# 7. Identify doorway connections on ALL 4 sides of each room
+	for r in rooms:
+		if r["id"] == 0:
+			continue # Room 0 (Entrance) has open archways
+			
+		var rect: Rect2i = r["rect"]
+		
+		# Top wall (corridor enters from North)
+		var y_top = rect.position.y
+		if y_top - 1 >= 0:
+			for x in range(rect.position.x, rect.end.x):
+				if grid[y_top - 1][x] == 0: # Corridor floor outside top wall
+					placed_door_positions[Vector2i(x, y_top)] = r["id"]
+
+		# Bottom wall (corridor enters from South)
+		var y_bot = rect.end.y - 1
+		if y_bot + 1 < GRID_HEIGHT:
+			for x in range(rect.position.x, rect.end.x):
+				if grid[y_bot + 1][x] == 0: # Corridor floor outside bottom wall
+					placed_door_positions[Vector2i(x, y_bot)] = r["id"]
+
+		# Left wall (corridor enters from West)
+		var x_left = rect.position.x
+		if x_left - 1 >= 0:
+			for y in range(rect.position.y, rect.end.y):
+				if grid[y][x_left - 1] == 0: # Corridor floor outside left wall
+					placed_door_positions[Vector2i(x_left, y)] = r["id"]
+
+		# Right wall (corridor enters from East)
+		var x_right = rect.end.x - 1
+		if x_right + 1 < GRID_WIDTH:
+			for y in range(rect.position.y, rect.end.y):
+				if grid[y][x_right + 1] == 0: # Corridor floor outside right wall
+					placed_door_positions[Vector2i(x_right, y)] = r["id"]
+
+	# Apply doors to grid
 	for pos in placed_door_positions:
 		var rid = placed_door_positions[pos]
 		grid[pos.y][pos.x] = 2 # Door
