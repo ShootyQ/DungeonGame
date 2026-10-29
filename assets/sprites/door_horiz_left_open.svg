@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Clean stone floor visible beneath archway -->
+  <rect width="64" height="64" fill="#2d3340"/>
+  <rect x="8" y="10" width="24" height="20" fill="#333a48" rx="1"/>
+  <rect x="36" y="10" width="26" height="20" fill="#333a48" rx="1"/>
+  <rect x="8" y="34" width="26" height="26" fill="#333a48" rx="1"/>
+  <rect x="38" y="34" width="24" height="26" fill="#333a48" rx="1"/>
+  
+  <!-- Left stone pillar jamb & Top lintel -->
+  <rect x="0" y="0" width="8" height="64" fill="#383f4f"/>
+  <rect x="0" y="0" width="64" height="8" fill="#4d566b"/>
+  <line x1="8" y1="8" x2="64" y2="8" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="8" y1="0" x2="8" y2="64" stroke="#1e293b" stroke-width="1.5"/>
+
+  <!-- Left Door leaf swung open inward flat against left jamb -->
+  <polygon points="8,8 16,14 16,62 8,60" fill="#451a03"/>
+  <line x1="16" y1="14" x2="16" y2="62" stroke="#1e293b" stroke-width="2"/>
+  <circle cx="12" cy="22" r="1.5" fill="#94a3b8"/>
+  <circle cx="12" cy="48" r="1.5" fill="#94a3b8"/>
+
+  <!-- Warm ambient light spill through left portal -->
+  <polygon points="16,14 64,14 64,64 8,64" fill="#fef08a" opacity="0.12"/>
+</svg>

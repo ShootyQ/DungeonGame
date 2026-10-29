@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Floor visible beneath archway -->
+  <rect width="64" height="64" fill="#2d3340"/>
+  <rect x="8" y="2" width="22" height="24" fill="#333a48" rx="1"/>
+  <rect x="34" y="2" width="22" height="24" fill="#333a48" rx="1"/>
+  <rect x="8" y="30" width="22" height="22" fill="#333a48" rx="1"/>
+  <rect x="34" y="30" width="22" height="22" fill="#333a48" rx="1"/>
+  
+  <!-- Bottom stone lintel & Side jambs -->
+  <rect x="0" y="56" width="64" height="8" fill="#4d566b"/>
+  <rect x="0" y="0" width="6" height="64" fill="#383f4f"/>
+  <rect x="58" y="0" width="6" height="64" fill="#383f4f"/>
+
+  <!-- Bottom Door leaf swung open downward against bottom lintel -->
+  <polygon points="6,56 14,48 50,48 58,56" fill="#451a03"/>
+  <line x1="14" y1="48" x2="50" y2="48" stroke="#1e293b" stroke-width="2"/>
+  <circle cx="24" cy="52" r="1.5" fill="#94a3b8"/>
+  <circle cx="40" cy="52" r="1.5" fill="#94a3b8"/>
+
+  <!-- Warm ambient light spill through bottom portal -->
+  <polygon points="6,0 58,0 50,48 14,48" fill="#fef08a" opacity="0.12"/>
+</svg>

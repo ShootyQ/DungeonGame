@@ -160,65 +160,83 @@ static func generate() -> Dictionary:
 			for x in range(rect.position.x, rect.end.x):
 				grid[y][x] = 0
 
-	# 7. Identify doorway connections on ALL 4 sides of each room
+	# 7. Identify clean 2-tile wide double-door entrances on all 4 sides of each room
 	for r in rooms:
 		if r["id"] == 0:
 			continue # Room 0 (Entrance) has open archways
 			
 		var rect: Rect2i = r["rect"]
+		var r_doors: Array[Dictionary] = []
 		
 		# Top wall (corridor enters from North)
 		var y_top = rect.position.y
 		if y_top - 1 >= 0:
-			for x in range(rect.position.x, rect.end.x):
-				if grid[y_top - 1][x] == 0: # Corridor floor outside top wall
-					placed_door_positions[Vector2i(x, y_top)] = r["id"]
+			var x = rect.position.x
+			while x < rect.end.x - 1:
+				if grid[y_top - 1][x] == 0 and grid[y_top - 1][x + 1] == 0:
+					var p_left = Vector2i(x, y_top)
+					var p_right = Vector2i(x + 1, y_top)
+					r_doors.append({"pos": p_left, "room_id": r["id"], "orientation": "horizontal", "part": "left"})
+					r_doors.append({"pos": p_right, "room_id": r["id"], "orientation": "horizontal", "part": "right"})
+					x += 2
+				else:
+					x += 1
 
 		# Bottom wall (corridor enters from South)
 		var y_bot = rect.end.y - 1
 		if y_bot + 1 < GRID_HEIGHT:
-			for x in range(rect.position.x, rect.end.x):
-				if grid[y_bot + 1][x] == 0: # Corridor floor outside bottom wall
-					placed_door_positions[Vector2i(x, y_bot)] = r["id"]
+			var x = rect.position.x
+			while x < rect.end.x - 1:
+				if grid[y_bot + 1][x] == 0 and grid[y_bot + 1][x + 1] == 0:
+					var p_left = Vector2i(x, y_bot)
+					var p_right = Vector2i(x + 1, y_bot)
+					r_doors.append({"pos": p_left, "room_id": r["id"], "orientation": "horizontal", "part": "left"})
+					r_doors.append({"pos": p_right, "room_id": r["id"], "orientation": "horizontal", "part": "right"})
+					x += 2
+				else:
+					x += 1
 
 		# Left wall (corridor enters from West)
 		var x_left = rect.position.x
 		if x_left - 1 >= 0:
-			for y in range(rect.position.y, rect.end.y):
-				if grid[y][x_left - 1] == 0: # Corridor floor outside left wall
-					placed_door_positions[Vector2i(x_left, y)] = r["id"]
+			var y = rect.position.y
+			while y < rect.end.y - 1:
+				if grid[y][x_left - 1] == 0 and grid[y + 1][x_left - 1] == 0:
+					var p_top = Vector2i(x_left, y)
+					var p_bot = Vector2i(x_left, y + 1)
+					r_doors.append({"pos": p_top, "room_id": r["id"], "orientation": "vertical", "part": "top"})
+					r_doors.append({"pos": p_bot, "room_id": r["id"], "orientation": "vertical", "part": "bottom"})
+					y += 2
+				else:
+					y += 1
 
 		# Right wall (corridor enters from East)
 		var x_right = rect.end.x - 1
 		if x_right + 1 < GRID_WIDTH:
-			for y in range(rect.position.y, rect.end.y):
-				if grid[y][x_right + 1] == 0: # Corridor floor outside right wall
-					placed_door_positions[Vector2i(x_right, y)] = r["id"]
+			var y = rect.position.y
+			while y < rect.end.y - 1:
+				if grid[y][x_right + 1] == 0 and grid[y + 1][x_right + 1] == 0:
+					var p_top = Vector2i(x_right, y)
+					var p_bot = Vector2i(x_right, y + 1)
+					r_doors.append({"pos": p_top, "room_id": r["id"], "orientation": "vertical", "part": "top"})
+					r_doors.append({"pos": p_bot, "room_id": r["id"], "orientation": "vertical", "part": "bottom"})
+					y += 2
+				else:
+					y += 1
 
-	# Apply doors to grid
-	for pos in placed_door_positions:
-		var rid = placed_door_positions[pos]
-		grid[pos.y][pos.x] = 2 # Door
-		doors.append({
-			"pos": pos,
-			"room_id": rid
-		})
-		for r in rooms:
-			if r["id"] == rid:
-				r["door_positions"].append(pos)
-				break
+		# Fallback: if room has no door yet, find any adjacent floor
+		if r_doors.is_empty():
+			var center_y = rect.position.y + int(rect.size.y * 0.5)
+			var p_top = Vector2i(rect.position.x, center_y)
+			var p_bot = Vector2i(rect.position.x, center_y + 1)
+			r_doors.append({"pos": p_top, "room_id": r["id"], "orientation": "vertical", "part": "top"})
+			r_doors.append({"pos": p_bot, "room_id": r["id"], "orientation": "vertical", "part": "bottom"})
 
-	# Ensure every hostile room has at least one door
-	for r in rooms:
-		if r["id"] > 0 and r["door_positions"].is_empty():
-			var rect: Rect2i = r["rect"]
-			var d1 = Vector2i(rect.position.x, rect.position.y + int(rect.size.y * 0.5))
-			var d2 = Vector2i(rect.position.x, d1.y + 1)
-			grid[d1.y][d1.x] = 2
-			grid[d2.y][d2.x] = 2
-			r["door_positions"].append_array([d1, d2])
-			doors.append({"pos": d1, "room_id": r["id"]})
-			doors.append({"pos": d2, "room_id": r["id"]})
+		for d in r_doors:
+			var p = d["pos"]
+			grid[p.y][p.x] = 2 # Door tile
+			doors.append(d)
+			r["door_positions"].append(p)
 
 	# 8. Decorate rooms with themed special floors, walls, props, chests & monsters
 	var special_floors: Dictionary = {}
@@ -228,11 +246,10 @@ static func generate() -> Dictionary:
 	var chests: Array[Dictionary] = []
 	var enemies: Array[Dictionary] = []
 
-	# Place corridor torches every few steps
+	# Place corridor torches every few steps ONLY on solid walls with floor below
 	for y in range(2, GRID_HEIGHT - 2):
 		for x in range(2, GRID_WIDTH - 2):
 			if grid[y][x] == 0:
-				# Check if this is in a corridor (not inside any room)
 				var in_room = false
 				for r in rooms:
 					if r["rect"].has_point(Vector2i(x, y)):
@@ -240,7 +257,7 @@ static func generate() -> Dictionary:
 						break
 				if not in_room:
 					# Wall north of this corridor floor
-					if grid[y - 1][x] == 1 and (x % 6 == 0):
+					if grid[y - 1][x] == 1 and (x % 7 == 0):
 						torches.append(Vector2i(x, y - 1))
 					# Puddle or drain in corridor occasionally
 					var ch = (x * 37 + y * 19) % 100
@@ -260,12 +277,16 @@ static func generate() -> Dictionary:
 		var r_id = r["id"]
 		var center: Vector2i = r["center"]
 
-		# Place room perimeter torches & wall alcoves
-		torches.append(Vector2i(rect.position.x + 2, rect.position.y))
-		torches.append(Vector2i(rect.end.x - 3, rect.position.y))
-		if rect.size.y > 7:
-			torches.append(Vector2i(rect.position.x + 2, rect.end.y - 1))
-			torches.append(Vector2i(rect.end.x - 3, rect.end.y - 1))
+		# Place room torches ONLY on solid wall tiles (grid == 1) directly above floor (grid == 0)
+		var candidate_torches = [
+			Vector2i(rect.position.x + 2, rect.position.y - 1),
+			Vector2i(rect.end.x - 3, rect.position.y - 1),
+			Vector2i(center.x, rect.position.y - 1)
+		]
+		for tp in candidate_torches:
+			if tp.x >= 0 and tp.x < GRID_WIDTH and tp.y >= 0 and tp.y + 1 < GRID_HEIGHT:
+				if grid[tp.y][tp.x] == 1 and grid[tp.y + 1][tp.x] == 0:
+					torches.append(tp)
 
 		# Wall alcoves & wall chains
 		if biome in ["shrine", "crypt", "boss"]:
