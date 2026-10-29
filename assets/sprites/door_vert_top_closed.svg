@@ -1,35 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Floor / shadow background -->
-  <rect width="64" height="64" fill="#181b22"/>
-  
-  <!-- Top stone lintel & Side jamb reveals -->
-  <rect x="0" y="0" width="64" height="8" fill="#4d566b"/>
-  <rect x="0" y="0" width="6" height="64" fill="#383f4f"/>
-  <rect x="58" y="0" width="6" height="64" fill="#383f4f"/>
-  <line x1="0" y1="8" x2="64" y2="8" stroke="#1e293b" stroke-width="1.5"/>
+  <!-- Dark floor & doorway shadow -->
+  <rect width="64" height="64" fill="#0b0f17"/>
+  <rect x="10" y="10" width="44" height="54" fill="#131823"/>
 
-  <!-- Top Door Leaf (y=8 to 64) -->
-  <rect x="6" y="8" width="52" height="56" fill="#5c2e0b"/>
-  <rect x="8" y="10" width="48" height="15" fill="#78350f" rx="1"/>
-  <rect x="8" y="28" width="48" height="15" fill="#78350f" rx="1"/>
-  <rect x="8" y="46" width="48" height="16" fill="#78350f" rx="1"/>
+  <!-- Left & Right Stone Jambs -->
+  <rect x="0" y="0" width="10" height="64" fill="#334155"/>
+  <rect x="0" y="0" width="8" height="64" fill="#475569"/>
+  <line x1="0" y1="32" x2="10" y2="32" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="10" y1="0" x2="10" y2="64" stroke="#0f172a" stroke-width="2"/>
 
-  <!-- Vertical iron reinforcement bands -->
-  <rect x="16" y="8" width="6" height="56" fill="#1e293b"/>
-  <rect x="42" y="8" width="6" height="56" fill="#1e293b"/>
-  
-  <!-- Iron rivets -->
-  <circle cx="19" cy="18" r="1.5" fill="#94a3b8"/>
-  <circle cx="19" cy="36" r="1.5" fill="#94a3b8"/>
-  <circle cx="19" cy="54" r="1.5" fill="#94a3b8"/>
-  <circle cx="45" cy="18" r="1.5" fill="#94a3b8"/>
-  <circle cx="45" cy="36" r="1.5" fill="#94a3b8"/>
-  <circle cx="45" cy="54" r="1.5" fill="#94a3b8"/>
+  <rect x="54" y="0" width="10" height="64" fill="#334155"/>
+  <rect x="56" y="0" width="8" height="64" fill="#475569"/>
+  <line x1="54" y1="32" x2="64" y2="32" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="54" y1="0" x2="54" y2="64" stroke="#0f172a" stroke-width="2"/>
 
-  <!-- Center meeting latch / Ring handle near bottom seam -->
-  <circle cx="32" cy="52" r="3.5" fill="none" stroke="#f1f5f9" stroke-width="1.5"/>
-  <circle cx="32" cy="49" r="1.5" fill="#94a3b8"/>
+  <!-- Top Stone Lintel -->
+  <rect x="0" y="0" width="64" height="10" fill="#334155"/>
+  <rect x="0" y="0" width="64" height="8" fill="#475569"/>
+  <line x1="10" y1="10" x2="54" y2="10" stroke="#0f172a" stroke-width="2"/>
 
-  <!-- Center meeting seam shadow -->
-  <line x1="6" y1="63.5" x2="58" y2="63.5" stroke="#181b22" stroke-width="1"/>
+  <!-- Vertical Iron Bars (Top Half) running straight down into bottom leaf -->
+  <!-- Bar 1 (x=17) -->
+  <rect x="17" y="8" width="5" height="56" fill="#1e293b"/>
+  <rect x="18" y="8" width="2" height="56" fill="#64748b"/>
+
+  <!-- Bar 2 (x=29) -->
+  <rect x="29" y="8" width="5" height="56" fill="#1e293b"/>
+  <rect x="30" y="8" width="2" height="56" fill="#64748b"/>
+
+  <!-- Bar 3 (x=41) -->
+  <rect x="41" y="8" width="5" height="56" fill="#1e293b"/>
+  <rect x="42" y="8" width="2" height="56" fill="#64748b"/>
+
+  <!-- Horizontal Cross-Brace -->
+  <rect x="10" y="28" width="44" height="5" fill="#1e293b"/>
+  <rect x="10" y="29" width="44" height="2" fill="#475569"/>
+
+  <!-- Stud Rivets -->
+  <circle cx="19.5" cy="30.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="31.5" cy="30.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="43.5" cy="30.5" r="1.5" fill="#cbd5e1"/>
 </svg>

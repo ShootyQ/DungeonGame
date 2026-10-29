@@ -1,36 +1,60 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Floor / shadow background -->
-  <rect width="64" height="64" fill="#181b22"/>
+  <!-- Dark floor & doorway shadow -->
+  <rect width="64" height="64" fill="#0b0f17"/>
+  <rect x="0" y="10" width="54" height="54" fill="#131823"/>
+
+  <!-- Right Stone Pillar Jamb -->
+  <rect x="54" y="0" width="10" height="64" fill="#334155"/>
+  <rect x="56" y="0" width="8" height="64" fill="#475569"/>
+  <line x1="54" y1="20" x2="64" y2="20" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="54" y1="42" x2="64" y2="42" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="54" y1="0" x2="54" y2="64" stroke="#0f172a" stroke-width="2"/>
+
+  <!-- Top Stone Lintel Arch -->
+  <rect x="0" y="0" width="64" height="10" fill="#334155"/>
+  <rect x="0" y="0" width="64" height="8" fill="#475569"/>
+  <line x1="0" y1="10" x2="54" y2="10" stroke="#0f172a" stroke-width="2"/>
+
+  <!-- Vertical Iron Portcullis Bars (Right Half) -->
+  <!-- Bar 1 (x=7) -->
+  <rect x="7" y="8" width="5" height="46" fill="#1e293b"/>
+  <rect x="8" y="8" width="2" height="46" fill="#64748b"/>
+  <polygon points="7,54 12,54 9.5,60" fill="#94a3b8"/>
+
+  <!-- Bar 2 (x=19) -->
+  <rect x="19" y="8" width="5" height="46" fill="#1e293b"/>
+  <rect x="20" y="8" width="2" height="46" fill="#64748b"/>
+  <polygon points="19,54 24,54 21.5,60" fill="#94a3b8"/>
+
+  <!-- Bar 3 (x=31) -->
+  <rect x="31" y="8" width="5" height="46" fill="#1e293b"/>
+  <rect x="32" y="8" width="2" height="46" fill="#64748b"/>
+  <polygon points="31,54 36,54 33.5,60" fill="#94a3b8"/>
+
+  <!-- Bar 4 (x=43) -->
+  <rect x="43" y="8" width="5" height="46" fill="#1e293b"/>
+  <rect x="44" y="8" width="2" height="46" fill="#64748b"/>
+  <polygon points="43,54 48,54 45.5,60" fill="#94a3b8"/>
+
+  <!-- Horizontal Iron Cross-Braces -->
+  <rect x="0" y="18" width="54" height="5" fill="#1e293b"/>
+  <rect x="0" y="19" width="54" height="2" fill="#475569"/>
   
-  <!-- Right stone pillar jamb & Top lintel -->
-  <rect x="56" y="0" width="8" height="64" fill="#383f4f"/>
-  <rect x="0" y="0" width="64" height="8" fill="#4d566b"/>
-  <line x1="0" y1="8" x2="56" y2="8" stroke="#1e293b" stroke-width="1.5"/>
-  <line x1="56" y1="0" x2="56" y2="64" stroke="#1e293b" stroke-width="1.5"/>
+  <rect x="0" y="38" width="54" height="5" fill="#1e293b"/>
+  <rect x="0" y="39" width="54" height="2" fill="#475569"/>
 
-  <!-- Right Door Leaf (x=0 to 56) -->
-  <rect x="0" y="8" width="56" height="52" fill="#5c2e0b"/>
-  <rect x="2" y="10" width="16" height="48" fill="#78350f" rx="1"/>
-  <rect x="20" y="10" width="16" height="48" fill="#78350f" rx="1"/>
-  <rect x="38" y="10" width="16" height="48" fill="#78350f" rx="1"/>
+  <!-- Iron Rivet Studs -->
+  <circle cx="9.5" cy="20.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="21.5" cy="20.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="33.5" cy="20.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="45.5" cy="20.5" r="1.5" fill="#cbd5e1"/>
 
-  <!-- Horizontal iron reinforcement bands -->
-  <rect x="0" y="18" width="56" height="6" fill="#1e293b"/>
-  <rect x="0" y="44" width="56" height="6" fill="#1e293b"/>
-  
-  <!-- Iron rivets -->
-  <circle cx="12" cy="21" r="1.5" fill="#94a3b8"/>
-  <circle cx="30" cy="21" r="1.5" fill="#94a3b8"/>
-  <circle cx="48" cy="21" r="1.5" fill="#94a3b8"/>
-  <circle cx="12" cy="47" r="1.5" fill="#94a3b8"/>
-  <circle cx="30" cy="47" r="1.5" fill="#94a3b8"/>
-  <circle cx="48" cy="47" r="1.5" fill="#94a3b8"/>
+  <circle cx="9.5" cy="40.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="21.5" cy="40.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="33.5" cy="40.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="45.5" cy="40.5" r="1.5" fill="#cbd5e1"/>
 
-  <!-- Right Ring Handle near center seam -->
-  <circle cx="10" cy="33" r="3.5" fill="none" stroke="#f1f5f9" stroke-width="1.5"/>
-  <circle cx="10" cy="30" r="1.5" fill="#94a3b8"/>
-
-  <!-- Center meeting seam shadow -->
-  <line x1="0.5" y1="8" x2="0.5" y2="60" stroke="#181b22" stroke-width="1"/>
-  <rect x="0" y="60" width="64" height="4" fill="#181b22" opacity="0.6"/>
+  <!-- Center Meeting Latch Receiver on Right Leaf -->
+  <rect x="0" y="27" width="5" height="12" fill="#0f172a" rx="1"/>
+  <rect x="0" y="29" width="4" height="8" fill="#475569" rx="1"/>
 </svg>

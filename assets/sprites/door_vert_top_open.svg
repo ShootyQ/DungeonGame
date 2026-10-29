@@ -1,22 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Floor visible beneath archway -->
-  <rect width="64" height="64" fill="#2d3340"/>
-  <rect x="8" y="10" width="22" height="24" fill="#333a48" rx="1"/>
-  <rect x="34" y="10" width="22" height="24" fill="#333a48" rx="1"/>
-  <rect x="8" y="38" width="22" height="24" fill="#333a48" rx="1"/>
-  <rect x="34" y="38" width="22" height="24" fill="#333a48" rx="1"/>
-  
-  <!-- Top stone lintel & Side jambs -->
-  <rect x="0" y="0" width="64" height="8" fill="#4d566b"/>
-  <rect x="0" y="0" width="6" height="64" fill="#383f4f"/>
-  <rect x="58" y="0" width="6" height="64" fill="#383f4f"/>
+  <!-- Clean stone floor visible beneath raised portcullis -->
+  <rect width="64" height="64" fill="#1e2430"/>
+  <rect x="14" y="14" width="36" height="22" fill="#29303d" rx="1"/>
+  <rect x="14" y="40" width="36" height="22" fill="#29303d" rx="1"/>
 
-  <!-- Top Door leaf swung open upward against top lintel -->
-  <polygon points="6,8 14,16 50,16 58,8" fill="#451a03"/>
-  <line x1="14" y1="16" x2="50" y2="16" stroke="#1e293b" stroke-width="2"/>
-  <circle cx="24" cy="12" r="1.5" fill="#94a3b8"/>
-  <circle cx="40" cy="12" r="1.5" fill="#94a3b8"/>
+  <!-- Left & Right Stone Jambs -->
+  <rect x="0" y="0" width="10" height="64" fill="#334155"/>
+  <rect x="0" y="0" width="8" height="64" fill="#475569"/>
+  <line x1="0" y1="32" x2="10" y2="32" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="10" y1="0" x2="10" y2="64" stroke="#0f172a" stroke-width="2"/>
 
-  <!-- Warm ambient light spill through top portal -->
-  <polygon points="14,16 50,16 58,64 6,64" fill="#fef08a" opacity="0.12"/>
+  <rect x="54" y="0" width="10" height="64" fill="#334155"/>
+  <rect x="56" y="0" width="8" height="64" fill="#475569"/>
+  <line x1="54" y1="32" x2="64" y2="32" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="54" y1="0" x2="54" y2="64" stroke="#0f172a" stroke-width="2"/>
+
+  <!-- Top Stone Lintel Arch -->
+  <rect x="0" y="0" width="64" height="12" fill="#334155"/>
+  <rect x="0" y="0" width="64" height="10" fill="#475569"/>
+  <line x1="10" y1="12" x2="54" y2="12" stroke="#0f172a" stroke-width="2"/>
+
+  <!-- Raised Portcullis Spikes retracted up into archway ceiling -->
+  <polygon points="17,12 22,12 19.5,18" fill="#94a3b8"/>
+  <polygon points="29,12 34,12 31.5,18" fill="#94a3b8"/>
+  <polygon points="41,12 46,12 43.5,18" fill="#94a3b8"/>
+
+  <!-- Warm ambient light spill through open portal -->
+  <polygon points="10,12 54,12 54,64 10,64" fill="#f59e0b" opacity="0.08"/>
 </svg>

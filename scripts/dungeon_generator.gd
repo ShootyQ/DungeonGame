@@ -161,7 +161,8 @@ static func generate() -> Dictionary:
 				grid[y][x] = 0
 
 	# 7. Identify clean 2-tile wide double-door entrances on walls of each room
-	# Seal excess width and corner clips so every entrance is an exact 2-tile double door
+	# Every wall (North, South, West, East) gets at most ONE clean 2-tile doorway.
+	# Corners are strictly sealed as solid bedrock walls so horizontal and vertical doors never clash.
 	placed_door_positions.clear()
 
 	for r in rooms:
@@ -171,126 +172,143 @@ static func generate() -> Dictionary:
 		var rect: Rect2i = r["rect"]
 		var r_doors: Array[Dictionary] = []
 		
-		# Helper to try placing a horizontal double-door at (dx, y) and (dx+1, y)
-		var try_place_horiz = func(dx: int, y: int, x_start: int, x_end: int) -> bool:
+		# Helper to place a horizontal double-door at (dx, y) and (dx+1, y)
+		var place_horiz_door = func(dx: int, y: int) -> void:
 			var p1 = Vector2i(dx, y)
 			var p2 = Vector2i(dx + 1, y)
-			if not placed_door_positions.has(p1) and not placed_door_positions.has(p2):
-				var d1 = {"pos": p1, "room_id": r["id"], "orientation": "horizontal", "part": "left"}
-				var d2 = {"pos": p2, "room_id": r["id"], "orientation": "horizontal", "part": "right"}
-				r_doors.append(d1)
-				r_doors.append(d2)
-				placed_door_positions[p1] = true
-				placed_door_positions[p2] = true
-				# Seal extra opening tiles along this contiguous run so doorway is strictly 2-tiles wide
-				for ex in range(x_start, x_end + 1):
-					if ex != dx and ex != dx + 1:
-						grid[y][ex] = 1
-				return true
-			else:
-				# If door already placed or conflict, seal remaining open tiles
-				for ex in range(x_start, x_end + 1):
-					if not placed_door_positions.has(Vector2i(ex, y)):
-						grid[y][ex] = 1
-				return false
+			var d1 = {"pos": p1, "room_id": r["id"], "orientation": "horizontal", "part": "left"}
+			var d2 = {"pos": p2, "room_id": r["id"], "orientation": "horizontal", "part": "right"}
+			r_doors.append(d1)
+			r_doors.append(d2)
+			placed_door_positions[p1] = true
+			placed_door_positions[p2] = true
 
-		# Helper to try placing a vertical double-door at (x, dy) and (x, dy+1)
-		var try_place_vert = func(x: int, dy: int, y_start: int, y_end: int) -> bool:
+		# Helper to place a vertical double-door at (x, dy) and (x, dy+1)
+		var place_vert_door = func(x: int, dy: int) -> void:
 			var p1 = Vector2i(x, dy)
 			var p2 = Vector2i(x, dy + 1)
-			if not placed_door_positions.has(p1) and not placed_door_positions.has(p2):
-				var d1 = {"pos": p1, "room_id": r["id"], "orientation": "vertical", "part": "top"}
-				var d2 = {"pos": p2, "room_id": r["id"], "orientation": "vertical", "part": "bottom"}
-				r_doors.append(d1)
-				r_doors.append(d2)
-				placed_door_positions[p1] = true
-				placed_door_positions[p2] = true
-				for ey in range(y_start, y_end + 1):
-					if ey != dy and ey != dy + 1:
-						grid[ey][x] = 1
-				return true
-			else:
-				for ey in range(y_start, y_end + 1):
-					if not placed_door_positions.has(Vector2i(x, ey)):
-						grid[ey][x] = 1
-				return false
+			var d1 = {"pos": p1, "room_id": r["id"], "orientation": "vertical", "part": "top"}
+			var d2 = {"pos": p2, "room_id": r["id"], "orientation": "vertical", "part": "bottom"}
+			r_doors.append(d1)
+			r_doors.append(d2)
+			placed_door_positions[p1] = true
+			placed_door_positions[p2] = true
+
+		# Seal all 4 room corners to solid wall (1) to prevent any corner conflicts
+		grid[rect.position.y][rect.position.x] = 1
+		grid[rect.position.y][rect.end.x - 1] = 1
+		grid[rect.end.y - 1][rect.position.x] = 1
+		grid[rect.end.y - 1][rect.end.x - 1] = 1
 
 		# Top wall (corridor enters from North)
 		var y_top = rect.position.y
 		if y_top - 1 >= 0:
-			var x = rect.position.x
-			while x < rect.end.x:
+			var best_run_start = -1
+			var best_run_len = 0
+			var x = rect.position.x + 1
+			while x <= rect.end.x - 2:
 				if grid[y_top - 1][x] == 0:
-					var x_start = x
-					while x < rect.end.x and grid[y_top - 1][x] == 0:
+					var run_start = x
+					while x <= rect.end.x - 2 and grid[y_top - 1][x] == 0:
 						x += 1
-					var x_end = x - 1
-					var run_len = x_end - x_start + 1
-					if run_len >= 2:
-						var dx = x_start + int((run_len - 2) * 0.5)
-						try_place_horiz.call(dx, y_top, x_start, x_end)
-					else:
-						# 1-tile accidental clip at corner: seal it with wall
-						grid[y_top][x_start] = 1
+					var cur_len = x - run_start
+					if cur_len > best_run_len:
+						best_run_len = cur_len
+						best_run_start = run_start
 				else:
 					x += 1
+			if best_run_len >= 2:
+				var dx = clampi(best_run_start + int((best_run_len - 2) * 0.5), rect.position.x + 1, rect.end.x - 3)
+				place_horiz_door.call(dx, y_top)
+				# Seal remaining tiles on top wall to solid wall
+				for ex in range(rect.position.x + 1, rect.end.x - 1):
+					if ex != dx and ex != dx + 1:
+						grid[y_top][ex] = 1
+			else:
+				# Seal top wall completely if no valid 2-tile corridor entrance
+				for ex in range(rect.position.x + 1, rect.end.x - 1):
+					grid[y_top][ex] = 1
 
 		# Bottom wall (corridor enters from South)
 		var y_bot = rect.end.y - 1
 		if y_bot + 1 < GRID_HEIGHT:
-			var x = rect.position.x
-			while x < rect.end.x:
+			var best_run_start = -1
+			var best_run_len = 0
+			var x = rect.position.x + 1
+			while x <= rect.end.x - 2:
 				if grid[y_bot + 1][x] == 0:
-					var x_start = x
-					while x < rect.end.x and grid[y_bot + 1][x] == 0:
+					var run_start = x
+					while x <= rect.end.x - 2 and grid[y_bot + 1][x] == 0:
 						x += 1
-					var x_end = x - 1
-					var run_len = x_end - x_start + 1
-					if run_len >= 2:
-						var dx = x_start + int((run_len - 2) * 0.5)
-						try_place_horiz.call(dx, y_bot, x_start, x_end)
-					else:
-						grid[y_bot][x_start] = 1
+					var cur_len = x - run_start
+					if cur_len > best_run_len:
+						best_run_len = cur_len
+						best_run_start = run_start
 				else:
 					x += 1
+			if best_run_len >= 2:
+				var dx = clampi(best_run_start + int((best_run_len - 2) * 0.5), rect.position.x + 1, rect.end.x - 3)
+				place_horiz_door.call(dx, y_bot)
+				for ex in range(rect.position.x + 1, rect.end.x - 1):
+					if ex != dx and ex != dx + 1:
+						grid[y_bot][ex] = 1
+			else:
+				for ex in range(rect.position.x + 1, rect.end.x - 1):
+					grid[y_bot][ex] = 1
 
 		# West wall (corridor enters from West)
 		var x_left = rect.position.x
 		if x_left - 1 >= 0:
-			var y = rect.position.y
-			while y < rect.end.y:
+			var best_run_start = -1
+			var best_run_len = 0
+			var y = rect.position.y + 1
+			while y <= rect.end.y - 2:
 				if grid[y][x_left - 1] == 0:
-					var y_start = y
-					while y < rect.end.y and grid[y][x_left - 1] == 0:
+					var run_start = y
+					while y <= rect.end.y - 2 and grid[y][x_left - 1] == 0:
 						y += 1
-					var y_end = y - 1
-					var run_len = y_end - y_start + 1
-					if run_len >= 2:
-						var dy = y_start + int((run_len - 2) * 0.5)
-						try_place_vert.call(x_left, dy, y_start, y_end)
-					else:
-						grid[y_start][x_left] = 1
+					var cur_len = y - run_start
+					if cur_len > best_run_len:
+						best_run_len = cur_len
+						best_run_start = run_start
 				else:
 					y += 1
+			if best_run_len >= 2:
+				var dy = clampi(best_run_start + int((best_run_len - 2) * 0.5), rect.position.y + 1, rect.end.y - 3)
+				place_vert_door.call(x_left, dy)
+				for ey in range(rect.position.y + 1, rect.end.y - 1):
+					if ey != dy and ey != dy + 1:
+						grid[ey][x_left] = 1
+			else:
+				for ey in range(rect.position.y + 1, rect.end.y - 1):
+					grid[ey][x_left] = 1
 
 		# East wall (corridor enters from East)
 		var x_right = rect.end.x - 1
 		if x_right + 1 < GRID_WIDTH:
-			var y = rect.position.y
-			while y < rect.end.y:
+			var best_run_start = -1
+			var best_run_len = 0
+			var y = rect.position.y + 1
+			while y <= rect.end.y - 2:
 				if grid[y][x_right + 1] == 0:
-					var y_start = y
-					while y < rect.end.y and grid[y][x_right + 1] == 0:
+					var run_start = y
+					while y <= rect.end.y - 2 and grid[y][x_right + 1] == 0:
 						y += 1
-					var y_end = y - 1
-					var run_len = y_end - y_start + 1
-					if run_len >= 2:
-						var dy = y_start + int((run_len - 2) * 0.5)
-						try_place_vert.call(x_right, dy, y_start, y_end)
-					else:
-						grid[y_start][x_right] = 1
+					var cur_len = y - run_start
+					if cur_len > best_run_len:
+						best_run_len = cur_len
+						best_run_start = run_start
 				else:
 					y += 1
+			if best_run_len >= 2:
+				var dy = clampi(best_run_start + int((best_run_len - 2) * 0.5), rect.position.y + 1, rect.end.y - 3)
+				place_vert_door.call(x_right, dy)
+				for ey in range(rect.position.y + 1, rect.end.y - 1):
+					if ey != dy and ey != dy + 1:
+						grid[ey][x_right] = 1
+			else:
+				for ey in range(rect.position.y + 1, rect.end.y - 1):
+					grid[ey][x_right] = 1
 
 		# Mark door tiles in grid and record in room
 		for d in r_doors:

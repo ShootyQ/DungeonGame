@@ -12,6 +12,7 @@ var hp_bonus: int = 0
 var armor_bonus: int = 0
 var dmg_bonus: int = 0
 var die: DieData = null
+var face_data: Dictionary = {}
 
 func duplicate_item() -> ItemData:
 	var it = ItemData.new()
@@ -27,6 +28,7 @@ func duplicate_item() -> ItemData:
 	it.dmg_bonus = self.dmg_bonus
 	if self.die:
 		it.die = self.die.duplicate_die()
+	it.face_data = self.face_data.duplicate(true)
 	return it
 
 func get_stat_summary() -> String:
@@ -284,4 +286,18 @@ static func create_ring_protection() -> ItemData:
 	it.icon_path = "res://assets/items/item_ring_protection.svg"
 	it.desc = "Celestial sapphire band projecting a protective ward (+1 Armor)."
 	it.armor_bonus = 1
+	return it
+
+# Loose Die Face Item for Socketing
+static func create_face_item(face: Dictionary) -> ItemData:
+	var it = ItemData.new()
+	var ability = face.get("ability", "none")
+	it.id = "face_%d_%s" % [face.get("roll", 1), ability]
+	it.name = "%d DMG - %s" % [face.get("damage", 1), face.get("title", "Die Face")]
+	it.slot = "face"
+	it.item_type = "face"
+	it.icon_path = face.get("icon", "res://assets/ui/die_face_1.svg")
+	it.desc = face.get("desc", "%d Damage" % face.get("damage", 1))
+	it.dmg_bonus = face.get("damage", 1)
+	it.face_data = face.duplicate(true)
 	return it

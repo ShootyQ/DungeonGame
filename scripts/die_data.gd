@@ -279,6 +279,111 @@ static func create_chaos_staff() -> DieData:
 	]
 	return die
 
+static func generate_random_face(floor_depth: int = 1) -> Dictionary:
+	# 1. Roll Value based on weighted depth curve
+	var val = 1
+	var r_val = randf()
+	if floor_depth <= 5:
+		if r_val < 0.25: val = 1
+		elif r_val < 0.60: val = 2
+		elif r_val < 0.85: val = 3
+		elif r_val < 0.96: val = 4
+		else: val = 5
+	elif floor_depth <= 12:
+		if r_val < 0.15: val = 2
+		elif r_val < 0.45: val = 3
+		elif r_val < 0.75: val = 4
+		elif r_val < 0.92: val = 5
+		elif r_val < 0.98: val = 6
+		else: val = 8 # Rare Jackpot!
+	else:
+		if r_val < 0.15: val = 3
+		elif r_val < 0.45: val = 4
+		elif r_val < 0.72: val = 5
+		elif r_val < 0.90: val = 6
+		elif r_val < 0.97: val = 8
+		else: val = 10 # Legendary Jackpot!
+
+	# 2. Roll Ability Affix (40% chance)
+	var abilities = [
+		{"type": "slash", "tier": 1, "desc": "+1 Bleed on pulse"},
+		{"type": "slash", "tier": 2, "desc": "+2 Bleed over 2 pulses"},
+		{"type": "stun", "tier": 1, "desc": "Stuns enemy for 1 pulse"},
+		{"type": "stun", "tier": 2, "desc": "Stuns enemy for 2 pulses"},
+		{"type": "pierce", "tier": 1, "desc": "Bypasses enemy Armor"},
+		{"type": "push", "tier": 1, "desc": "Knocks back 1 tile"},
+		{"type": "burn", "tier": 1, "desc": "Ignites enemy for fire DMG"},
+		{"type": "guard", "tier": 1, "desc": "+2 Guard Armor for 1 pulse"},
+		{"type": "leech", "tier": 1, "desc": "Heals hero for +1 HP on hit"}
+	]
+
+	var ability = null
+	var r_affix = randf()
+	if r_affix < 0.40:
+		ability = abilities.pick_random()
+
+	# 3. Assemble Title, Desc, and Attributes
+	var title = "STRIKE"
+	var desc = "%d Direct Damage" % val
+	var knockback = false
+	var ability_type = "none"
+	var ability_tier = 0
+
+	if ability != null:
+		ability_type = ability["type"]
+		ability_tier = ability["tier"]
+		match ability_type:
+			"slash":
+				title = "SERRATED SLASH" if ability_tier == 1 else "DEEP GASH"
+				desc = "%d DMG • %s" % [val, ability["desc"]]
+			"stun":
+				title = "HEAVY HILT" if ability_tier == 1 else "SKULL CRACK"
+				desc = "%d DMG • %s" % [val, ability["desc"]]
+			"pierce":
+				title = "PIERCING SPIKE"
+				desc = "%d DMG • Bypasses Armor" % val
+			"push":
+				title = "FORCE IMPACT"
+				desc = "%d DMG • Knocks back 1 tile" % val
+				knockback = true
+			"burn":
+				title = "EMBER BRAND"
+				desc = "%d DMG • Ignites Target" % val
+			"guard":
+				title = "DEFENSIVE COUNTER"
+				desc = "%d DMG • +2 Guard Armor" % val
+			"leech":
+				title = "VAMPIRIC THIRST"
+				desc = "%d DMG • Leech 1 HP" % val
+	else:
+		match val:
+			1: title = "LIGHT POKE"
+			2: title = "SOLID CUT"
+			3: title = "CLEAN SLASH"
+			4: title = "HEAVY SWING"
+			5: title = "BRUTAL BLOW"
+			6: title = "PERFECT CRIT"
+			8: title = "TITAN SMASH"
+			10: title = "DRAGON BANE"
+			_: title = "STRIKE"
+		desc = "%d Pure Damage" % val
+
+	var icon_index = clampi(val, 1, 6)
+	var icon_path = "res://assets/ui/die_face_%d.svg" % icon_index
+	if ability_type == "burn" and ResourceLoader.exists("res://assets/ui/die_face_fire.svg"):
+		icon_path = "res://assets/ui/die_face_fire.svg"
+
+	return {
+		"roll": val,
+		"damage": val,
+		"title": title,
+		"desc": desc,
+		"knockback": knockback,
+		"icon": icon_path,
+		"ability": ability_type,
+		"ability_tier": ability_tier
+	}
+
 func roll_random_face() -> Dictionary:
 	if faces.is_empty():
 		return {}

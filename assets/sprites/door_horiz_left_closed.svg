@@ -1,36 +1,61 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Floor / shadow background -->
-  <rect width="64" height="64" fill="#181b22"/>
+  <!-- Dark floor & doorway shadow -->
+  <rect width="64" height="64" fill="#0b0f17"/>
+  <rect x="10" y="10" width="54" height="54" fill="#131823"/>
+
+  <!-- Left Stone Pillar Jamb -->
+  <rect x="0" y="0" width="10" height="64" fill="#334155"/>
+  <rect x="0" y="0" width="8" height="64" fill="#475569"/>
+  <line x1="0" y1="20" x2="10" y2="20" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="0" y1="42" x2="10" y2="42" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="10" y1="0" x2="10" y2="64" stroke="#0f172a" stroke-width="2"/>
+
+  <!-- Top Stone Lintel Arch -->
+  <rect x="0" y="0" width="64" height="10" fill="#334155"/>
+  <rect x="0" y="0" width="64" height="8" fill="#475569"/>
+  <line x1="10" y1="10" x2="64" y2="10" stroke="#0f172a" stroke-width="2"/>
+
+  <!-- Vertical Iron Portcullis Bars (Left Half) -->
+  <!-- Bar 1 (x=16) -->
+  <rect x="16" y="8" width="5" height="46" fill="#1e293b"/>
+  <rect x="17" y="8" width="2" height="46" fill="#64748b"/>
+  <polygon points="16,54 21,54 18.5,60" fill="#94a3b8"/>
+
+  <!-- Bar 2 (x=28) -->
+  <rect x="28" y="8" width="5" height="46" fill="#1e293b"/>
+  <rect x="29" y="8" width="2" height="46" fill="#64748b"/>
+  <polygon points="28,54 33,54 30.5,60" fill="#94a3b8"/>
+
+  <!-- Bar 3 (x=40) -->
+  <rect x="40" y="8" width="5" height="46" fill="#1e293b"/>
+  <rect x="41" y="8" width="2" height="46" fill="#64748b"/>
+  <polygon points="40,54 45,54 42.5,60" fill="#94a3b8"/>
+
+  <!-- Bar 4 (x=52) -->
+  <rect x="52" y="8" width="5" height="46" fill="#1e293b"/>
+  <rect x="53" y="8" width="2" height="46" fill="#64748b"/>
+  <polygon points="52,54 57,54 54.5,60" fill="#94a3b8"/>
+
+  <!-- Horizontal Iron Cross-Braces -->
+  <rect x="10" y="18" width="54" height="5" fill="#1e293b"/>
+  <rect x="10" y="19" width="54" height="2" fill="#475569"/>
   
-  <!-- Left stone pillar jamb & Top lintel -->
-  <rect x="0" y="0" width="8" height="64" fill="#383f4f"/>
-  <rect x="0" y="0" width="64" height="8" fill="#4d566b"/>
-  <line x1="8" y1="8" x2="64" y2="8" stroke="#1e293b" stroke-width="1.5"/>
-  <line x1="8" y1="0" x2="8" y2="64" stroke="#1e293b" stroke-width="1.5"/>
+  <rect x="10" y="38" width="54" height="5" fill="#1e293b"/>
+  <rect x="10" y="39" width="54" height="2" fill="#475569"/>
 
-  <!-- Left Door Leaf (x=8 to 64) -->
-  <rect x="8" y="8" width="56" height="52" fill="#5c2e0b"/>
-  <rect x="10" y="10" width="16" height="48" fill="#78350f" rx="1"/>
-  <rect x="28" y="10" width="16" height="48" fill="#78350f" rx="1"/>
-  <rect x="46" y="10" width="16" height="48" fill="#78350f" rx="1"/>
+  <!-- Iron Rivet Studs -->
+  <circle cx="18.5" cy="20.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="30.5" cy="20.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="42.5" cy="20.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="54.5" cy="20.5" r="1.5" fill="#cbd5e1"/>
 
-  <!-- Horizontal iron reinforcement bands -->
-  <rect x="8" y="18" width="56" height="6" fill="#1e293b"/>
-  <rect x="8" y="44" width="56" height="6" fill="#1e293b"/>
-  
-  <!-- Iron rivets -->
-  <circle cx="16" cy="21" r="1.5" fill="#94a3b8"/>
-  <circle cx="34" cy="21" r="1.5" fill="#94a3b8"/>
-  <circle cx="52" cy="21" r="1.5" fill="#94a3b8"/>
-  <circle cx="16" cy="47" r="1.5" fill="#94a3b8"/>
-  <circle cx="34" cy="47" r="1.5" fill="#94a3b8"/>
-  <circle cx="52" cy="47" r="1.5" fill="#94a3b8"/>
+  <circle cx="18.5" cy="40.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="30.5" cy="40.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="42.5" cy="40.5" r="1.5" fill="#cbd5e1"/>
+  <circle cx="54.5" cy="40.5" r="1.5" fill="#cbd5e1"/>
 
-  <!-- Left Ring Handle near center seam -->
-  <circle cx="54" cy="33" r="3.5" fill="none" stroke="#f1f5f9" stroke-width="1.5"/>
-  <circle cx="54" cy="30" r="1.5" fill="#94a3b8"/>
-
-  <!-- Center meeting seam shadow -->
-  <line x1="63.5" y1="8" x2="63.5" y2="60" stroke="#181b22" stroke-width="1"/>
-  <rect x="0" y="60" width="64" height="4" fill="#181b22" opacity="0.6"/>
+  <!-- Center Meeting Heavy Lock Mechanism on Left Leaf -->
+  <rect x="58" y="26" width="6" height="14" fill="#0f172a" rx="1"/>
+  <rect x="59" y="28" width="5" height="10" fill="#334155" rx="1"/>
+  <circle cx="61" cy="33" r="1.5" fill="#f59e0b"/>
 </svg>

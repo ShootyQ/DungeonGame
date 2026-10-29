@@ -111,6 +111,7 @@ var char_dmg_label: Label
 var char_paper_doll_container: VBoxContainer
 var inventory_stash_container: GridContainer
 var inventory_scroll: ScrollContainer
+var socket_prompt_bar: PanelContainer
 var filter_tab_buttons: Dictionary = {}
 
 var backpack_weapons: Array[DieData] = []
@@ -1165,7 +1166,7 @@ func _setup_backpack_ui() -> void:
 	stash_header_hbox.add_child(stash_lbl)
 	
 	filter_tab_buttons.clear()
-	var tabs = ["All", "Weapons", "Off-Hand", "Armor", "Jewelry"]
+	var tabs = ["All", "Faces", "Weapons", "Off-Hand", "Armor", "Jewelry"]
 	for tab_name in tabs:
 		var tab_btn = Button.new()
 		tab_btn.text = tab_name
@@ -1182,11 +1183,26 @@ func _setup_backpack_ui() -> void:
 	stash_header_hbox.add_child(stash_spacer)
 	
 	var click_hint = Label.new()
-	click_hint.text = "[Click card to equip]"
+	click_hint.text = "[Socket Faces or Equip Items]"
 	click_hint.add_theme_font_size_override("font_size", 11)
 	click_hint.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
 	stash_header_hbox.add_child(click_hint)
 	
+	# Socket Selection Prompt Bar (Appears when Socketing a loose face)
+	socket_prompt_bar = PanelContainer.new()
+	var sock_style = StyleBoxFlat.new()
+	sock_style.bg_color = Color(0.10, 0.14, 0.22, 0.98)
+	sock_style.border_color = Color(0.98, 0.82, 0.2)
+	sock_style.set_border_width_all(2)
+	sock_style.set_corner_radius_all(6)
+	sock_style.content_margin_left = 10
+	sock_style.content_margin_right = 10
+	sock_style.content_margin_top = 6
+	sock_style.content_margin_bottom = 6
+	socket_prompt_bar.add_theme_stylebox_override("panel", sock_style)
+	socket_prompt_bar.visible = false
+	right_pane.add_child(socket_prompt_bar)
+
 	# Stash Cards Scroll Container
 	inventory_scroll = ScrollContainer.new()
 	inventory_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2109,6 +2125,9 @@ func _render_backpack_inventory_cards() -> void:
 		match selected_inventory_tab:
 			"All":
 				filtered_items.append(it)
+			"Faces":
+				if it.item_type == "face":
+					filtered_items.append(it)
 			"Weapons":
 				if it.item_type == "weapon":
 					filtered_items.append(it)
@@ -2137,7 +2156,7 @@ func _render_backpack_inventory_cards() -> void:
 		
 		var c_style = StyleBoxFlat.new()
 		c_style.bg_color = Color(0.08, 0.10, 0.15, 0.85)
-		c_style.border_color = Color(0.25, 0.35, 0.50)
+		c_style.border_color = Color(0.25, 0.35, 0.50) if it.item_type != "face" else Color(0.98, 0.82, 0.2)
 		c_style.set_border_width_all(1)
 		c_style.set_corner_radius_all(6)
 		c_style.content_margin_left = 8
@@ -2169,21 +2188,93 @@ func _render_backpack_inventory_cards() -> void:
 			tag = " [2H]"
 		elif it.hands == 1 and it.item_type == "weapon":
 			tag = " [1H]"
+		elif it.item_type == "face":
+			tag = " [DIE FACE]"
 		name_lbl.text = it.name + tag
 		name_lbl.add_theme_font_size_override("font_size", 12)
-		name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+		name_lbl.add_theme_color_override("font_color", Color(0.98, 0.90, 0.45) if it.item_type == "face" else Color(0.95, 0.95, 0.98))
 		vbox.add_child(name_lbl)
 		
 		var stat_lbl = Label.new()
 		stat_lbl.text = ItemData.get_slot_title(it.slot) + " | " + it.get_stat_summary()
 		stat_lbl.add_theme_font_size_override("font_size", 10)
-		stat_lbl.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+		stat_lbl.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97) if it.item_type != "face" else Color(0.85, 0.85, 0.90))
 		vbox.add_child(stat_lbl)
 		
-		var eq_btn = Button.new()
-		eq_btn.text = "⚔️ Equip"
-		eq_btn.pressed.connect(func(): _equip_item_from_inventory(it))
-		hbox.add_child(eq_btn)
+		var action_btn = Button.new()
+		if it.item_type == "face":
+			action_btn.text = "🔧 Socket"
+			action_btn.pressed.connect(func(): _prompt_socket_face(it))
+		else:
+			action_btn.text = "⚔️ Equip"
+			action_btn.pressed.connect(func(): _equip_item_from_inventory(it))
+		hbox.add_child(action_btn)
+
+func _prompt_socket_face(face_item: ItemData) -> void:
+	if not socket_prompt_bar:
+		return
+	for c in socket_prompt_bar.get_children():
+		socket_prompt_bar.remove_child(c)
+		c.queue_free()
+	
+	socket_prompt_bar.visible = true
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	socket_prompt_bar.add_child(vbox)
+
+	var head_hbox = HBoxContainer.new()
+	var prompt_title = Label.new()
+	prompt_title.text = "🔧 Choose which slot to overwrite with [%s] (Extracted face goes to stash):" % face_item.name
+	prompt_title.add_theme_font_size_override("font_size", 12)
+	prompt_title.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
+	prompt_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head_hbox.add_child(prompt_title)
+
+	var cancel_btn = Button.new()
+	cancel_btn.text = "✖ Cancel"
+	cancel_btn.pressed.connect(func(): socket_prompt_bar.visible = false)
+	head_hbox.add_child(cancel_btn)
+	vbox.add_child(head_hbox)
+
+	var slots_hbox = HBoxContainer.new()
+	slots_hbox.add_theme_constant_override("separation", 6)
+	vbox.add_child(slots_hbox)
+
+	if player and player.die and not player.die.faces.is_empty():
+		for idx in range(mini(6, player.die.faces.size())):
+			var cur_f = player.die.faces[idx]
+			var s_btn = Button.new()
+			s_btn.custom_minimum_size = Vector2(100, 38)
+			s_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var d_val = cur_f.get("damage", 1)
+			var f_title = cur_f.get("title", "STRIKE")
+			s_btn.text = "Slot %d\n%s (%d)" % [idx + 1, f_title, d_val]
+			s_btn.pressed.connect(func(): _socket_face_into_slot(face_item, idx))
+			slots_hbox.add_child(s_btn)
+
+func _socket_face_into_slot(face_item: ItemData, slot_idx: int) -> void:
+	if not player or not player.die or slot_idx < 0 or slot_idx >= player.die.faces.size():
+		return
+	var old_face: Dictionary = player.die.faces[slot_idx]
+	var old_item = ItemData.create_face_item(old_face)
+	inventory_items.append(old_item)
+
+	var new_face: Dictionary = face_item.face_data.duplicate(true)
+	new_face["roll"] = slot_idx + 1
+	player.die.faces[slot_idx] = new_face
+
+	inventory_items.erase(face_item)
+	socket_prompt_bar.visible = false
+
+	play_backpack_equip_sfx()
+	play_dice_tumble_sfx()
+
+	_log("[color=#22c55e]🔧 Socketed [b]%s[/b] into Slot %d! Extracted old face [b]%s[/b] into your Stash.[/color]" % [new_face.get("title", ""), slot_idx + 1, old_face.get("title", "")])
+	_show_floating_text(player.position, "SOCKETED: Slot %d -> %s" % [slot_idx + 1, new_face.get("title", "")], Color(0.98, 0.82, 0.2))
+
+	_sync_equipped_weapon_to_backpack()
+	_render_backpack_ui()
+	_update_hud_display()
 
 func _equip_item_from_inventory(item: ItemData, target_slot: String = "") -> void:
 	play_backpack_equip_sfx()
@@ -2575,81 +2666,20 @@ func _open_chest(chest: Dictionary) -> void:
 	_spawn_chest_loot_burst(grid_to_world(chest["pos"]))
 	_show_floating_text(grid_to_world(chest["pos"]), "LOOT UNLOCKED!", Color(0.98, 0.85, 0.2))
 	
-	var reward_type = chest.get("reward", "flame_rune")
-	if reward_type == "flame_rune":
-		# Add Pyromancer's Wand to backpack
-		var wand = DieData.create_pyromancer_wand()
-		_add_weapon_to_backpack(wand)
-		if player and player.die and player.die.faces.size() >= 4:
-			var fire_face = {
-				"roll": 4,
-				"title": "FLAME RUNE",
-				"desc": "8 Damage + Burn Hazard!",
-				"damage": 8,
-				"knockback": false,
-				"icon": "res://assets/ui/die_face_fire.svg"
-			}
-			player.die.faces[3] = fire_face
-			player.loaded_face = fire_face
-		_sync_equipped_weapon_to_backpack()
-		_add_relic("Flame Rune", "🔥 Upgrades Face 4 to 8 DMG with Fire Hazards + unlocks Pyromancer's Flame Wand!")
-		_update_hud_display()
-		_log("[color=#f97316][b]🔥 TREASURE: Flame Rune etched + Pyromancer's Flame Wand added to Backpack![/b][/color]")
-	elif reward_type == "shield_basher":
-		var warhammer = DieData.create_warhammer()
-		_add_weapon_to_backpack(warhammer)
-		if player and player.die and player.die.faces.size() >= 2:
-			var bash_face = {
-				"roll": 2,
-				"title": "SHIELD BASHER",
-				"desc": "5 Damage + Breaks Guard!",
-				"damage": 5,
-				"knockback": true,
-				"icon": "res://assets/ui/die_face_5.svg"
-			}
-			player.die.faces[1] = bash_face
-			player.loaded_face = bash_face
-		_sync_equipped_weapon_to_backpack()
-		_add_relic("Shield Basher", "🛡️ Upgrades Face 2 to 5 DMG with Shield-Breaking capability.")
-		_update_hud_display()
-		_log("[color=#38bdf8][b]🛡️ TREASURE: Shield Basher etched + Phalanx Warhammer added to Backpack![/b][/color]")
-	elif reward_type == "chaos_blast":
-		if player and player.die and player.die.faces.size() >= 3:
-			var chaos_face = {
-				"roll": 3,
-				"title": "CHAOS SHOCKWAVE",
-				"desc": "7 Damage + Heavy Push!",
-				"damage": 7,
-				"knockback": true,
-				"icon": "res://assets/ui/die_face_6.svg"
-			}
-			player.die.faces[2] = chaos_face
-			player.loaded_face = chaos_face
-		_sync_equipped_weapon_to_backpack()
-		_add_relic("Chaos Shockwave", "🔮 Upgrades Face 3 to 7 DMG with a directional shockwave.")
-		_update_hud_display()
-		_log("[color=#a855f7][b]🔮 TREASURE: Chaos Shockwave etched into your weapon die![/b][/color]")
-	elif reward_type == "executioner_edge":
-		var axe = DieData.create_executioner_axe()
-		_add_weapon_to_backpack(axe)
-		if player and player.die and not player.die.faces.is_empty():
-			var exec_face = {
-				"roll": 1,
-				"title": "EXECUTIONER",
-				"desc": "10 Damage + Wall Slam!",
-				"damage": 10,
-				"knockback": true,
-				"icon": "res://assets/ui/die_face_6.svg"
-			}
-			player.die.faces[0] = exec_face
-			player.loaded_face = exec_face
-		_sync_equipped_weapon_to_backpack()
-		_add_relic("Executioner's Edge", "⚡ Replaces Face 1 MISS with a 10 DMG Wall Slam + unlocks Executioner's Greataxe!")
-		_update_hud_display()
-		_log("[color=#eab308][b]⚡ TREASURE: Executioner's Edge + Greataxe added to Backpack![/b][/color]")
-	elif reward_type == "dungeon_crown":
+	var reward_type = chest.get("reward", "face_drop")
+	if reward_type == "dungeon_crown":
 		_add_relic("Crown of the Dungeon Master", "👑 Legendary victory relic! All chambers purged.")
 		_log("[color=#22c55e][b]👑 RELIC OF VICTORY: You claimed the Dungeon Crown! All chambers conquered![/b][/color]")
+	else:
+		# Procedural Die Face Loot Drop
+		var drop_face = DieData.generate_random_face(current_combat_room_id)
+		var face_item = ItemData.create_face_item(drop_face)
+		inventory_items.append(face_item)
+		_log("[color=#facc15]💎 LOOT DROP: Acquired Die Face [b]%s[/b] (%s)! Press [B] to socket it.[/color]" % [face_item.name, drop_face.get("desc", "")])
+		_show_floating_text(grid_to_world(chest["pos"]), "+ FACE: %s" % drop_face.get("title", "Die Face"), Color(0.98, 0.85, 0.2))
+		_sync_equipped_weapon_to_backpack()
+		_render_backpack_inventory_cards()
+		_update_hud_display()
 
 func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	current_mode = GameMode.COMBAT_COUNTDOWN
@@ -2968,6 +2998,24 @@ func _start_planning_phase() -> void:
 		for child in effects_container.get_children():
 			effects_container.remove_child(child)
 			child.queue_free()
+
+	# Tick status effects (Bleed, Burn, Stun) on hero & all combatants
+	if player:
+		var hero_ticks = player.tick_status_effects()
+		for t in hero_ticks:
+			if t["type"] == "bleed":
+				_show_floating_text(player.position, "-%d HP (BLEED)" % t["damage"], Color(0.9, 0.2, 0.2))
+			elif t["type"] == "burn":
+				_show_floating_text(player.position, "-%d HP (BURN)" % t["damage"], Color(1.0, 0.5, 0.1))
+
+	for enemy in active_combat_enemies:
+		if is_instance_valid(enemy) and enemy.is_alive:
+			var e_ticks = enemy.tick_status_effects()
+			for t in e_ticks:
+				if t["type"] == "bleed":
+					_show_floating_text(enemy.position, "-%d HP (BLEED)" % t["damage"], Color(0.9, 0.2, 0.2))
+				elif t["type"] == "burn":
+					_show_floating_text(enemy.position, "-%d HP (BURN)" % t["damage"], Color(1.0, 0.5, 0.1))
 
 	active_combat_enemies = active_combat_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
 	if active_combat_enemies.is_empty():
@@ -3496,13 +3544,43 @@ func _resolve_pulse() -> void:
 					_spawn_slash_vfx(hit_enemy.position, attack_dir)
 					
 				if not attack_blocked:
-					hit_enemy.take_damage(dmg, attack_dir)
+					var ability = face.get("ability", "none")
+					var ability_tier = face.get("ability_tier", 1)
+					var bypass_armor = (ability == "pierce")
+					hit_enemy.take_damage(dmg, attack_dir, bypass_armor)
+
 					if player.dmg_bonus > 0 and base_dmg > 0:
 						_log("[color=#22c55e]Hero struck %s for %d damage! (%d base + %d gear bonus)[/color]" % [hit_enemy.unit_name, dmg, base_dmg, player.dmg_bonus])
 						_show_floating_text(hit_enemy.position, "-%d DMG (+%d Gear)" % [dmg, player.dmg_bonus], Color(0.95, 0.85, 0.2))
 					else:
 						_log("[color=#22c55e]Hero struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
 						_show_floating_text(hit_enemy.position, "-%d DMG" % dmg, Color(0.95, 0.85, 0.2))
+					
+					# Special Ability Procs
+					if ability == "slash":
+						hit_enemy.apply_bleed(ability_tier)
+						_show_floating_text(hit_enemy.position + Vector2(0, -22), "BLEED +%d!" % ability_tier, Color(0.9, 0.2, 0.2))
+						_log("[color=#ef4444]🩸 Slashed %s! (+%d Bleed)[/color]" % [hit_enemy.unit_name, ability_tier])
+					elif ability == "stun":
+						hit_enemy.apply_stun(ability_tier)
+						_show_floating_text(hit_enemy.position + Vector2(0, -22), "STUNNED!", Color(0.98, 0.85, 0.2))
+						_log("[color=#eab308]⚡ Hilt struck %s! (STUNNED for %d pulse)[/color]" % [hit_enemy.unit_name, ability_tier])
+					elif ability == "burn":
+						hit_enemy.apply_burn(ability_tier)
+						_show_floating_text(hit_enemy.position + Vector2(0, -22), "IGNITED!", Color(1.0, 0.5, 0.1))
+						_log("[color=#f97316]🔥 Ember branded %s! (Burn applied)[/color]" % hit_enemy.unit_name)
+					elif ability == "guard":
+						player.guard_armor += 2
+						_show_floating_text(player.position + Vector2(0, -22), "+2 GUARD ARMOR", Color(0.3, 0.8, 1.0))
+						_log("[color=#38bdf8]🛡️ Counter poise! Gained +2 Guard Armor for next pulse.[/color]")
+					elif ability == "leech":
+						var heal = mini(player.max_hp - player.current_hp, 1)
+						if heal > 0:
+							player.current_hp += heal
+							if player.hp_bar:
+								player.hp_bar.value = player.current_hp
+							_show_floating_text(player.position + Vector2(0, -22), "+1 HP (LEECH)", Color(0.2, 0.9, 0.3))
+							_log("[color=#22c55e]🩸 Vampiric leech! Restored +1 HP.[/color]")
 					
 					# PUSH / WALL SLAM PUZZLE MECHANIC
 					if is_knockback and hit_enemy.is_alive:

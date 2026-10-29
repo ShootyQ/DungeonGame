@@ -19,6 +19,10 @@ var grid_pos: Vector2i = Vector2i.ZERO
 var unit_type: String = "grunt" # "grunt", "charger", "shieldbearer", "pyromancer", "brawler"
 var facing_dir: Vector2i = Vector2i(0, 1) # (0,1)=Down, (0,-1)=Up, (1,0)=Right, (-1,0)=Left
 var is_stunned: bool = false
+var stun_turns: int = 0
+var bleed_stacks: int = 0
+var burn_stacks: int = 0
+var guard_armor: int = 0
 var has_shield: bool = false
 var shield_broken: bool = false
 var telegraphed_tiles: Array = []
@@ -315,12 +319,13 @@ func _process(delta: float) -> void:
 		sprite.scale.y = base_sprite_scale.y * (1.0 + breath * 0.04)
 		sprite.scale.x = base_sprite_scale.x * (1.0 - breath * 0.03)
 
-func take_damage(dmg: int, impact_dir: Vector2 = Vector2.ZERO) -> int:
+func take_damage(dmg: int, impact_dir: Vector2 = Vector2.ZERO, bypass_armor: bool = false) -> int:
 	if not is_alive or is_dying:
 		return 0
+	var eff_armor = (armor + guard_armor) if not bypass_armor else 0
 	var final_dmg = dmg
-	if is_player and armor > 0:
-		final_dmg = maxi(1, dmg - armor)
+	if eff_armor > 0:
+		final_dmg = maxi(1, dmg - eff_armor)
 	current_hp = max(0, current_hp - final_dmg)
 	if hp_bar:
 		hp_bar.value = current_hp
@@ -334,6 +339,40 @@ func take_damage(dmg: int, impact_dir: Vector2 = Vector2.ZERO) -> int:
 		clear_intent()
 		died.emit(self)
 	return final_dmg
+
+func apply_stun(turns: int = 1) -> void:
+	stun_turns = maxi(stun_turns, turns)
+	is_stunned = true
+	intent_type = "STUNNED"
+	if stun_icon:
+		stun_icon.visible = true
+
+func apply_bleed(stacks: int = 1) -> void:
+	bleed_stacks += stacks
+
+func apply_burn(stacks: int = 1) -> void:
+	burn_stacks += stacks
+
+func tick_status_effects() -> Array[Dictionary]:
+	var results: Array[Dictionary] = []
+	if not is_alive or is_dying:
+		return results
+	guard_armor = 0
+	if bleed_stacks > 0:
+		var b_dmg = take_damage(bleed_stacks, Vector2.ZERO, true)
+		results.append({"type": "bleed", "damage": b_dmg})
+		bleed_stacks -= 1
+	if burn_stacks > 0:
+		var f_dmg = take_damage(burn_stacks, Vector2.ZERO, true)
+		results.append({"type": "burn", "damage": f_dmg})
+		burn_stacks -= 1
+	if stun_turns > 0:
+		stun_turns -= 1
+		if stun_turns == 0:
+			is_stunned = false
+			if stun_icon:
+				stun_icon.visible = false
+	return results
 
 func animate_hit_flinch(impact_dir: Vector2 = Vector2.ZERO) -> Tween:
 	is_flinching = true
