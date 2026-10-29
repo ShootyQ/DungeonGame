@@ -9,7 +9,7 @@ var faces: Array = []
 static func create_default_d6_sword() -> DieData:
 	var die = DieData.new()
 	die.name = "Rusty D6 Sword"
-	die.icon_path = "res://assets/sprites/sword_d6.svg"
+	die.icon_path = "res://assets/items/item_sword_starter.svg"
 	die.die_type = "d6"
 	die.faces = [
 		{
@@ -66,7 +66,7 @@ static func create_default_d6_sword() -> DieData:
 static func create_executioner_axe() -> DieData:
 	var die = DieData.new()
 	die.name = "Executioner's Greataxe"
-	die.icon_path = "res://assets/ui/icon_axe.svg"
+	die.icon_path = "res://assets/items/item_executioner.svg"
 	die.die_type = "d6"
 	die.faces = [
 		{
@@ -180,7 +180,7 @@ static func create_pyromancer_wand() -> DieData:
 static func create_warhammer() -> DieData:
 	var die = DieData.new()
 	die.name = "Phalanx Warhammer"
-	die.icon_path = "res://assets/ui/icon_mace.svg"
+	die.icon_path = "res://assets/items/item_warhammer.svg"
 	die.die_type = "d6"
 	die.faces = [
 		{
@@ -231,6 +231,51 @@ static func create_warhammer() -> DieData:
 			"knockback": true,
 			"icon": "res://assets/ui/die_face_6.svg"
 		}
+	]
+	return die
+
+static func create_swift_dagger() -> DieData:
+	var die = DieData.new()
+	die.name = "Swift Stiletto"
+	die.icon_path = "res://assets/items/item_dagger.svg"
+	die.die_type = "d6"
+	die.faces = [
+		{"roll": 1, "title": "GLANCE", "desc": "1 Quick Poke DMG", "damage": 1, "knockback": false, "icon": "res://assets/ui/die_face_1.svg"},
+		{"roll": 2, "title": "STAB", "desc": "3 Fast Piercing DMG", "damage": 3, "knockback": false, "icon": "res://assets/ui/die_face_2.svg"},
+		{"roll": 3, "title": "FLURRY", "desc": "4 Double Strike DMG", "damage": 4, "knockback": false, "icon": "res://assets/ui/die_face_3.svg"},
+		{"roll": 4, "title": "RUPTURE", "desc": "5 Deep Arterial DMG", "damage": 5, "knockback": false, "icon": "res://assets/ui/die_face_4.svg"},
+		{"roll": 5, "title": "BACKSTAB", "desc": "7 Critical Puncture DMG", "damage": 7, "knockback": false, "icon": "res://assets/ui/die_face_5.svg"},
+		{"roll": 6, "title": "ASSASSINATE", "desc": "11 Lethal Execution DMG", "damage": 11, "knockback": false, "icon": "res://assets/ui/die_face_6.svg"}
+	]
+	return die
+
+static func create_spiked_morningstar() -> DieData:
+	var die = DieData.new()
+	die.name = "Spiked Morningstar"
+	die.icon_path = "res://assets/items/item_spikes.svg"
+	die.die_type = "d6"
+	die.faces = [
+		{"roll": 1, "title": "GRAZE", "desc": "1 Chain Scrape DMG", "damage": 1, "knockback": false, "icon": "res://assets/ui/die_face_1.svg"},
+		{"roll": 2, "title": "SWING", "desc": "3 Blunt Impact DMG", "damage": 3, "knockback": false, "icon": "res://assets/ui/die_face_2.svg"},
+		{"roll": 3, "title": "PUNCTURE", "desc": "5 Heavy Spike DMG", "damage": 5, "knockback": false, "icon": "res://assets/ui/die_face_3.svg"},
+		{"roll": 4, "title": "FLAIL SMASH", "desc": "6 Crushing DMG + Push", "damage": 6, "knockback": true, "icon": "res://assets/ui/die_face_4.svg"},
+		{"roll": 5, "title": "SKULL CRACK", "desc": "8 Staggering DMG + Push", "damage": 8, "knockback": true, "icon": "res://assets/ui/die_face_5.svg"},
+		{"roll": 6, "title": "DEVASTATION", "desc": "12 Brutal Smash + Slam!", "damage": 12, "knockback": true, "icon": "res://assets/ui/die_face_6.svg"}
+	]
+	return die
+
+static func create_chaos_staff() -> DieData:
+	var die = DieData.new()
+	die.name = "Chaos Blast Staff"
+	die.icon_path = "res://assets/items/item_chaos_staff.svg"
+	die.die_type = "d6"
+	die.faces = [
+		{"roll": 1, "title": "SURGE", "desc": "2 Chaotic Spark DMG", "damage": 2, "knockback": false, "icon": "res://assets/ui/die_face_1.svg"},
+		{"roll": 2, "title": "VOID BOLT", "desc": "4 Nether Pulse DMG", "damage": 4, "knockback": false, "icon": "res://assets/ui/die_face_2.svg"},
+		{"roll": 3, "title": "ARCANE BLAST", "desc": "6 Sorcerous Burst DMG", "damage": 6, "knockback": false, "icon": "res://assets/ui/die_face_3.svg"},
+		{"roll": 4, "title": "GRAVITY CRUSH", "desc": "7 Void Rip + Push", "damage": 7, "knockback": true, "icon": "res://assets/ui/die_face_4.svg"},
+		{"roll": 5, "title": "CHAOS NOVA", "desc": "9 Void Rupture + Knockback", "damage": 9, "knockback": true, "icon": "res://assets/ui/die_face_fire.svg"},
+		{"roll": 6, "title": "BLACK HOLE", "desc": "14 Singularity Collapse!", "damage": 14, "knockback": true, "icon": "res://assets/ui/die_face_6.svg"}
 	]
 	return die
 

@@ -85,7 +85,34 @@ var player_die_title: Label
 var player_die_desc: Label
 var last_action_label: Label
 
-# Backpack & Inventory State
+# Character Equipment & Stash State (10 Slots)
+const BASE_HP: int = 20
+var equipped_gear: Dictionary = {
+	"helmet": null,
+	"necklace": null,
+	"chestplate": null,
+	"hand_1": null,
+	"hand_2": null,
+	"gloves": null,
+	"pants": null,
+	"boots": null,
+	"ring_1": null,
+	"ring_2": null
+}
+var inventory_items: Array[ItemData] = []
+var selected_inventory_tab: String = "All"
+var room_torches: Dictionary = {} # room_id -> Array[{sconce, glow}]
+
+# Character Sheet UI Nodes
+var char_title_label: Label
+var char_hp_label: Label
+var char_armor_label: Label
+var char_dmg_label: Label
+var char_paper_doll_container: VBoxContainer
+var inventory_stash_container: GridContainer
+var inventory_scroll: ScrollContainer
+var filter_tab_buttons: Dictionary = {}
+
 var backpack_weapons: Array[DieData] = []
 var backpack_relics: Array[Dictionary] = [] # [{name, desc}]
 var is_backpack_open: bool = false
@@ -414,12 +441,15 @@ func _spawn_props_and_decorations() -> void:
 
 func _setup_lighting_and_sconces() -> void:
 	torch_lights.clear()
+	room_torches.clear()
 	var tex_sconce = load("res://assets/sprites/torch_sconce.svg")
 	var tex_glow = load("res://assets/sprites/light_glow.svg")
 
 	var sconce_positions = dungeon_data.get("torches", [])
 
-	for pos in sconce_positions:
+	for entry in sconce_positions:
+		var pos = entry["pos"] if (entry is Dictionary and entry.has("pos")) else entry
+		var r_id = entry.get("room_id", -1) if (entry is Dictionary) else -1
 		var world_pos = grid_to_world(pos)
 		
 		# Wall Sconce Iron Bracket & Torch
@@ -438,6 +468,14 @@ func _setup_lighting_and_sconces() -> void:
 		glow.scale = Vector2(1.2, 1.2)
 		glow.position = world_pos + Vector2(0, -10)
 		lighting_container.add_child(glow)
+
+		if r_id > 0:
+			# Unbreached room torches start hidden so they don't glow in pitch-black fog
+			sconce_spr.visible = false
+			glow.visible = false
+			if not room_torches.has(r_id):
+				room_torches[r_id] = []
+			room_torches[r_id].append({"sconce": sconce_spr, "glow": glow})
 
 		torch_lights.append({
 			"glow": glow,
@@ -518,13 +556,14 @@ func _spawn_units() -> void:
 	active_combat_enemies.clear()
 	backpack_weapons.clear()
 	backpack_relics.clear()
+	inventory_items.clear()
 	
 	# Hero (Starts in Entrance Room)
 	var spawn_pos = dungeon_data.get("player_spawn", Vector2i(6, 30))
 	player = CombatUnit.new()
 	unit_container.add_child(player)
-	var start_sword = DieData.create_default_d6_sword()
-	player.setup("Knight", true, 35, load("res://assets/sprites/hero.svg"), spawn_pos, start_sword)
+	var start_sword_die = DieData.create_default_d6_sword()
+	player.setup("Knight", true, BASE_HP, load("res://assets/sprites/hero.svg"), spawn_pos, start_sword_die)
 	player.position = grid_to_world(player.grid_pos)
 	player.died.connect(_on_player_died)
 	player.hp_changed.connect(func(_u, new_hp, m_hp):
@@ -534,8 +573,39 @@ func _spawn_units() -> void:
 			exp_hp_label.text = "❤️ %d / %d" % [new_hp, m_hp]
 	)
 	
-	# Initial Backpack: Starter Sword + Phalanx Warhammer
-	backpack_weapons.append(start_sword.duplicate_die())
+	# Initial Hero Equipment (Starter 1H Sword + Shield + Helm + Cuirass)
+	equipped_gear = {
+		"helmet": ItemData.create_helmet(),
+		"necklace": null,
+		"chestplate": ItemData.create_chestplate(),
+		"hand_1": ItemData.create_starter_sword(),
+		"hand_2": ItemData.create_shield(),
+		"gloves": null,
+		"pants": null,
+		"boots": null,
+		"ring_1": null,
+		"ring_2": null
+	}
+	
+	# Seed Stash with Weapons (1H & 2H), Off-hand, Armor & Jewelry
+	inventory_items.append(ItemData.create_warhammer()) # 2H Weapon
+	inventory_items.append(ItemData.create_swift_dagger()) # 1H Weapon
+	inventory_items.append(ItemData.create_executioner_axe()) # 2H Weapon
+	inventory_items.append(ItemData.create_chaos_staff()) # 2H Weapon
+	inventory_items.append(ItemData.create_spiked_morningstar()) # 1H Weapon
+	inventory_items.append(ItemData.create_tome()) # Off-Hand Tome (+2 DMG)
+	inventory_items.append(ItemData.create_parry_dagger()) # Off-Hand Parry Dagger (+1 Arm, +1 DMG)
+	inventory_items.append(ItemData.create_gloves()) # Gloves (+4 HP, +1 DMG)
+	inventory_items.append(ItemData.create_pants()) # Pants (+8 HP, +1 Arm)
+	inventory_items.append(ItemData.create_boots()) # Boots (+4 HP, +1 DMG)
+	inventory_items.append(ItemData.create_necklace()) # Necklace (+10 HP)
+	inventory_items.append(ItemData.create_ring_fury()) # Ring 1 (+2 DMG)
+	inventory_items.append(ItemData.create_ring_protection()) # Ring 2 (+1 Arm)
+	
+	_recalculate_gear_stats()
+	
+	# Legacy backpack sync
+	backpack_weapons.append(start_sword_die.duplicate_die())
 	backpack_weapons.append(DieData.create_warhammer())
 	
 	# Populate procedural enemies
@@ -885,35 +955,35 @@ func _setup_hud() -> void:
 func _setup_backpack_ui() -> void:
 	backpack_modal = PanelContainer.new()
 	backpack_modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	backpack_modal.custom_minimum_size = Vector2(920, 580)
-	backpack_modal.offset_left = -460
-	backpack_modal.offset_top = -290
-	backpack_modal.offset_right = 460
-	backpack_modal.offset_bottom = 290
+	backpack_modal.custom_minimum_size = Vector2(1060, 640)
+	backpack_modal.offset_left = -530
+	backpack_modal.offset_top = -320
+	backpack_modal.offset_right = 530
+	backpack_modal.offset_bottom = 320
 	backpack_modal.visible = false
 	
 	var b_style = StyleBoxFlat.new()
-	b_style.bg_color = Color(0.07, 0.09, 0.13, 0.98)
+	b_style.bg_color = Color(0.06, 0.08, 0.12, 0.98)
 	b_style.border_color = Color(0.92, 0.65, 0.15)
 	b_style.set_border_width_all(2)
 	b_style.set_corner_radius_all(10)
-	b_style.content_margin_left = 20
-	b_style.content_margin_right = 20
-	b_style.content_margin_top = 16
-	b_style.content_margin_bottom = 16
+	b_style.content_margin_left = 18
+	b_style.content_margin_right = 18
+	b_style.content_margin_top = 12
+	b_style.content_margin_bottom = 12
 	backpack_modal.add_theme_stylebox_override("panel", b_style)
 	hud_root.add_child(backpack_modal)
 	
 	var main_vbox = VBoxContainer.new()
-	main_vbox.add_theme_constant_override("separation", 12)
+	main_vbox.add_theme_constant_override("separation", 10)
 	backpack_modal.add_child(main_vbox)
 	
-	# Header Row
+	# Top Modal Header Row
 	var header_hbox = HBoxContainer.new()
 	main_vbox.add_child(header_hbox)
 	
 	var title = Label.new()
-	title.text = "🎒 ADVENTURER'S BACKPACK & DICE INSPECTOR"
+	title.text = "🛡️ HERO CHARACTER SHEET & ARMORY"
 	title.add_theme_font_size_override("font_size", 18)
 	title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
 	header_hbox.add_child(title)
@@ -933,6 +1003,115 @@ func _setup_backpack_ui() -> void:
 	close_btn.pressed.connect(_toggle_backpack)
 	header_hbox.add_child(close_btn)
 	
+	# Body: 2 Main Columns
+	var body_hbox = HBoxContainer.new()
+	body_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body_hbox.add_theme_constant_override("separation", 16)
+	main_vbox.add_child(body_hbox)
+	
+	# =========================================================
+	# LEFT PANE: PAPER DOLL & ATTRIBUTES (Width ~450px)
+	# =========================================================
+	var left_pane = PanelContainer.new()
+	left_pane.custom_minimum_size = Vector2(450, 0)
+	var lp_style = StyleBoxFlat.new()
+	lp_style.bg_color = Color(0.09, 0.11, 0.17, 0.90)
+	lp_style.border_color = Color(0.25, 0.35, 0.50)
+	lp_style.set_border_width_all(1)
+	lp_style.set_corner_radius_all(8)
+	lp_style.content_margin_left = 12
+	lp_style.content_margin_right = 12
+	lp_style.content_margin_top = 10
+	lp_style.content_margin_bottom = 10
+	left_pane.add_theme_stylebox_override("panel", lp_style)
+	body_hbox.add_child(left_pane)
+	
+	var left_vbox = VBoxContainer.new()
+	left_vbox.add_theme_constant_override("separation", 8)
+	left_pane.add_child(left_vbox)
+	
+	# Profile Header
+	var prof_hbox = HBoxContainer.new()
+	prof_hbox.add_theme_constant_override("separation", 10)
+	left_vbox.add_child(prof_hbox)
+	
+	var hero_portrait = TextureRect.new()
+	hero_portrait.texture = load("res://assets/sprites/hero.svg")
+	hero_portrait.custom_minimum_size = Vector2(42, 42)
+	hero_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	hero_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	prof_hbox.add_child(hero_portrait)
+	
+	var prof_txt = VBoxContainer.new()
+	prof_hbox.add_child(prof_txt)
+	
+	char_title_label = Label.new()
+	char_title_label.text = "⚔️ SIR ROWAN - ABYSS PALADIN"
+	char_title_label.add_theme_font_size_override("font_size", 15)
+	char_title_label.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+	prof_txt.add_child(char_title_label)
+	
+	var prof_sub = Label.new()
+	prof_sub.text = "Equippable Slots (Click equipped item to unequip)"
+	prof_sub.add_theme_font_size_override("font_size", 11)
+	prof_sub.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	prof_txt.add_child(prof_sub)
+	
+	# Total Attributes Bar
+	var stats_panel = PanelContainer.new()
+	var sp_style = StyleBoxFlat.new()
+	sp_style.bg_color = Color(0.06, 0.08, 0.12, 0.95)
+	sp_style.border_color = Color(0.2, 0.28, 0.4)
+	sp_style.set_border_width_all(1)
+	sp_style.set_corner_radius_all(6)
+	sp_style.content_margin_left = 10
+	sp_style.content_margin_right = 10
+	sp_style.content_margin_top = 6
+	sp_style.content_margin_bottom = 6
+	stats_panel.add_theme_stylebox_override("panel", sp_style)
+	left_vbox.add_child(stats_panel)
+	
+	var stats_hbox = HBoxContainer.new()
+	stats_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	stats_hbox.add_theme_constant_override("separation", 16)
+	stats_panel.add_child(stats_hbox)
+	
+	char_hp_label = Label.new()
+	char_hp_label.text = "❤️ HP: 35"
+	char_hp_label.add_theme_font_size_override("font_size", 12)
+	char_hp_label.add_theme_color_override("font_color", Color(0.3, 0.9, 0.45))
+	stats_hbox.add_child(char_hp_label)
+	
+	char_armor_label = Label.new()
+	char_armor_label.text = "🛡️ ARMOR: 0"
+	char_armor_label.add_theme_font_size_override("font_size", 12)
+	char_armor_label.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	stats_hbox.add_child(char_armor_label)
+	
+	char_dmg_label = Label.new()
+	char_dmg_label.text = "⚔️ BONUS DMG: +0"
+	char_dmg_label.add_theme_font_size_override("font_size", 12)
+	char_dmg_label.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
+	stats_hbox.add_child(char_dmg_label)
+	
+	# Paper Doll Scroll Container (10 Slots Layout)
+	var pd_scroll = ScrollContainer.new()
+	pd_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_vbox.add_child(pd_scroll)
+	
+	char_paper_doll_container = VBoxContainer.new()
+	char_paper_doll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	char_paper_doll_container.add_theme_constant_override("separation", 6)
+	pd_scroll.add_child(char_paper_doll_container)
+	
+	# =========================================================
+	# RIGHT PANE: COMBAT DIE RACK & INVENTORY STASH
+	# =========================================================
+	var right_pane = VBoxContainer.new()
+	right_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_pane.add_theme_constant_override("separation", 8)
+	body_hbox.add_child(right_pane)
+	
 	# Section 1: Active Equipped Weapon & Physical Dice Rack
 	var active_sec_panel = PanelContainer.new()
 	var act_style = StyleBoxFlat.new()
@@ -940,23 +1119,23 @@ func _setup_backpack_ui() -> void:
 	act_style.border_color = Color(0.2, 0.7, 0.95)
 	act_style.set_border_width_all(1)
 	act_style.set_corner_radius_all(6)
-	act_style.content_margin_left = 14
-	act_style.content_margin_right = 14
-	act_style.content_margin_top = 10
-	act_style.content_margin_bottom = 12
+	act_style.content_margin_left = 12
+	act_style.content_margin_right = 12
+	act_style.content_margin_top = 6
+	act_style.content_margin_bottom = 8
 	active_sec_panel.add_theme_stylebox_override("panel", act_style)
-	main_vbox.add_child(active_sec_panel)
+	right_pane.add_child(active_sec_panel)
 	
 	var act_vbox = VBoxContainer.new()
-	act_vbox.add_theme_constant_override("separation", 8)
+	act_vbox.add_theme_constant_override("separation", 6)
 	active_sec_panel.add_child(act_vbox)
 	
 	var act_header_hbox = HBoxContainer.new()
 	act_vbox.add_child(act_header_hbox)
 	
 	equipped_weapon_title = Label.new()
-	equipped_weapon_title.text = "⚔️ EQUIPPED: RUSTY D6 SWORD"
-	equipped_weapon_title.add_theme_font_size_override("font_size", 15)
+	equipped_weapon_title.text = "⚔️ MAIN HAND: RUSTY D6 SWORD"
+	equipped_weapon_title.add_theme_font_size_override("font_size", 14)
 	equipped_weapon_title.add_theme_color_override("font_color", Color(0.35, 0.85, 0.98))
 	act_header_hbox.add_child(equipped_weapon_title)
 	
@@ -966,41 +1145,68 @@ func _setup_backpack_ui() -> void:
 	
 	equipped_weapon_stats = Label.new()
 	equipped_weapon_stats.text = "Mean DMG: 4.0 | Faces: 6"
-	equipped_weapon_stats.add_theme_font_size_override("font_size", 13)
+	equipped_weapon_stats.add_theme_font_size_override("font_size", 12)
 	equipped_weapon_stats.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
 	act_header_hbox.add_child(equipped_weapon_stats)
 	
 	# The 6-Face Visual Rack
 	dice_rack_container = HBoxContainer.new()
-	dice_rack_container.add_theme_constant_override("separation", 8)
+	dice_rack_container.add_theme_constant_override("separation", 6)
 	act_vbox.add_child(dice_rack_container)
 	
-	# Section 2: Weapons in Backpack
-	var bag_label = Label.new()
-	bag_label.text = "📦 WEAPONS IN BACKPACK (Click to swap equipped die)"
-	bag_label.add_theme_font_size_override("font_size", 13)
-	bag_label.add_theme_color_override("font_color", Color(0.95, 0.75, 0.2))
-	main_vbox.add_child(bag_label)
+	# Section 2: Stash & Armory Filter Tabs
+	var stash_header_hbox = HBoxContainer.new()
+	stash_header_hbox.add_theme_constant_override("separation", 6)
+	right_pane.add_child(stash_header_hbox)
 	
-	var bag_scroll = ScrollContainer.new()
-	bag_scroll.custom_minimum_size = Vector2(0, 140)
-	bag_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main_vbox.add_child(bag_scroll)
+	var stash_lbl = Label.new()
+	stash_lbl.text = "📦 STASH:"
+	stash_lbl.add_theme_font_size_override("font_size", 13)
+	stash_lbl.add_theme_color_override("font_color", Color(0.95, 0.75, 0.2))
+	stash_header_hbox.add_child(stash_lbl)
 	
+	filter_tab_buttons.clear()
+	var tabs = ["All", "Weapons", "Off-Hand", "Armor", "Jewelry"]
+	for tab_name in tabs:
+		var tab_btn = Button.new()
+		tab_btn.text = tab_name
+		tab_btn.pressed.connect(func():
+			selected_inventory_tab = tab_name
+			_update_tab_button_styles()
+			_render_backpack_inventory_cards()
+		)
+		stash_header_hbox.add_child(tab_btn)
+		filter_tab_buttons[tab_name] = tab_btn
+		
+	var stash_spacer = Control.new()
+	stash_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stash_header_hbox.add_child(stash_spacer)
+	
+	var click_hint = Label.new()
+	click_hint.text = "[Click card to equip]"
+	click_hint.add_theme_font_size_override("font_size", 11)
+	click_hint.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
+	stash_header_hbox.add_child(click_hint)
+	
+	# Stash Cards Scroll Container
+	inventory_scroll = ScrollContainer.new()
+	inventory_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	inventory_scroll.custom_minimum_size = Vector2(0, 220)
+	right_pane.add_child(inventory_scroll)
+	
+	inventory_stash_container = GridContainer.new()
+	inventory_stash_container.columns = 2
+	inventory_stash_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inventory_stash_container.add_theme_constant_override("h_separation", 8)
+	inventory_stash_container.add_theme_constant_override("v_separation", 6)
+	inventory_scroll.add_child(inventory_stash_container)
+	
+	# Legacy container references
 	backpack_items_container = VBoxContainer.new()
-	backpack_items_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	backpack_items_container.add_theme_constant_override("separation", 6)
-	bag_scroll.add_child(backpack_items_container)
-	
-	# Section 3: Relics Shelf
-	var relic_header = Label.new()
-	relic_header.text = "🔮 COLLECTED RUNES & RELICS"
-	relic_header.add_theme_font_size_override("font_size", 13)
-	relic_header.add_theme_color_override("font_color", Color(0.7, 0.5, 0.95))
-	main_vbox.add_child(relic_header)
-	
+	backpack_items_container.visible = false
+	main_vbox.add_child(backpack_items_container)
 	relics_container = HBoxContainer.new()
-	relics_container.add_theme_constant_override("separation", 10)
+	relics_container.visible = false
 	main_vbox.add_child(relics_container)
 
 func _setup_audio_system() -> void:
@@ -1643,37 +1849,195 @@ func _toggle_backpack() -> void:
 		_render_backpack_ui()
 
 func _render_backpack_ui() -> void:
-	if not player or not player.die:
+	if not player:
 		return
 		
-	# Update active equipped weapon header
-	equipped_weapon_title.text = "⚔️ EQUIPPED WEAPON: %s (%s DIE)" % [player.die.name.to_upper(), player.die.die_type.to_upper()]
-	equipped_weapon_stats.text = "Faces: %d  |  Avg DMG: %.1f  |  Loaded Face: %s (%d DMG)" % [
-		player.die.faces.size(),
-		player.die.get_average_damage(),
-		player.loaded_face.get("title", "NONE"),
-		player.loaded_face.get("damage", 0)
-	]
+	# 1. Update Hero stats
+	char_hp_label.text = "❤️ HP: %d / %d" % [player.current_hp, player.max_hp]
+	char_armor_label.text = "🛡️ ARMOR: %d" % player.armor
+	char_dmg_label.text = "⚔️ BONUS DMG: +%d" % player.dmg_bonus
 	
-	# 1. Populate Physical Dice Rack Shelf
+	# 2. Render Paper Doll (10 Slots Layout)
+	_render_paper_doll_slots()
+	
+	# 3. Render Active Weapon Dice Rack
+	_render_active_weapon_dice_rack()
+	
+	# 4. Render Stash Cards
+	_update_tab_button_styles()
+	_render_backpack_inventory_cards()
+
+func _render_paper_doll_slots() -> void:
+	for child in char_paper_doll_container.get_children():
+		char_paper_doll_container.remove_child(child)
+		child.queue_free()
+		
+	# Row 1: Helmet & Necklace
+	var r1 = HBoxContainer.new()
+	r1.add_theme_constant_override("separation", 8)
+	r1.add_child(_create_slot_card("helmet"))
+	r1.add_child(_create_slot_card("necklace"))
+	char_paper_doll_container.add_child(r1)
+	
+	# Row 2: Hand 1 (Main Hand) & Chestplate & Hand 2 (Off Hand)
+	var r2 = HBoxContainer.new()
+	r2.add_theme_constant_override("separation", 6)
+	r2.add_child(_create_slot_card("hand_1"))
+	r2.add_child(_create_slot_card("chestplate"))
+	r2.add_child(_create_slot_card("hand_2"))
+	char_paper_doll_container.add_child(r2)
+	
+	# Row 3: Gloves & Pants
+	var r3 = HBoxContainer.new()
+	r3.add_theme_constant_override("separation", 8)
+	r3.add_child(_create_slot_card("gloves"))
+	r3.add_child(_create_slot_card("pants"))
+	char_paper_doll_container.add_child(r3)
+	
+	# Row 4: Ring 1 & Ring 2
+	var r4 = HBoxContainer.new()
+	r4.add_theme_constant_override("separation", 8)
+	r4.add_child(_create_slot_card("ring_1"))
+	r4.add_child(_create_slot_card("ring_2"))
+	char_paper_doll_container.add_child(r4)
+	
+	# Row 5: Boots
+	var r5 = HBoxContainer.new()
+	r5.add_theme_constant_override("separation", 8)
+	r5.add_child(_create_slot_card("boots"))
+	char_paper_doll_container.add_child(r5)
+
+func _create_slot_card(slot_name: String) -> Control:
+	var item: ItemData = equipped_gear.get(slot_name, null)
+	var main_w: ItemData = equipped_gear.get("hand_1", null)
+	var is_hand_2_blocked = (slot_name == "hand_2" and main_w != null and main_w.hands == 2)
+	
+	var card = PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, 52)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	var c_style = StyleBoxFlat.new()
+	c_style.set_corner_radius_all(6)
+	c_style.content_margin_left = 6
+	c_style.content_margin_right = 6
+	c_style.content_margin_top = 4
+	c_style.content_margin_bottom = 4
+	
+	if is_hand_2_blocked:
+		c_style.bg_color = Color(0.24, 0.08, 0.08, 0.90)
+		c_style.border_color = Color(0.92, 0.28, 0.28)
+		c_style.set_border_width_all(1)
+	elif item != null:
+		c_style.bg_color = Color(0.11, 0.15, 0.22, 0.90)
+		c_style.border_color = Color(0.35, 0.82, 0.50)
+		c_style.set_border_width_all(1)
+	else:
+		c_style.bg_color = Color(0.06, 0.08, 0.12, 0.80)
+		c_style.border_color = Color(0.20, 0.25, 0.35)
+		c_style.set_border_width_all(1)
+	card.add_theme_stylebox_override("panel", c_style)
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 6)
+	card.add_child(hbox)
+	
+	var icon = TextureRect.new()
+	icon.custom_minimum_size = Vector2(34, 34)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	
+	if is_hand_2_blocked:
+		icon.texture = load("res://assets/items/slot_hand_2.svg")
+		icon.modulate = Color(1.0, 0.35, 0.35, 0.8)
+	elif item != null:
+		icon.texture = load(item.icon_path)
+		icon.modulate = Color.WHITE
+	else:
+		icon.texture = load(ItemData.get_slot_silhouette(slot_name))
+		icon.modulate = Color(1.0, 1.0, 1.0, 0.45)
+	hbox.add_child(icon)
+	
+	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 1)
+	hbox.add_child(vbox)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = ItemData.get_slot_title(slot_name).to_upper()
+	title_lbl.add_theme_font_size_override("font_size", 9)
+	title_lbl.add_theme_color_override("font_color", Color(0.45, 0.75, 0.95))
+	vbox.add_child(title_lbl)
+	
+	var name_lbl = Label.new()
+	name_lbl.add_theme_font_size_override("font_size", 11)
+	if is_hand_2_blocked:
+		name_lbl.text = "🔒 2H BLOCKED"
+		name_lbl.add_theme_color_override("font_color", Color(0.95, 0.4, 0.4))
+	elif item != null:
+		name_lbl.text = item.name
+		name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+	else:
+		name_lbl.text = "Empty Slot"
+		name_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
+	vbox.add_child(name_lbl)
+	
+	var sub_lbl = Label.new()
+	sub_lbl.add_theme_font_size_override("font_size", 9)
+	if is_hand_2_blocked:
+		sub_lbl.text = "Two-Handed Lock"
+		sub_lbl.add_theme_color_override("font_color", Color(0.8, 0.5, 0.5))
+	elif item != null:
+		sub_lbl.text = item.get_stat_summary()
+		sub_lbl.add_theme_color_override("font_color", Color(0.3, 0.85, 0.5))
+	else:
+		sub_lbl.text = "Click stash to equip"
+		sub_lbl.add_theme_color_override("font_color", Color(0.4, 0.45, 0.55))
+	vbox.add_child(sub_lbl)
+	
+	if item != null:
+		var unequip_btn = Button.new()
+		unequip_btn.text = "✕"
+		unequip_btn.tooltip_text = "Unequip %s to stash" % item.name
+		unequip_btn.pressed.connect(func(): _unequip_item_from_slot(slot_name))
+		hbox.add_child(unequip_btn)
+		
+	return card
+
+func _render_active_weapon_dice_rack() -> void:
+	var main_w: ItemData = equipped_gear.get("hand_1", null)
+	var weapon_name = main_w.name if main_w != null else (player.die.name if player.die else "Unarmed")
+	var hand_tag = ("2-HANDED" if (main_w and main_w.hands == 2) else "1-HANDED") if main_w != null else "1-HANDED"
+	
+	equipped_weapon_title.text = "⚔️ MAIN HAND: %s (%s)" % [weapon_name.to_upper(), hand_tag]
+	if player and player.die:
+		equipped_weapon_stats.text = "Faces: %d  |  Avg DMG: %.1f  |  Loaded Face: %s (%d DMG)" % [
+			player.die.faces.size(),
+			player.die.get_average_damage(),
+			player.loaded_face.get("title", "NONE"),
+			player.loaded_face.get("damage", 0)
+		]
+	
 	for child in dice_rack_container.get_children():
 		dice_rack_container.remove_child(child)
 		child.queue_free()
+		
+	if not player or not player.die:
+		return
 		
 	for i in range(player.die.faces.size()):
 		var face = player.die.faces[i]
 		var is_loaded = (face.get("title") == player.loaded_face.get("title") and face.get("damage") == player.loaded_face.get("damage") and face.get("roll") == player.loaded_face.get("roll"))
 		
 		var card = PanelContainer.new()
-		card.custom_minimum_size = Vector2(130, 140)
+		card.custom_minimum_size = Vector2(85, 110)
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		
 		var c_style = StyleBoxFlat.new()
 		c_style.set_corner_radius_all(6)
-		c_style.content_margin_left = 6
-		c_style.content_margin_right = 6
-		c_style.content_margin_top = 6
-		c_style.content_margin_bottom = 6
+		c_style.content_margin_left = 4
+		c_style.content_margin_right = 4
+		c_style.content_margin_top = 4
+		c_style.content_margin_bottom = 4
 		
 		if is_loaded:
 			c_style.bg_color = Color(0.20, 0.16, 0.06, 0.95)
@@ -1688,19 +2052,19 @@ func _render_backpack_ui() -> void:
 		
 		var cvbox = VBoxContainer.new()
 		cvbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		cvbox.add_theme_constant_override("separation", 3)
+		cvbox.add_theme_constant_override("separation", 2)
 		card.add_child(cvbox)
 		
 		var roll_lbl = Label.new()
 		roll_lbl.text = "FACE %d" % face.get("roll", i + 1)
 		roll_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		roll_lbl.add_theme_font_size_override("font_size", 11)
+		roll_lbl.add_theme_font_size_override("font_size", 10)
 		roll_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2) if is_loaded else Color(0.38, 0.74, 0.97))
 		cvbox.add_child(roll_lbl)
 		
 		var icon_rect = TextureRect.new()
 		icon_rect.texture = load(face.get("icon", "res://assets/ui/die_face_1.svg"))
-		icon_rect.custom_minimum_size = Vector2(40, 40)
+		icon_rect.custom_minimum_size = Vector2(32, 32)
 		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		cvbox.add_child(icon_rect)
@@ -1708,7 +2072,7 @@ func _render_backpack_ui() -> void:
 		var t_lbl = Label.new()
 		t_lbl.text = face.get("title", "")
 		t_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		t_lbl.add_theme_font_size_override("font_size", 12)
+		t_lbl.add_theme_font_size_override("font_size", 10)
 		t_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
 		cvbox.add_child(t_lbl)
 		
@@ -1716,153 +2080,243 @@ func _render_backpack_ui() -> void:
 		var dmg = face.get("damage", 0)
 		d_lbl.text = "%d DMG" % dmg if dmg > 0 else "0 DMG"
 		d_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		d_lbl.add_theme_font_size_override("font_size", 12)
+		d_lbl.add_theme_font_size_override("font_size", 11)
 		d_lbl.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4) if dmg > 0 else Color(0.6, 0.6, 0.6))
 		cvbox.add_child(d_lbl)
 		
-		var st_lbl = Label.new()
-		var desc = face.get("desc", "")
-		if face.get("knockback", false):
-			st_lbl.text = "💥 PUSH / SLAM"
-			st_lbl.add_theme_color_override("font_color", Color(0.95, 0.7, 0.2))
-		elif desc.contains("Burn") or desc.contains("Fire"):
-			st_lbl.text = "🔥 BURN AREA"
-			st_lbl.add_theme_color_override("font_color", Color(0.95, 0.4, 0.2))
-		elif desc.contains("Shield"):
-			st_lbl.text = "🛡️ BREAK GUARD"
-			st_lbl.add_theme_color_override("font_color", Color(0.3, 0.8, 0.95))
-		else:
-			st_lbl.text = "NORMAL STRIKE"
-			st_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
-		st_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		st_lbl.add_theme_font_size_override("font_size", 9)
-		cvbox.add_child(st_lbl)
-		
 		if is_loaded:
 			var act_tag = Label.new()
-			act_tag.text = "▶ ACTIVE NEXT"
+			act_tag.text = "▶ READY"
 			act_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			act_tag.add_theme_font_size_override("font_size", 10)
+			act_tag.add_theme_font_size_override("font_size", 9)
 			act_tag.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
 			cvbox.add_child(act_tag)
-			
-	# 2. Populate Backpack Weapons List
-	for child in backpack_items_container.get_children():
-		backpack_items_container.remove_child(child)
-		child.queue_free()
-		
-	for w in backpack_weapons:
-		var row = PanelContainer.new()
-		var r_style = StyleBoxFlat.new()
-		var is_current = (w.name == player.die.name)
-		r_style.bg_color = Color(0.12, 0.15, 0.22, 0.8) if is_current else Color(0.08, 0.10, 0.14, 0.7)
-		r_style.border_color = Color(0.3, 0.8, 0.5) if is_current else Color(0.2, 0.25, 0.35)
-		r_style.set_border_width_all(1)
-		r_style.set_corner_radius_all(6)
-		r_style.content_margin_left = 12
-		r_style.content_margin_right = 12
-		r_style.content_margin_top = 6
-		r_style.content_margin_bottom = 6
-		row.add_theme_stylebox_override("panel", r_style)
-		backpack_items_container.add_child(row)
-		
-		var rhbox = HBoxContainer.new()
-		rhbox.add_theme_constant_override("separation", 14)
-		row.add_child(rhbox)
-		
-		var w_icon = TextureRect.new()
-		w_icon.texture = load(w.icon_path)
-		w_icon.custom_minimum_size = Vector2(36, 36)
-		w_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		w_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		rhbox.add_child(w_icon)
-		
-		var w_vbox = VBoxContainer.new()
-		w_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		rhbox.add_child(w_vbox)
-		
-		var w_name_lbl = Label.new()
-		w_name_lbl.text = w.name
-		w_name_lbl.add_theme_font_size_override("font_size", 14)
-		w_name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
-		w_vbox.add_child(w_name_lbl)
-		
-		var w_sub_lbl = Label.new()
-		w_sub_lbl.text = "Die: %s  |  Avg DMG: %.1f  |  Faces: %d" % [w.die_type.to_upper(), w.get_average_damage(), w.faces.size()]
-		w_sub_lbl.add_theme_font_size_override("font_size", 11)
-		w_sub_lbl.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8))
-		w_vbox.add_child(w_sub_lbl)
-		
-		var mini_hbox = HBoxContainer.new()
-		mini_hbox.add_theme_constant_override("separation", 4)
-		for f in w.faces:
-			var m_tex = TextureRect.new()
-			m_tex.texture = load(f.get("icon", "res://assets/ui/die_face_1.svg"))
-			m_tex.custom_minimum_size = Vector2(20, 20)
-			m_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			m_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			mini_hbox.add_child(m_tex)
-		rhbox.add_child(mini_hbox)
-		
-		if is_current:
-			var eq_tag = Label.new()
-			eq_tag.text = "✓ EQUIPPED"
-			eq_tag.add_theme_font_size_override("font_size", 12)
-			eq_tag.add_theme_color_override("font_color", Color(0.3, 0.85, 0.5))
-			rhbox.add_child(eq_tag)
+
+func _update_tab_button_styles() -> void:
+	for tab_name in filter_tab_buttons.keys():
+		var btn: Button = filter_tab_buttons[tab_name]
+		if tab_name == selected_inventory_tab:
+			btn.modulate = Color(1.2, 1.1, 0.4)
 		else:
-			var eq_btn = Button.new()
-			eq_btn.text = "⚔️ Equip"
-			eq_btn.pressed.connect(func(): _equip_weapon_from_backpack(w))
-			rhbox.add_child(eq_btn)
-			
-	# 3. Populate Relics Shelf
-	for child in relics_container.get_children():
-		relics_container.remove_child(child)
+			btn.modulate = Color(0.85, 0.85, 0.9)
+
+func _render_backpack_inventory_cards() -> void:
+	for child in inventory_stash_container.get_children():
+		inventory_stash_container.remove_child(child)
 		child.queue_free()
 		
-	if backpack_relics.is_empty():
-		var no_r = Label.new()
-		no_r.text = "No relics found yet. Slay chamber guardians and loot chests to earn runes!"
-		no_r.add_theme_font_size_override("font_size", 12)
-		no_r.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
-		relics_container.add_child(no_r)
+	var filtered_items: Array[ItemData] = []
+	for it in inventory_items:
+		match selected_inventory_tab:
+			"All":
+				filtered_items.append(it)
+			"Weapons":
+				if it.item_type == "weapon":
+					filtered_items.append(it)
+			"Off-Hand":
+				if it.slot == "hand_2" or it.item_type in ["shield", "tome"]:
+					filtered_items.append(it)
+			"Armor":
+				if it.item_type == "armor":
+					filtered_items.append(it)
+			"Jewelry":
+				if it.item_type == "jewelry":
+					filtered_items.append(it)
+					
+	if filtered_items.is_empty():
+		var empty_lbl = Label.new()
+		empty_lbl.text = "No items in this category. Slay monsters & loot chests to acquire gear!"
+		empty_lbl.add_theme_font_size_override("font_size", 12)
+		empty_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
+		inventory_stash_container.add_child(empty_lbl)
+		return
+		
+	for it in filtered_items:
+		var card = PanelContainer.new()
+		card.custom_minimum_size = Vector2(250, 56)
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		var c_style = StyleBoxFlat.new()
+		c_style.bg_color = Color(0.08, 0.10, 0.15, 0.85)
+		c_style.border_color = Color(0.25, 0.35, 0.50)
+		c_style.set_border_width_all(1)
+		c_style.set_corner_radius_all(6)
+		c_style.content_margin_left = 8
+		c_style.content_margin_right = 8
+		c_style.content_margin_top = 4
+		c_style.content_margin_bottom = 4
+		card.add_theme_stylebox_override("panel", c_style)
+		inventory_stash_container.add_child(card)
+		
+		var hbox = HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 8)
+		card.add_child(hbox)
+		
+		var icon = TextureRect.new()
+		icon.texture = load(it.icon_path)
+		icon.custom_minimum_size = Vector2(36, 36)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		hbox.add_child(icon)
+		
+		var vbox = VBoxContainer.new()
+		vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vbox.add_theme_constant_override("separation", 2)
+		hbox.add_child(vbox)
+		
+		var name_lbl = Label.new()
+		var tag = ""
+		if it.hands == 2:
+			tag = " [2H]"
+		elif it.hands == 1 and it.item_type == "weapon":
+			tag = " [1H]"
+		name_lbl.text = it.name + tag
+		name_lbl.add_theme_font_size_override("font_size", 12)
+		name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+		vbox.add_child(name_lbl)
+		
+		var stat_lbl = Label.new()
+		stat_lbl.text = ItemData.get_slot_title(it.slot) + " | " + it.get_stat_summary()
+		stat_lbl.add_theme_font_size_override("font_size", 10)
+		stat_lbl.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+		vbox.add_child(stat_lbl)
+		
+		var eq_btn = Button.new()
+		eq_btn.text = "⚔️ Equip"
+		eq_btn.pressed.connect(func(): _equip_item_from_inventory(it))
+		hbox.add_child(eq_btn)
+
+func _equip_item_from_inventory(item: ItemData, target_slot: String = "") -> void:
+	play_backpack_equip_sfx()
+	var dest_slot = target_slot if target_slot != "" else item.slot
+	
+	# Hand 1 & Hand 2 (1H vs 2H mechanics)
+	if dest_slot == "hand_1":
+		if item.hands == 2:
+			# 2-Handed weapon: occupies Hand 1 and frees Hand 2 back to inventory
+			if equipped_gear["hand_2"] != null:
+				var off_item: ItemData = equipped_gear["hand_2"]
+				inventory_items.append(off_item)
+				equipped_gear["hand_2"] = null
+				_log("[color=#f59e0b]Equipped 2-Handed %s. Off-hand %s returned to stash.[/color]" % [item.name, off_item.name])
+		# Swap current hand_1 item back to inventory
+		if equipped_gear["hand_1"] != null:
+			inventory_items.append(equipped_gear["hand_1"])
+		equipped_gear["hand_1"] = item
+		inventory_items.erase(item)
+		_log("[color=#22c55e]Equipped %s in Main Hand![/color]" % item.name)
+
+	elif dest_slot == "hand_2":
+		# Off-Hand item (Shield, Tome, Parry Dagger)
+		var main_w: ItemData = equipped_gear.get("hand_1", null)
+		if main_w != null and main_w.hands == 2:
+			# If holding a 2H weapon, return it to stash so player can wield offhand
+			inventory_items.append(main_w)
+			equipped_gear["hand_1"] = null
+			_log("[color=#f59e0b]Unequipped 2-Handed %s to ready off-hand %s![/color]" % [main_w.name, item.name])
+		if equipped_gear["hand_2"] != null:
+			inventory_items.append(equipped_gear["hand_2"])
+		equipped_gear["hand_2"] = item
+		inventory_items.erase(item)
+		_log("[color=#22c55e]Equipped %s in Off-Hand![/color]" % item.name)
+
+	elif dest_slot in ["ring_1", "ring_2"]:
+		var actual_slot = dest_slot
+		if equipped_gear["ring_1"] == null:
+			actual_slot = "ring_1"
+		elif equipped_gear["ring_2"] == null:
+			actual_slot = "ring_2"
+		if equipped_gear[actual_slot] != null:
+			inventory_items.append(equipped_gear[actual_slot])
+		equipped_gear[actual_slot] = item
+		inventory_items.erase(item)
+		_log("[color=#22c55e]Equipped %s in %s![/color]" % [item.name, ItemData.get_slot_title(actual_slot)])
+
 	else:
-		for r in backpack_relics:
-			var r_panel = PanelContainer.new()
-			var rp_style = StyleBoxFlat.new()
-			rp_style.bg_color = Color(0.12, 0.10, 0.18, 0.85)
-			rp_style.border_color = Color(0.7, 0.4, 0.9)
-			rp_style.set_border_width_all(1)
-			rp_style.set_corner_radius_all(4)
-			rp_style.content_margin_left = 10
-			rp_style.content_margin_right = 10
-			rp_style.content_margin_top = 4
-			rp_style.content_margin_bottom = 4
-			r_panel.add_theme_stylebox_override("panel", rp_style)
-			relics_container.add_child(r_panel)
-			
-			var r_vbox = VBoxContainer.new()
-			r_panel.add_child(r_vbox)
-			
-			var rn = Label.new()
-			rn.text = r["name"]
-			rn.add_theme_font_size_override("font_size", 12)
-			rn.add_theme_color_override("font_color", Color(0.9, 0.7, 1.0))
-			r_vbox.add_child(rn)
-			
-			var rd = Label.new()
-			rd.text = r["desc"]
-			rd.add_theme_font_size_override("font_size", 10)
-			rd.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
-			r_vbox.add_child(rd)
+		# Standard armor / jewelry slot (helmet, necklace, chestplate, gloves, pants, boots)
+		if equipped_gear[dest_slot] != null:
+			inventory_items.append(equipped_gear[dest_slot])
+		equipped_gear[dest_slot] = item
+		inventory_items.erase(item)
+		_log("[color=#22c55e]Equipped %s in %s slot![/color]" % [item.name, ItemData.get_slot_title(dest_slot)])
+
+	_recalculate_gear_stats()
+	_render_backpack_ui()
+
+func _unequip_item_from_slot(slot_name: String) -> void:
+	if not equipped_gear.has(slot_name) or equipped_gear[slot_name] == null:
+		return
+	play_backpack_equip_sfx()
+	var it: ItemData = equipped_gear[slot_name]
+	equipped_gear[slot_name] = null
+	inventory_items.append(it)
+	_log("[color=#94a3b8]Unequipped %s to stash.[/color]" % it.name)
+	_recalculate_gear_stats()
+	_render_backpack_ui()
+
+func _recalculate_gear_stats() -> void:
+	if not player or not is_instance_valid(player):
+		return
+	var gear_hp = 0
+	var total_armor = 0
+	var total_dmg = 0
+	
+	for slot_name in equipped_gear.keys():
+		var it: ItemData = equipped_gear[slot_name]
+		if it != null:
+			gear_hp += it.hp_bonus
+			total_armor += it.armor_bonus
+			total_dmg += it.dmg_bonus
+
+	var old_max = player.max_hp
+	var new_max = BASE_HP + gear_hp
+	var hp_delta = new_max - old_max
+	
+	player.max_hp = new_max
+	if hp_delta > 0:
+		player.current_hp = mini(player.max_hp, player.current_hp + hp_delta)
+	else:
+		player.current_hp = mini(player.max_hp, player.current_hp)
+	
+	player.armor = total_armor
+	player.dmg_bonus = total_dmg
+	
+	# Update active weapon in hand_1
+	var main_w: ItemData = equipped_gear.get("hand_1", null)
+	if main_w != null and main_w.die != null:
+		player.die = main_w.die.duplicate_die()
+	else:
+		player.die = DieData.create_default_d6_sword()
+		
+	if player.hp_bar:
+		player.hp_bar.max_value = player.max_hp
+		player.hp_bar.value = player.current_hp
+	if exp_hp_bar:
+		exp_hp_bar.max_value = player.max_hp
+		exp_hp_bar.value = player.current_hp
+		exp_hp_label.text = "❤️ %d / %d" % [player.current_hp, player.max_hp]
+	if char_hp_label:
+		char_hp_label.text = "❤️ HP: %d / %d" % [player.current_hp, player.max_hp]
+		char_armor_label.text = "🛡️ ARMOR: %d" % player.armor
+		char_dmg_label.text = "⚔️ BONUS DMG: +%d" % player.dmg_bonus
 
 func _equip_weapon_from_backpack(weapon: DieData) -> void:
-	player.die = weapon.duplicate_die()
-	player.roll_next_face()
-	play_backpack_equip_sfx()
-	play_dice_lock_sfx()
-	_update_hud_display()
+	# Legacy adapter: find or create item and equip to hand_1
+	var item: ItemData = null
+	for it in inventory_items:
+		if it.die and it.die.name == weapon.name:
+			item = it
+			break
+	if item == null:
+		item = ItemData.new()
+		item.id = weapon.name.to_lower().replace(" ", "_")
+		item.name = weapon.name
+		item.slot = "hand_1"
+		item.hands = 2 if weapon.name.contains("Warhammer") or weapon.name.contains("Executioner") else 1
+		item.item_type = "weapon"
+		item.icon_path = weapon.icon_path
+		item.die = weapon.duplicate_die()
+	_equip_item_from_inventory(item, "hand_1")
 	_render_backpack_ui()
 	_animate_hud_die_tumbler()
 	_animate_overhead_hero_roll()
@@ -1870,10 +2324,22 @@ func _equip_weapon_from_backpack(weapon: DieData) -> void:
 	_show_floating_text(player.position, "EQUIPPED: %s" % player.die.name, Color(0.3, 0.8, 0.95))
 
 func _add_weapon_to_backpack(weapon: DieData) -> void:
+	for it in inventory_items:
+		if it.die and it.die.name == weapon.name:
+			return
 	for w in backpack_weapons:
 		if w.name == weapon.name:
 			return
 	backpack_weapons.append(weapon.duplicate_die())
+	var item = ItemData.new()
+	item.id = weapon.name.to_lower().replace(" ", "_")
+	item.name = weapon.name
+	item.slot = "hand_1"
+	item.hands = 2 if weapon.name.contains("Warhammer") or weapon.name.contains("Executioner") else 1
+	item.item_type = "weapon"
+	item.icon_path = weapon.icon_path
+	item.die = weapon.duplicate_die()
+	inventory_items.append(item)
 	if is_backpack_open:
 		_render_backpack_ui()
 
@@ -2061,6 +2527,15 @@ func _open_door(door: Dictionary) -> void:
 		tween.tween_property(fog, "modulate:a", 0.0, 0.4)
 		tween.tween_callback(fog.queue_free)
 		fog_overlays.erase(r_id)
+		
+	# Light up and fade in sconces inside this chamber
+	if room_torches.has(r_id):
+		for t_obj in room_torches[r_id]:
+			t_obj["sconce"].visible = true
+			t_obj["glow"].visible = true
+			t_obj["glow"].modulate.a = 0.0
+			var t_tween = create_tween()
+			t_tween.tween_property(t_obj["glow"], "modulate:a", 0.70, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		
 	# Find and activate living monsters in this room
 	var engaged_monsters: Array[CombatUnit] = []
@@ -2962,7 +3437,8 @@ func _resolve_pulse() -> void:
 	if player_attack_target != Vector2i(-1, -1):
 		player.animate_attack_thrust(grid_to_world(player_attack_target))
 		var face = player.loaded_face
-		var dmg = face.get("damage", 0)
+		var base_dmg = face.get("damage", 0)
+		var dmg = base_dmg + (player.dmg_bonus if base_dmg > 0 else 0)
 		var is_knockback = face.get("knockback", false)
 		
 		var hit_enemy: CombatUnit = null
@@ -3004,8 +3480,12 @@ func _resolve_pulse() -> void:
 					
 				if not attack_blocked:
 					hit_enemy.take_damage(dmg, attack_dir)
-					_log("[color=#22c55e]Hero struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
-					_show_floating_text(hit_enemy.position, "-%d DMG" % dmg, Color(0.95, 0.85, 0.2))
+					if player.dmg_bonus > 0 and base_dmg > 0:
+						_log("[color=#22c55e]Hero struck %s for %d damage! (%d base + %d gear bonus)[/color]" % [hit_enemy.unit_name, dmg, base_dmg, player.dmg_bonus])
+						_show_floating_text(hit_enemy.position, "-%d DMG (+%d Gear)" % [dmg, player.dmg_bonus], Color(0.95, 0.85, 0.2))
+					else:
+						_log("[color=#22c55e]Hero struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
+						_show_floating_text(hit_enemy.position, "-%d DMG" % dmg, Color(0.95, 0.85, 0.2))
 					
 					# PUSH / WALL SLAM PUZZLE MECHANIC
 					if is_knockback and hit_enemy.is_alive:
@@ -3099,9 +3579,13 @@ func _resolve_pulse() -> void:
 				_spawn_slash_vfx(player.position, e_dir, Color(0.95, 0.35, 0.35))
 				_shake_camera(4.0, 0.15)
 				await _play_attack_impact_animation(player.position, face, false)
-				player.take_damage(dmg, e_dir)
-				_log("[color=#ef4444]%s struck Hero for %d damage![/color]" % [enemy.unit_name, dmg])
-				_show_floating_text(player.position, "-%d HP" % dmg, Color(0.95, 0.25, 0.25))
+				var taken = player.take_damage(dmg, e_dir)
+				if player.armor > 0 and dmg > taken:
+					_log("[color=#ef4444]%s struck Hero for %d damage! (🛡️ %d absorbed by Armor)[/color]" % [enemy.unit_name, taken, dmg - taken])
+					_show_floating_text(player.position, "-%d HP (🛡️-%d)" % [taken, dmg - taken], Color(0.95, 0.4, 0.4))
+				else:
+					_log("[color=#ef4444]%s struck Hero for %d damage![/color]" % [enemy.unit_name, taken])
+					_show_floating_text(player.position, "-%d HP" % taken, Color(0.95, 0.25, 0.25))
 			else:
 				_log("[color=#38bdf8]Hero dodged %s's strike![/color]" % enemy.unit_name)
 				_show_floating_text(player.position, "DODGED!", Color(0.2, 0.8, 0.4))

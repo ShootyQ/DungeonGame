@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="silver_band" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="50%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <radialGradient id="sapphire_gem" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#bfdbfe"/>
+      <stop offset="40%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="28" fill="#3b82f6" fill-opacity="0.12"/>
+  <!-- Silver Aegis Band -->
+  <circle cx="32" cy="36" r="16" fill="none" stroke="url(#silver_band)" stroke-width="6"/>
+  <!-- Shield-shaped Gem Mount -->
+  <path d="M24 10 H40 L38 20 L32 24 L26 20 Z" fill="#475569"/>
+  <!-- Sapphire Gemstone -->
+  <polygon points="32,8 39,14 32,22 25,14" fill="url(#sapphire_gem)"/>
+  <circle cx="30" cy="12" r="1.5" fill="#ffffff" fill-opacity="0.9"/>
+  <line x1="32" y1="8" x2="32" y2="22" stroke="#93c5fd" stroke-width="1"/>
+</svg>

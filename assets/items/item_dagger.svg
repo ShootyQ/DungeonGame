@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="dagger_blade" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="50%" stop-color="#a5f3fc"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="28" fill="#06b6d4" fill-opacity="0.1"/>
+  <g transform="rotate(45 32 32)">
+    <!-- Slender Stiletto Blade -->
+    <polygon points="32,6 35,32 29,32" fill="url(#dagger_blade)"/>
+    <line x1="32" y1="8" x2="32" y2="30" stroke="#0891b2" stroke-width="1"/>
+    <!-- Serrated notch -->
+    <path d="M29 26 L27 27 L29 28 M35 26 L37 27 L35 28" stroke="#0e7490" stroke-width="1.2"/>
+    <!-- Guard -->
+    <rect x="23" y="32" width="18" height="3" rx="1.5" fill="#334155"/>
+    <circle cx="23" cy="33.5" r="1.5" fill="#22d3ee"/>
+    <circle cx="41" cy="33.5" r="1.5" fill="#22d3ee"/>
+    <!-- Grip -->
+    <rect x="30" y="35" width="4" height="12" rx="1" fill="#0f172a"/>
+    <!-- Pommel with poison gem -->
+    <circle cx="32" cy="49" r="3" fill="#06b6d4"/>
+    <circle cx="32" cy="49" r="1.5" fill="#a5f3fc"/>
+  </g>
+  <!-- 1H Badge -->
+  <rect x="4" y="4" width="18" height="12" rx="3" fill="#0284c7" fill-opacity="0.85"/>
+  <text x="13" y="13" font-family="sans-serif" font-size="9" font-weight="bold" fill="#ffffff" text-anchor="middle">1H</text>
+</svg>

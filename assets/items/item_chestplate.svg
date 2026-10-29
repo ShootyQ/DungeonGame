@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="chest_steel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="chest_gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="28" fill="#38bdf8" fill-opacity="0.12"/>
+  <!-- Layered Cuirass -->
+  <path d="M20 12 L28 12 L30 16 C31 18 33 18 34 16 L36 12 L44 12 L50 20 L47 34 L44 54 L20 54 L17 34 L14 20 Z" fill="url(#chest_steel)"/>
+  <!-- Pauldrons / Shoulders -->
+  <path d="M12 18 C12 14 18 12 22 14 L20 22 C16 22 13 20 12 18 Z" fill="url(#chest_gold)"/>
+  <path d="M52 18 C52 14 46 12 42 14 L44 22 C48 22 51 20 52 18 Z" fill="url(#chest_gold)"/>
+  <!-- Central Keel Ridge -->
+  <line x1="32" y1="18" x2="32" y2="52" stroke="#f1f5f9" stroke-width="2.5"/>
+  <!-- Pectoral plates lines -->
+  <path d="M20 28 Q32 34 44 28" fill="none" stroke="url(#chest_gold)" stroke-width="2"/>
+  <path d="M21 38 Q32 44 43 38" fill="none" stroke="#475569" stroke-width="1.8"/>
+  <path d="M22 46 Q32 50 42 46" fill="none" stroke="#475569" stroke-width="1.8"/>
+  <!-- Gold Center Crest -->
+  <polygon points="32,24 35,28 32,32 29,28" fill="url(#chest_gold)"/>
+</svg>

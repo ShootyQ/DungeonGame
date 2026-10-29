@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="4 3"/>
+  <!-- Chain curve -->
+  <path d="M18 16 C18 36 24 44 32 46 C40 44 46 36 46 16" fill="none" stroke="#fbbf24" stroke-opacity="0.4" stroke-width="2.5" stroke-dasharray="3 2"/>
+  <!-- Pendant gem -->
+  <polygon points="32,44 38,50 32,56 26,50" fill="#f59e0b" fill-opacity="0.45"/>
+  <circle cx="32" cy="50" r="2" fill="#fef08a" fill-opacity="0.6"/>
+</svg>

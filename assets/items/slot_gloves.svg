@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="gloves_slot_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="4 3"/>
+  <!-- Left Gauntlet -->
+  <path d="M18 48 L20 28 L23 20 L27 20 L28 26 L29 20 L32 20 L32 28 L32 48 Z" fill="url(#gloves_slot_grad)"/>
+  <!-- Right Gauntlet -->
+  <path d="M46 48 L44 28 L41 20 L37 20 L36 26 L35 20 L32 20 L32 28 L32 48 Z" fill="url(#gloves_slot_grad)"/>
+  <!-- Cuff lines -->
+  <line x1="18" y1="42" x2="32" y2="42" stroke="#38bdf8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <line x1="32" y1="42" x2="46" y2="42" stroke="#38bdf8" stroke-opacity="0.4" stroke-width="1.5"/>
+</svg>

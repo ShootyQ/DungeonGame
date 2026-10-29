@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="boots_slot_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="4 3"/>
+  <!-- Left Boot (facing left) -->
+  <path d="M22 18 H29 V38 L30 46 H16 C16 43 18 40 22 40 Z" fill="url(#boots_slot_grad)"/>
+  <!-- Right Boot (facing right) -->
+  <path d="M42 18 H35 V38 L34 46 H48 C48 43 46 40 42 40 Z" fill="url(#boots_slot_grad)"/>
+  <!-- Soles -->
+  <rect x="15" y="46" width="16" height="4" rx="1" fill="#38bdf8" fill-opacity="0.4"/>
+  <rect x="33" y="46" width="16" height="4" rx="1" fill="#38bdf8" fill-opacity="0.4"/>
+</svg>

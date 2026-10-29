@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="shield_slot_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="4 3"/>
+  <!-- Shield Shape -->
+  <path d="M18 14 H46 L44 32 C43 42 37 49 32 52 C27 49 21 42 20 32 Z" fill="url(#shield_slot_grad)"/>
+  <!-- Shield Cross -->
+  <path d="M30 18 H34 V30 H40 V34 H34 V44 H30 V34 H24 V30 H30 Z" fill="#38bdf8" fill-opacity="0.4"/>
+  <!-- Hand 2 Tag -->
+  <text x="32" y="60" font-family="sans-serif" font-size="8" font-weight="bold" fill="#38bdf8" fill-opacity="0.7" text-anchor="middle">OFF</text>
+</svg>

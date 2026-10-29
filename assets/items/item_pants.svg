@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="greaves_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="28" fill="#38bdf8" fill-opacity="0.12"/>
+  <!-- Armored Greaves -->
+  <path d="M18 12 H46 L47 26 L44 52 L34 52 L33 30 L31 30 L30 52 L20 52 L17 26 Z" fill="url(#greaves_grad)"/>
+  <!-- Gold Plated Belt & Tassets -->
+  <rect x="18" y="12" width="28" height="4" fill="#fde047"/>
+  <polygon points="32,16 35,22 29,22" fill="#d97706"/>
+  <!-- Heavy Pointed Poleyns (Kneecaps) -->
+  <polygon points="26,30 30,36 26,42 22,36" fill="#fde047"/>
+  <circle cx="26" cy="36" r="2" fill="#b45309"/>
+  <polygon points="38,30 42,36 38,42 34,36" fill="#fde047"/>
+  <circle cx="38" cy="36" r="2" fill="#b45309"/>
+  <!-- Shin Ridges -->
+  <line x1="26" y1="42" x2="26" y2="52" stroke="#f8fafc" stroke-width="2"/>
+  <line x1="38" y1="42" x2="38" y2="52" stroke="#f8fafc" stroke-width="2"/>
+</svg>

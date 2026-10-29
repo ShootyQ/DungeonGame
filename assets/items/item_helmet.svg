@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="helm_steel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="40%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <linearGradient id="helm_gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="28" fill="#38bdf8" fill-opacity="0.12"/>
+  <!-- Helmet Dome -->
+  <path d="M32 8 C20 8 16 16 16 28 L16 44 C16 52 24 56 32 56 C40 56 48 52 48 44 L48 28 C48 16 44 8 32 8 Z" fill="url(#helm_steel)"/>
+  <!-- Gold Plume Crest on Top -->
+  <path d="M30 4 L34 4 L33 16 L31 16 Z" fill="url(#helm_gold)"/>
+  <!-- Gold Trim Band -->
+  <rect x="16" y="24" width="32" height="4" fill="url(#helm_gold)"/>
+  <!-- Cross Visor (T-slit) -->
+  <path d="M20 30 H44 V34 H34 V48 H30 V34 H20 Z" fill="#090d16"/>
+  <!-- Breathing Holes -->
+  <circle cx="24" cy="40" r="1.2" fill="#090d16"/>
+  <circle cx="27" cy="40" r="1.2" fill="#090d16"/>
+  <circle cx="24" cy="44" r="1.2" fill="#090d16"/>
+  <circle cx="27" cy="44" r="1.2" fill="#090d16"/>
+  <circle cx="37" cy="40" r="1.2" fill="#090d16"/>
+  <circle cx="40" cy="40" r="1.2" fill="#090d16"/>
+  <circle cx="37" cy="44" r="1.2" fill="#090d16"/>
+  <circle cx="40" cy="44" r="1.2" fill="#090d16"/>
+</svg>

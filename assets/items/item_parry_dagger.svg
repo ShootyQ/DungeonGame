@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="main_gauche_steel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="50%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="28" fill="#10b981" fill-opacity="0.12"/>
+  <g transform="rotate(45 32 32)">
+    <!-- Blade with wide base -->
+    <polygon points="32,8 35,34 29,34" fill="url(#main_gauche_steel)"/>
+    <line x1="32" y1="10" x2="32" y2="32" stroke="#334155" stroke-width="1.2"/>
+    <!-- Swept Parrying Basket Guard (Main-Gauche) -->
+    <path d="M22 34 C22 28 26 26 30 32 L34 32 C38 26 42 28 42 34 L40 37 C36 40 28 40 24 37 Z" fill="#64748b"/>
+    <path d="M24 35 C24 30 28 28 32 33 C36 28 40 30 40 35" fill="none" stroke="#f1f5f9" stroke-width="1.5"/>
+    <!-- Grip -->
+    <rect x="30" y="37" width="4" height="11" rx="1" fill="#1e293b"/>
+    <!-- Pierced Pommel -->
+    <circle cx="32" cy="51" r="3" fill="#64748b"/>
+    <circle cx="32" cy="51" r="1.2" fill="#10b981"/>
+  </g>
+  <!-- OFF Badge -->
+  <rect x="4" y="4" width="22" height="12" rx="3" fill="#059669" fill-opacity="0.9"/>
+  <text x="15" y="13" font-family="sans-serif" font-size="8" font-weight="bold" fill="#ffffff" text-anchor="middle">OFF</text>
+</svg>

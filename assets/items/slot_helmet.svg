@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="helm_slot_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  <!-- Background border -->
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="4 3"/>
+  <!-- Helmet Silhouette -->
+  <path d="M32 10 C22 10 18 18 18 28 L18 42 C18 48 24 52 32 52 C40 52 46 48 46 42 L46 28 C46 18 42 10 32 10 Z" fill="url(#helm_slot_grad)"/>
+  <!-- Crest ridge -->
+  <path d="M30 6 L34 6 L33 26 L31 26 Z" fill="#38bdf8" fill-opacity="0.5"/>
+  <!-- T-visor slit -->
+  <path d="M22 28 H42 V33 H34 V44 H30 V33 H22 Z" fill="#0f172a" fill-opacity="0.8"/>
+</svg>

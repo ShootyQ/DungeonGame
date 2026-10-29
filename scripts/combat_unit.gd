@@ -8,6 +8,8 @@ signal hp_changed(unit: CombatUnit, new_hp: int, max_hp: int)
 @export var is_player: bool = false
 @export var max_hp: int = 20
 var current_hp: int = 20
+var armor: int = 0
+var dmg_bonus: int = 0
 var is_alive: bool = true
 var is_active_in_combat: bool = false
 var room_id: int = 0
@@ -313,19 +315,25 @@ func _process(delta: float) -> void:
 		sprite.scale.y = base_sprite_scale.y * (1.0 + breath * 0.04)
 		sprite.scale.x = base_sprite_scale.x * (1.0 - breath * 0.03)
 
-func take_damage(dmg: int, impact_dir: Vector2 = Vector2.ZERO) -> void:
+func take_damage(dmg: int, impact_dir: Vector2 = Vector2.ZERO) -> int:
 	if not is_alive or is_dying:
-		return
-	current_hp = max(0, current_hp - dmg)
-	hp_bar.value = current_hp
+		return 0
+	var final_dmg = dmg
+	if is_player and armor > 0:
+		final_dmg = maxi(1, dmg - armor)
+	current_hp = max(0, current_hp - final_dmg)
+	if hp_bar:
+		hp_bar.value = current_hp
 	hp_changed.emit(self, current_hp, max_hp)
 	
-	animate_hit_flinch(impact_dir)
+	if sprite:
+		animate_hit_flinch(impact_dir)
 	
 	if current_hp <= 0:
 		is_alive = false
 		clear_intent()
 		died.emit(self)
+	return final_dmg
 
 func animate_hit_flinch(impact_dir: Vector2 = Vector2.ZERO) -> Tween:
 	is_flinching = true

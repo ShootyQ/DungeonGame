@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="ring_slot_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="4 3"/>
+  <!-- Ring Circle -->
+  <circle cx="32" cy="34" r="16" fill="none" stroke="url(#ring_slot_grad)" stroke-width="5"/>
+  <!-- Ring Gem socket & Gem -->
+  <polygon points="32,10 38,18 26,18" fill="#fbbf24" fill-opacity="0.6"/>
+  <polygon points="32,8 37,16 32,14 27,16" fill="#fef08a" fill-opacity="0.8"/>
+</svg>
