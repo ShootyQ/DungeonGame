@@ -19,7 +19,7 @@ var facing_dir: Vector2i = Vector2i(0, 1) # (0,1)=Down, (0,-1)=Up, (1,0)=Right, 
 var is_stunned: bool = false
 var has_shield: bool = false
 var shield_broken: bool = false
-var telegraphed_tiles: Array[Vector2i] = []
+var telegraphed_tiles: Array = []
 
 var die: DieData
 var loaded_face: Dictionary = {}
@@ -29,10 +29,14 @@ var target_grid_pos: Vector2i = Vector2i.ZERO
 
 var sprite: Sprite2D
 var hp_bar: ProgressBar
-var intent_icon: Sprite2D
+var intent_plate: PanelContainer
+var intent_icon: TextureRect
+var intent_label: Label
+var hero_plate: PanelContainer
+var hero_icon: TextureRect
+var hero_label: Label
 var shield_icon: Sprite2D
 var stun_icon: Sprite2D
-var loaded_face_icon: TextureRect
 
 func setup(p_name: String, p_is_player: bool, p_max_hp: int, p_texture: Texture2D, p_grid_pos: Vector2i, p_die: DieData, p_type: String = "grunt") -> void:
 	unit_name = p_name
@@ -50,26 +54,81 @@ func setup(p_name: String, p_is_player: bool, p_max_hp: int, p_texture: Texture2
 	sprite.centered = true
 	add_child(sprite)
 	
-	# Intent Badge above unit head
-	intent_icon = Sprite2D.new()
-	intent_icon.position = Vector2(0, -42)
-	intent_icon.scale = Vector2(0.85, 0.85)
-	intent_icon.visible = false
-	add_child(intent_icon)
+	# Overhead Intent Plate (Enemies) - High contrast & elevated
+	if not is_player:
+		intent_plate = PanelContainer.new()
+		intent_plate.z_as_relative = false
+		intent_plate.z_index = 26
+		intent_plate.position = Vector2(-54, -60)
+		intent_plate.custom_minimum_size = Vector2(108, 24)
+		intent_plate.visible = false
+		add_child(intent_plate)
+		
+		var i_hbox = HBoxContainer.new()
+		i_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		i_hbox.add_theme_constant_override("separation", 6)
+		intent_plate.add_child(i_hbox)
+		
+		intent_icon = TextureRect.new()
+		intent_icon.custom_minimum_size = Vector2(20, 20)
+		intent_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		intent_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		i_hbox.add_child(intent_icon)
+		
+		intent_label = Label.new()
+		intent_label.text = "ATTACK"
+		intent_label.add_theme_font_size_override("font_size", 12)
+		i_hbox.add_child(intent_label)
+	else:
+		# Overhead Die Plate (Hero) - Shows loaded face & damage
+		hero_plate = PanelContainer.new()
+		hero_plate.z_as_relative = false
+		hero_plate.z_index = 26
+		hero_plate.position = Vector2(-60, -60)
+		hero_plate.custom_minimum_size = Vector2(120, 24)
+		var hp_style = StyleBoxFlat.new()
+		hp_style.bg_color = Color(0.06, 0.08, 0.12, 0.95)
+		hp_style.border_color = Color(0.98, 0.82, 0.2)
+		hp_style.set_border_width_all(2)
+		hp_style.set_corner_radius_all(5)
+		hp_style.content_margin_left = 6
+		hp_style.content_margin_right = 6
+		hp_style.content_margin_top = 2
+		hp_style.content_margin_bottom = 2
+		hero_plate.add_theme_stylebox_override("panel", hp_style)
+		hero_plate.visible = false
+		add_child(hero_plate)
+		
+		var h_hbox = HBoxContainer.new()
+		h_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		h_hbox.add_theme_constant_override("separation", 6)
+		hero_plate.add_child(h_hbox)
+		
+		hero_icon = TextureRect.new()
+		hero_icon.custom_minimum_size = Vector2(20, 20)
+		hero_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		hero_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		h_hbox.add_child(hero_icon)
+		
+		hero_label = Label.new()
+		hero_label.text = "DIE LOADED"
+		hero_label.add_theme_font_size_override("font_size", 12)
+		hero_label.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
+		h_hbox.add_child(hero_label)
 	
 	# Shield indicator for Shieldbearers
 	shield_icon = Sprite2D.new()
 	shield_icon.texture = load("res://assets/ui/shield_badge.svg")
-	shield_icon.position = Vector2(16, -20)
-	shield_icon.scale = Vector2(0.7, 0.7)
+	shield_icon.position = Vector2(20, -22)
+	shield_icon.scale = Vector2(0.75, 0.75)
 	shield_icon.visible = has_shield
 	add_child(shield_icon)
 	
 	# Stun indicator
 	stun_icon = Sprite2D.new()
 	stun_icon.texture = load("res://assets/ui/stun_badge.svg")
-	stun_icon.position = Vector2(0, -52)
-	stun_icon.scale = Vector2(0.85, 0.85)
+	stun_icon.position = Vector2(0, -65)
+	stun_icon.scale = Vector2(0.9, 0.9)
 	stun_icon.visible = false
 	add_child(stun_icon)
 	
@@ -100,32 +159,100 @@ func setup(p_name: String, p_is_player: bool, p_max_hp: int, p_texture: Texture2
 func roll_next_face() -> Dictionary:
 	if die:
 		loaded_face = die.roll_random_face()
+		if is_player:
+			update_hero_die_badge()
 	return loaded_face
 
-func set_intent(type: String, target_pos: Vector2i, p_telegraphed: Array[Vector2i] = []) -> void:
+func update_hero_die_badge() -> void:
+	if not is_player or not hero_plate:
+		return
+	if loaded_face == null or loaded_face.is_empty():
+		hero_plate.visible = false
+		return
+		
+	var title = loaded_face.get("title", "STRIKE")
+	var dmg = loaded_face.get("damage", 0)
+	var icon_path = loaded_face.get("icon", "res://assets/ui/die_face_1.svg")
+	
+	if ResourceLoader.exists(icon_path):
+		hero_icon.texture = load(icon_path)
+		
+	hero_label.text = "%s • %d DMG" % [title, dmg]
+	hero_plate.visible = true
+	
+	# Gentle scale pop
+	hero_plate.scale = Vector2(1.2, 1.2)
+	var tween = create_tween()
+	tween.tween_property(hero_plate, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func set_intent(type: String, target_pos: Vector2i, p_telegraphed: Array = [], custom_dmg: int = -1) -> void:
 	intent_type = type
 	target_grid_pos = target_pos
 	telegraphed_tiles = p_telegraphed
 	
+	if not intent_plate:
+		return
+		
+	if type == "NONE":
+		intent_plate.visible = false
+		return
+		
+	var dmg = custom_dmg
+	var p_style = StyleBoxFlat.new()
+	p_style.bg_color = Color(0.06, 0.08, 0.12, 0.95)
+	p_style.set_corner_radius_all(5)
+	p_style.set_border_width_all(2)
+	p_style.content_margin_left = 6
+	p_style.content_margin_right = 6
+	p_style.content_margin_top = 2
+	p_style.content_margin_bottom = 2
+	
 	if type == "MOVE":
 		intent_icon.texture = load("res://assets/ui/intent_enemy_move.svg")
-		intent_icon.visible = true
+		intent_label.text = "👣 MOVE"
+		intent_label.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+		p_style.border_color = Color(0.2, 0.6, 0.9)
 	elif type == "ATTACK":
+		if dmg < 0:
+			dmg = loaded_face.get("damage", 4) if loaded_face else 4
 		intent_icon.texture = load("res://assets/ui/intent_enemy_attack.svg")
-		intent_icon.visible = true
+		intent_label.text = "⚔️ %d DMG" % dmg
+		intent_label.add_theme_color_override("font_color", Color(0.98, 0.35, 0.35))
+		p_style.border_color = Color(0.9, 0.2, 0.2)
 	elif type == "CHARGE":
+		if dmg < 0: dmg = 8
 		intent_icon.texture = load("res://assets/ui/intent_enemy_charge.svg")
-		intent_icon.visible = true
+		intent_label.text = "💥 RUSH %d DMG" % dmg
+		intent_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.2))
+		p_style.border_color = Color(0.95, 0.45, 0.1)
 	elif type == "SWEEP":
+		if dmg < 0: dmg = 6
 		intent_icon.texture = load("res://assets/ui/intent_enemy_sweep.svg")
-		intent_icon.visible = true
+		intent_label.text = "🪓 CLEAVE %d DMG" % dmg
+		intent_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.65))
+		p_style.border_color = Color(0.9, 0.25, 0.6)
 	elif type == "BLAST":
+		if dmg < 0: dmg = 7
 		intent_icon.texture = load("res://assets/ui/intent_enemy_blast.svg")
-		intent_icon.visible = true
+		intent_label.text = "🔥 BLAST %d DMG" % dmg
+		intent_label.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
+		p_style.border_color = Color(0.95, 0.7, 0.1)
 	elif type == "STUNNED":
-		intent_icon.visible = false
+		intent_icon.texture = load("res://assets/ui/stun_badge.svg")
+		intent_label.text = "💫 STUNNED"
+		intent_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.2))
+		p_style.border_color = Color(0.7, 0.6, 0.2)
 	else:
-		intent_icon.visible = false
+		intent_plate.visible = false
+		return
+		
+	intent_plate.add_theme_stylebox_override("panel", p_style)
+	intent_plate.visible = true
+	
+	# Scale punch animation
+	intent_plate.scale = Vector2(1.2, 1.2)
+	var tween = create_tween()
+	tween.tween_property(intent_plate, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func set_stunned(val: bool) -> void:
 	is_stunned = val
@@ -133,13 +260,15 @@ func set_stunned(val: bool) -> void:
 	if val:
 		clear_intent()
 		intent_type = "STUNNED"
+		if intent_plate:
+			intent_plate.visible = false
 
 func clear_intent() -> void:
 	intent_type = "NONE"
 	target_grid_pos = grid_pos
 	telegraphed_tiles.clear()
-	if intent_icon:
-		intent_icon.visible = false
+	if intent_plate:
+		intent_plate.visible = false
 
 func take_damage(dmg: int) -> void:
 	if not is_alive:
