@@ -26,6 +26,7 @@ var loaded_face: Dictionary = {}
 
 var intent_type: String = "NONE" # "NONE", "MOVE", "ATTACK", "CHARGE", "SWEEP", "BLAST", "STUNNED"
 var target_grid_pos: Vector2i = Vector2i.ZERO
+var is_targeted: bool = false
 
 var sprite: Sprite2D
 var hp_bar: ProgressBar
@@ -266,8 +267,17 @@ func clear_intent() -> void:
 	intent_type = "NONE"
 	target_grid_pos = grid_pos
 	telegraphed_tiles.clear()
+	set_targeted(false)
 	if intent_plate:
 		intent_plate.visible = false
+
+func set_targeted(val: bool) -> void:
+	is_targeted = val
+	if not is_player and sprite:
+		if val:
+			sprite.modulate = Color(1.3, 0.75, 0.75)
+		else:
+			sprite.modulate = Color.WHITE
 
 func take_damage(dmg: int) -> void:
 	if not is_alive:

@@ -1,10 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <circle cx="32" cy="32" r="24" stroke="#ef4444" stroke-width="3" fill="#ef4444" opacity="0.2"/>
-  <circle cx="32" cy="32" r="14" stroke="#ef4444" stroke-width="2" fill="none"/>
-  <!-- Crosshairs -->
-  <line x1="32" y1="4" x2="32" y2="14" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
-  <line x1="32" y1="50" x2="32" y2="60" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
-  <line x1="4" y1="32" x2="14" y2="32" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
-  <line x1="50" y1="32" x2="60" y2="32" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="32" cy="32" r="3" fill="#ef4444"/>
+  <!-- Dark drop shadow for contrast against any enemy sprite -->
+  <path d="M 3 17 L 3 3 L 17 3" stroke="#000000" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.8"/>
+  <path d="M 47 3 L 61 3 L 61 17" stroke="#000000" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.8"/>
+  <path d="M 3 47 L 3 61 L 17 61" stroke="#000000" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.8"/>
+  <path d="M 47 61 L 61 61 L 61 47" stroke="#000000" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.8"/>
+
+  <!-- High-visibility Framing Corner Brackets (Frames even the largest 64px monsters!) -->
+  <path d="M 3 17 L 3 3 L 17 3" stroke="#ff2a4b" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <path d="M 47 3 L 61 3 L 61 17" stroke="#ff2a4b" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <path d="M 3 47 L 3 61 L 17 61" stroke="#ff2a4b" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <path d="M 47 61 L 61 61 L 61 47" stroke="#ff2a4b" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+
+  <!-- Semi-transparent red target wash -->
+  <circle cx="32" cy="32" r="28" fill="#ff2a4b" opacity="0.22"/>
+  <circle cx="32" cy="32" r="28" stroke="#000000" stroke-width="3.5" fill="none" opacity="0.8"/>
+  <circle cx="32" cy="32" r="28" stroke="#ff2a4b" stroke-width="2.5" stroke-dasharray="8,6" fill="none"/>
+
+  <!-- Inner Reticle Ring -->
+  <circle cx="32" cy="32" r="16" stroke="#facc15" stroke-width="2" fill="none"/>
+
+  <!-- Bold Central Crosshairs with black outline for maximum visibility -->
+  <line x1="32" y1="2" x2="32" y2="15" stroke="#000000" stroke-width="5" stroke-linecap="round"/>
+  <line x1="32" y1="2" x2="32" y2="15" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="32" y1="49" x2="32" y2="62" stroke="#000000" stroke-width="5" stroke-linecap="round"/>
+  <line x1="32" y1="49" x2="32" y2="62" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+
+  <line x1="2" y1="32" x2="15" y2="32" stroke="#000000" stroke-width="5" stroke-linecap="round"/>
+  <line x1="2" y1="32" x2="15" y2="32" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="49" y1="32" x2="62" y2="32" stroke="#000000" stroke-width="5" stroke-linecap="round"/>
+  <line x1="49" y1="32" x2="62" y2="32" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Center Bullseye Pip -->
+  <circle cx="32" cy="32" r="4.5" fill="#000000"/>
+  <circle cx="32" cy="32" r="3.5" fill="#facc15"/>
 </svg>

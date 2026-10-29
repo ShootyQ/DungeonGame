@@ -51,10 +51,13 @@ var effects_container: Node2D
 var torch_lights: Array[Dictionary] = [] # [{glow: Sprite2D, base_scale: Vector2, seed: float, base_alpha: float}]
 var player_light: Sprite2D
 
-# Reticle indicators
+# Reticle indicators & High-Visibility Overlay
+var target_overlay_container: Node2D
 var move_indicator: Sprite2D
 var attack_indicator: Sprite2D
+var attack_reticle_tween: Tween
 var danger_indicators: Array[Sprite2D] = []
+var combat_targeting_mode: String = "AUTO" # "AUTO" or "STRIKE"
 
 # UI references (in CanvasLayer)
 var canvas_layer: CanvasLayer
@@ -66,6 +69,7 @@ var timer_label: Label
 var phase_title: Label
 var commit_button: Button
 var telegraph_button: Button
+var aim_mode_button: Button
 var restart_button: Button
 
 # Player Die HUD
@@ -279,6 +283,11 @@ func _create_scene_hierarchy() -> void:
 	effects_container.z_index = 15
 	board_container.add_child(effects_container)
 	
+	# Dedicated High-Visibility Overlay for Targeting Reticle (Above all units, lights, fog, badges!)
+	target_overlay_container = Node2D.new()
+	target_overlay_container.z_index = 32
+	board_container.add_child(target_overlay_container)
+	
 	# Reticle Sprites
 	move_indicator = Sprite2D.new()
 	move_indicator.texture = load("res://assets/ui/indicator_move.svg")
@@ -290,7 +299,7 @@ func _create_scene_hierarchy() -> void:
 	attack_indicator.texture = load("res://assets/ui/indicator_attack.svg")
 	attack_indicator.centered = true
 	attack_indicator.visible = false
-	reticle_container.add_child(attack_indicator)
+	target_overlay_container.add_child(attack_indicator)
 
 func _build_board_visuals() -> void:
 	var tex_floor_clean = load("res://assets/sprites/tile_floor.svg")
@@ -925,6 +934,11 @@ func _setup_hud() -> void:
 	commit_button.text = "⚡ COMMIT (SPACE)"
 	commit_button.pressed.connect(_on_commit_pressed)
 	btn_hbox.add_child(commit_button)
+	
+	aim_mode_button = Button.new()
+	aim_mode_button.text = "🎯 Aim: AUTO (Q)"
+	aim_mode_button.pressed.connect(_toggle_combat_targeting_mode)
+	btn_hbox.add_child(aim_mode_button)
 	
 	var bag_btn = Button.new()
 	bag_btn.text = "🎒 Dice / Bag (B)"
@@ -1760,7 +1774,8 @@ func _setup_main_menu_ui() -> void:
 	guide_vbox.add_child(g_title)
 	
 	var tips = [
-		"• [W][A][S][D]: Move hero through dungeon corridors & breach iron doors.",
+		"• [W][A][S][D]: Move hero in exploration & choose combat move during planning.",
+		"• [CLICK / Q]: Left-click enemy/path, Right-click any square to strike. [Q] toggles Strike Aim.",
 		"• [SPACE]: Commit tactical combat moves & attacks before pulses resolve.",
 		"• [B]: Open Backpack to inspect loaded die faces & equip newly claimed weapon dice.",
 		"• [F11]: Toggle fullscreen mode at any time."
@@ -2421,6 +2436,16 @@ func _input(event: InputEvent) -> void:
 				_on_commit_pressed()
 			elif event.keycode == KEY_T:
 				_on_toggle_telegraphs()
+			elif event.keycode == KEY_Q or event.keycode == KEY_TAB:
+				_toggle_combat_targeting_mode()
+			elif event.keycode == KEY_W or event.keycode == KEY_UP:
+				_select_combat_move_dir(Vector2i(0, -1))
+			elif event.keycode == KEY_S or event.keycode == KEY_DOWN:
+				_select_combat_move_dir(Vector2i(0, 1))
+			elif event.keycode == KEY_A or event.keycode == KEY_LEFT:
+				_select_combat_move_dir(Vector2i(-1, 0))
+			elif event.keycode == KEY_D or event.keycode == KEY_RIGHT:
+				_select_combat_move_dir(Vector2i(1, 0))
 				
 	# If backpack, audio modal or main menu is open, don't register clicks on the floor
 	if is_backpack_open or is_audio_settings_open or is_main_menu_open:
@@ -2437,44 +2462,127 @@ func _input(event: InputEvent) -> void:
 				elif event.button_index == MOUSE_BUTTON_RIGHT:
 					_handle_combat_right_click(clicked_grid)
 
+func _toggle_combat_targeting_mode() -> void:
+	if combat_targeting_mode == "AUTO":
+		combat_targeting_mode = "STRIKE"
+		if is_instance_valid(aim_mode_button):
+			aim_mode_button.text = "🎯 Aim: STRIKE (Q)"
+		_log("[color=#f59e0b]🎯 Strike Aim Mode LOCKED. Left-click any square to target strike.[/color]")
+	else:
+		combat_targeting_mode = "AUTO"
+		if is_instance_valid(aim_mode_button):
+			aim_mode_button.text = "🎯 Aim: AUTO (Q)"
+		_log("[color=#38bdf8]🎯 Aim Mode AUTO. Click enemy/path to strike, floor to move.[/color]")
+	_update_combat_plan_hud()
+
+func _select_combat_move_dir(dir: Vector2i) -> void:
+	var target = player.grid_pos + dir
+	if not is_valid_grid_pos(target) or grid[target.y][target.x] != 0:
+		_log("[color=#ef4444]Cannot move into wall![/color]")
+		return
+	if player_move_target == target:
+		player_move_target = Vector2i(-1, -1)
+		move_indicator.visible = false
+		_log("[color=#94a3b8]Holding position.[/color]")
+	else:
+		player_move_target = target
+		move_indicator.position = grid_to_world(target)
+		move_indicator.visible = true
+		_log("[color=#38bdf8]Move target → (%d, %d)[/color]" % [target.x, target.y])
+	_update_combat_plan_hud()
+
+func _update_combat_plan_hud() -> void:
+	if not is_instance_valid(last_action_label):
+		return
+	var move_str = "(%d, %d)" % [player_move_target.x, player_move_target.y] if player_move_target != Vector2i(-1, -1) else "Hold [WASD]"
+	var strike_str = "(%d, %d)" % [player_attack_target.x, player_attack_target.y] if player_attack_target != Vector2i(-1, -1) else "None [R-Click/Aim]"
+	last_action_label.text = "🦶 Move: %s   •   ⚔️ Strike: %s   [Q: Aim Mode]" % [move_str, strike_str]
+
 func _handle_combat_left_click(pos: Vector2i) -> void:
+	# 1. Direct Click on Living Enemy -> Target Strike
 	for enemy in active_combat_enemies:
 		if is_instance_valid(enemy) and enemy.is_alive and enemy.grid_pos == pos:
 			_toggle_attack_target(pos, enemy.unit_name)
 			return
 
+	# 2. Click on Projected Destination of a Moving/Charging Enemy -> Intercept Strike!
+	for enemy in active_combat_enemies:
+		if is_instance_valid(enemy) and enemy.is_alive and enemy.intent_type in ["MOVE", "CHARGE"]:
+			if enemy.target_grid_pos == pos or (enemy.intent_type == "CHARGE" and enemy.telegraphed_tiles.has(pos)):
+				_toggle_attack_target(pos, "intercept strike on %s" % enemy.unit_name)
+				return
+
+	# 3. Click on Player -> Clear Move (Hold Position)
 	if pos == player.grid_pos:
 		player_move_target = Vector2i(-1, -1)
 		move_indicator.visible = false
 		_log("[color=#94a3b8]Holding position.[/color]")
+		_update_combat_plan_hud()
 		return
 
+	# 4. If Shift key is held OR Strike Aim Mode is active -> Strike target on ANY tile!
+	if Input.is_key_pressed(KEY_SHIFT) or combat_targeting_mode == "STRIKE":
+		_toggle_attack_target(pos, "tile (%d, %d)" % [pos.x, pos.y])
+		return
+
+	# 5. Empty Floor Tile
 	if grid[pos.y][pos.x] == 0:
 		var diff = (pos - player.grid_pos).abs()
-		if diff.x <= 1 and diff.y <= 1:
+		var is_adjacent = (diff.x <= 1 and diff.y <= 1)
+		if is_adjacent:
 			if player_move_target == pos:
-				player_move_target = Vector2i(-1, -1)
-				move_indicator.visible = false
-				_log("[color=#94a3b8]Cancelled move.[/color]")
+				# Already set as move destination -> promote/toggle attack strike!
+				_toggle_attack_target(pos, "tile (%d, %d)" % [pos.x, pos.y])
+			elif player_move_target != Vector2i(-1, -1):
+				# Move already selected elsewhere -> this click is for attack strike!
+				_toggle_attack_target(pos, "tile (%d, %d)" % [pos.x, pos.y])
 			else:
+				# First click sets move target
 				player_move_target = pos
 				move_indicator.position = grid_to_world(pos)
 				move_indicator.visible = true
 				_log("[color=#38bdf8]Move target → (%d, %d)[/color]" % [pos.x, pos.y])
+		else:
+			# Non-adjacent tile -> aim prediction strike
+			_toggle_attack_target(pos, "prediction tile (%d, %d)" % [pos.x, pos.y])
+			
+	_update_combat_plan_hud()
 
 func _handle_combat_right_click(pos: Vector2i) -> void:
+	# Right-click ALWAYS sets or toggles attack strike target on ANY tile!
 	_toggle_attack_target(pos, "tile (%d, %d)" % [pos.x, pos.y])
 
 func _toggle_attack_target(pos: Vector2i, label: String) -> void:
 	if player_attack_target == pos:
 		player_attack_target = Vector2i(-1, -1)
 		attack_indicator.visible = false
+		if attack_reticle_tween and attack_reticle_tween.is_valid():
+			attack_reticle_tween.kill()
 		_log("[color=#94a3b8]Cancelled strike on %s[/color]" % label)
 	else:
 		player_attack_target = pos
 		attack_indicator.position = grid_to_world(pos)
 		attack_indicator.visible = true
-		_log("[color=#ef4444]Locked strike on %s[/color]" % label)
+		attack_indicator.scale = Vector2(1.35, 1.35)
+		
+		# Breathing looping reticle tween so target is unmissable
+		if attack_reticle_tween and attack_reticle_tween.is_valid():
+			attack_reticle_tween.kill()
+		attack_reticle_tween = create_tween().set_loops()
+		attack_reticle_tween.tween_property(attack_indicator, "scale", Vector2(1.12, 1.12), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		attack_reticle_tween.tween_property(attack_indicator, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		
+		play_dice_lock_sfx()
+		_log("[color=#ef4444]🎯 Locked strike on %s → (%d, %d)[/color]" % [label, pos.x, pos.y])
+
+	# Update targeted visual glow on enemies
+	for enemy in active_combat_enemies:
+		if is_instance_valid(enemy):
+			var is_tgt = (enemy.grid_pos == player_attack_target or (enemy.intent_type in ["MOVE", "CHARGE"] and enemy.target_grid_pos == player_attack_target))
+			if enemy.has_method("set_targeted"):
+				enemy.set_targeted(is_tgt)
+				
+	_update_combat_plan_hud()
 
 func _start_planning_phase() -> void:
 	# Clear any lingering attack impacts or popups immediately so the field is completely unobstructed!
@@ -2499,17 +2607,25 @@ func _start_planning_phase() -> void:
 	player_attack_target = Vector2i(-1, -1)
 	move_indicator.visible = false
 	attack_indicator.visible = false
+	if attack_reticle_tween and attack_reticle_tween.is_valid():
+		attack_reticle_tween.kill()
+	attack_indicator.scale = Vector2.ONE
 	
 	for ind in danger_indicators:
 		if is_instance_valid(ind):
 			ind.queue_free()
 	danger_indicators.clear()
 	
+	for enemy in active_combat_enemies:
+		if is_instance_valid(enemy) and enemy.has_method("set_targeted"):
+			enemy.set_targeted(false)
+	
 	# Trigger Pre-Pulse Dice Roll Tumble & Reveal
 	_trigger_pulse_roll()
 	
 	_plan_enemy_intents()
 	_update_hud_display()
+	_update_combat_plan_hud()
 
 func has_line_of_sight(from_pos: Vector2i, to_pos: Vector2i) -> bool:
 	if from_pos == to_pos:
@@ -2533,6 +2649,49 @@ func has_line_of_sight(from_pos: Vector2i, to_pos: Vector2i) -> bool:
 			return false
 			
 	return true
+
+func _find_strafe_step(enemy: CombatUnit, prefer_retreat: bool = false) -> Vector2i:
+	var blocked: Dictionary = {}
+	for other in active_combat_enemies:
+		if is_instance_valid(other) and other != enemy and other.is_alive and other.current_hp > 0:
+			blocked[other.grid_pos] = true
+			if other.intent_type == "MOVE":
+				blocked[other.target_grid_pos] = true
+			elif other.intent_type == "CHARGE":
+				for ct in other.telegraphed_tiles:
+					blocked[ct] = true
+
+	var candidates: Array[Vector2i] = []
+	var directions: Array[Vector2i] = [
+		Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+		Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)
+	]
+
+	var cur_dist_sq = (enemy.grid_pos - player.grid_pos).length_squared()
+
+	for d in directions:
+		var n = enemy.grid_pos + d
+		if not is_valid_grid_pos(n) or grid[n.y][n.x] != 0:
+			continue
+		if n == player.grid_pos or blocked.has(n):
+			continue
+		
+		if prefer_retreat:
+			# Want to increase distance from player and preserve line of sight
+			var n_dist_sq = (n - player.grid_pos).length_squared()
+			if n_dist_sq > cur_dist_sq and has_line_of_sight(n, player.grid_pos):
+				candidates.append(n)
+		else:
+			# Lateral / flanking strafe: stays adjacent to player (diff <= 1) but moves away from current tile!
+			var p_diff = (n - player.grid_pos).abs()
+			if max(p_diff.x, p_diff.y) == 1:
+				candidates.append(n)
+
+	if candidates.is_empty():
+		return enemy.grid_pos
+
+	candidates.shuffle()
+	return candidates[0]
 
 func _plan_enemy_intents() -> void:
 	for enemy in active_combat_enemies:
@@ -2576,17 +2735,51 @@ func _plan_enemy_intents() -> void:
 				enemy.facing_dir = charge_dir
 				enemy.set_intent("CHARGE", enemy.grid_pos + charge_dir * 3, charge_tiles)
 				continue
+			elif dist_chebyshev <= 1:
+				# Adjacent! Cannot charge. Reposition or strafe back to line up a charge corridor!
+				var retreat_step = _find_strafe_step(enemy, true)
+				if retreat_step != enemy.grid_pos and is_valid_grid_pos(retreat_step) and grid[retreat_step.y][retreat_step.x] == 0:
+					enemy.facing_dir = (retreat_step - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
+					enemy.set_intent("MOVE", retreat_step)
+					if show_telegraphs:
+						_spawn_enemy_move_indicator(retreat_step)
+					_show_floating_text(enemy.position, "REPOSITION!", Color(1.0, 0.65, 0.2))
+					continue
+				else:
+					var next_step = _find_smart_path_step(enemy.grid_pos, player.grid_pos, enemy)
+					if next_step != enemy.grid_pos and is_valid_grid_pos(next_step) and grid[next_step.y][next_step.x] == 0:
+						enemy.facing_dir = (next_step - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
+						enemy.set_intent("MOVE", next_step)
+						if show_telegraphs:
+							_spawn_enemy_move_indicator(next_step)
+					else:
+						enemy.set_intent("NONE", enemy.grid_pos)
+					continue
 			else:
 				var next_step = _find_smart_path_step(enemy.grid_pos, player.grid_pos, enemy)
 				if next_step != enemy.grid_pos and is_valid_grid_pos(next_step) and grid[next_step.y][next_step.x] == 0:
 					enemy.facing_dir = (next_step - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
 					enemy.set_intent("MOVE", next_step)
+					if show_telegraphs:
+						_spawn_enemy_move_indicator(next_step)
 				else:
 					enemy.set_intent("NONE", enemy.grid_pos)
 				continue
 				
-		# 2. CULTIST PYROMANCER: 3-Tile Cross Flame Blast (Requires direct line of sight without walls!)
+		# 2. CULTIST PYROMANCER: 3-Tile Cross Flame Blast
 		if enemy.unit_type == "pyromancer":
+			if dist_chebyshev <= 1:
+				# Hero in melee range! Smart pyromancer kites/retreats away to cast safely
+				var retreat_step = _find_strafe_step(enemy, true)
+				if retreat_step != enemy.grid_pos and is_valid_grid_pos(retreat_step) and grid[retreat_step.y][retreat_step.x] == 0:
+					enemy.facing_dir = (player.grid_pos - retreat_step).clamp(Vector2i(-1,-1), Vector2i(1,1))
+					enemy.set_intent("MOVE", retreat_step)
+					if show_telegraphs:
+						_spawn_enemy_move_indicator(retreat_step)
+					_show_floating_text(enemy.position, "KITING!", Color(0.4, 0.8, 1.0))
+					continue
+				# If cornered against wall with no retreat, blast at point blank!
+			
 			if dist_chebyshev <= 4 and has_los:
 				var blast_tiles: Array[Vector2i] = [player.grid_pos]
 				for d in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
@@ -2604,13 +2797,26 @@ func _plan_enemy_intents() -> void:
 				if next_step != enemy.grid_pos and is_valid_grid_pos(next_step) and grid[next_step.y][next_step.x] == 0:
 					enemy.facing_dir = (next_step - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
 					enemy.set_intent("MOVE", next_step)
+					if show_telegraphs:
+						_spawn_enemy_move_indicator(next_step)
 				else:
 					enemy.set_intent("NONE", enemy.grid_pos)
 				continue
 			
-		# 3. ORC BRAWLER: Wide 3-Tile Cleave Sweep
+		# 3. ORC BRAWLER: Wide 3-Tile Cleave Sweep + Smart Lateral Strafing
 		if enemy.unit_type == "brawler":
 			if dist_chebyshev <= 1 and has_los:
+				# 35% chance to strafe sideways / flank hero to avoid hero's incoming frontal swing
+				if randf() < 0.35:
+					var strafe_step = _find_strafe_step(enemy, false)
+					if strafe_step != enemy.grid_pos:
+						enemy.facing_dir = (player.grid_pos - strafe_step).clamp(Vector2i(-1,-1), Vector2i(1,1))
+						enemy.set_intent("MOVE", strafe_step)
+						if show_telegraphs:
+							_spawn_enemy_move_indicator(strafe_step)
+						_show_floating_text(enemy.position, "STRAFE!", Color(0.4, 0.8, 1.0))
+						continue
+						
 				var sweep_dir = (player.grid_pos - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
 				enemy.facing_dir = sweep_dir
 				var sweep_tiles: Array[Vector2i] = [player.grid_pos]
@@ -2634,12 +2840,25 @@ func _plan_enemy_intents() -> void:
 				if next_step != enemy.grid_pos and is_valid_grid_pos(next_step) and grid[next_step.y][next_step.x] == 0:
 					enemy.facing_dir = (next_step - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
 					enemy.set_intent("MOVE", next_step)
+					if show_telegraphs:
+						_spawn_enemy_move_indicator(next_step)
 				else:
 					enemy.set_intent("NONE", enemy.grid_pos)
 				continue
 			
 		# 4. SKELETON SHIELDBEARER & GRUNTS
 		if dist_chebyshev <= 1 and has_los:
+			# 35% chance to strafe sideways / flank hero to avoid hero's incoming attack
+			if randf() < 0.35:
+				var strafe_step = _find_strafe_step(enemy, false)
+				if strafe_step != enemy.grid_pos:
+					enemy.facing_dir = (player.grid_pos - strafe_step).clamp(Vector2i(-1,-1), Vector2i(1,1))
+					enemy.set_intent("MOVE", strafe_step)
+					if show_telegraphs:
+						_spawn_enemy_move_indicator(strafe_step)
+					_show_floating_text(enemy.position, "STRAFE!", Color(0.4, 0.8, 1.0))
+					continue
+					
 			enemy.facing_dir = (player.grid_pos - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
 			enemy.set_intent("ATTACK", player.grid_pos)
 			if show_telegraphs:
@@ -2649,6 +2868,8 @@ func _plan_enemy_intents() -> void:
 			if next_step != enemy.grid_pos and is_valid_grid_pos(next_step) and grid[next_step.y][next_step.x] == 0:
 				enemy.facing_dir = (next_step - enemy.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
 				enemy.set_intent("MOVE", next_step)
+				if show_telegraphs:
+					_spawn_enemy_move_indicator(next_step)
 			else:
 				enemy.set_intent("NONE", enemy.grid_pos)
 
@@ -2718,8 +2939,17 @@ func _spawn_danger_indicator(pos: Vector2i) -> void:
 	var danger = Sprite2D.new()
 	danger.texture = load("res://assets/ui/danger_tile.svg")
 	danger.position = grid_to_world(pos)
+	danger.visible = show_telegraphs
 	reticle_container.add_child(danger)
 	danger_indicators.append(danger)
+
+func _spawn_enemy_move_indicator(pos: Vector2i) -> void:
+	var move_ind = Sprite2D.new()
+	move_ind.texture = load("res://assets/ui/indicator_enemy_move.svg")
+	move_ind.position = grid_to_world(pos)
+	move_ind.visible = show_telegraphs
+	reticle_container.add_child(move_ind)
+	danger_indicators.append(move_ind)
 
 func _update_hud_display() -> void:
 	if is_instance_valid(exp_hp_bar) and player:
