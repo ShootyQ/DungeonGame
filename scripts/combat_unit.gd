@@ -9,6 +9,8 @@ signal hp_changed(unit: CombatUnit, new_hp: int, max_hp: int)
 @export var max_hp: int = 20
 var current_hp: int = 20
 var is_alive: bool = true
+var is_active_in_combat: bool = false
+var room_id: int = 0 # 0 = hallway/player, 1 = room 1, 2 = room 2
 var grid_pos: Vector2i = Vector2i.ZERO
 
 var die: DieData
