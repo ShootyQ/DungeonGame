@@ -27,6 +27,8 @@ var current_combat_room_id: int = 0
 # Player planned intents in combat
 var player_move_target: Vector2i = Vector2i(-1, -1)
 var player_attack_target: Vector2i = Vector2i(-1, -1)
+var player_action_order: String = "move_first" # "move_first" ([1]) or "attack_first" ([2])
+var action_order_btn: Button
 
 # Dungeon generation data
 var dungeon_data: Dictionary = {}
@@ -632,6 +634,19 @@ func _create_enemy(p_name: String, hp: int, tex_path: String, pos: Vector2i, p_r
 	var enemy = CombatUnit.new()
 	unit_container.add_child(enemy)
 	enemy.setup(p_name, false, hp, load(tex_path), pos, DieData.create_default_d6_sword(), p_type)
+	match p_type:
+		"grunt":
+			enemy.stat_dex = 12 if "Goblin" in p_name else 8
+		"charger":
+			enemy.stat_dex = 11
+		"shieldbearer":
+			enemy.stat_dex = 7
+		"pyromancer":
+			enemy.stat_dex = 9
+		"brawler":
+			enemy.stat_dex = 6
+		_:
+			enemy.stat_dex = 9
 	enemy.position = grid_to_world(pos)
 	enemy.room_id = p_room_id
 	enemy.died.connect(_on_enemy_died)
@@ -875,6 +890,12 @@ func _setup_hud() -> void:
 	last_action_label.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
 	pulse_center_vbox.add_child(last_action_label)
 	
+	action_order_btn = Button.new()
+	action_order_btn.text = "[1] 👟 MOVE FIRST  ➔  ⚔️ ATTACK  [Toggle: 1 / 2]"
+	action_order_btn.custom_minimum_size = Vector2(0, 24)
+	action_order_btn.pressed.connect(_toggle_action_order)
+	pulse_center_vbox.add_child(action_order_btn)
+	
 	# Right: Threat Intel & Action Buttons
 	var action_vbox = VBoxContainer.new()
 	action_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1060,6 +1081,7 @@ func _setup_backpack_ui() -> void:
 	
 	var close_btn = Button.new()
 	close_btn.text = "✕ Close"
+	close_btn.custom_minimum_size = Vector2(80, 30)
 	close_btn.pressed.connect(_toggle_backpack)
 	header_hbox.add_child(close_btn)
 	
@@ -3762,9 +3784,76 @@ func _open_chest(chest: Dictionary) -> void:
 		_render_backpack_inventory_cards()
 		_update_hud_display()
 
+func get_room_rect(r_id: int) -> Rect2i:
+	for r in dungeon_rooms:
+		if r.get("id", -1) == r_id:
+			return r.get("rect", Rect2i())
+	return Rect2i()
+
+func _lock_combat_chamber_doors(r_id: int) -> void:
+	var paired_closed_textures = {
+		"horizontal": {
+			"left": load("res://assets/sprites/door_horiz_left_closed.svg"),
+			"right": load("res://assets/sprites/door_horiz_right_closed.svg")
+		},
+		"vertical": {
+			"top": load("res://assets/sprites/door_vert_top_closed.svg"),
+			"bottom": load("res://assets/sprites/door_vert_bottom_closed.svg")
+		}
+	}
+	var locked_count = 0
+	for d in doors:
+		if d.get("room_id", -1) == r_id:
+			d["is_open"] = false
+			var orient = d.get("orientation", "horizontal")
+			var part = d.get("part", "left")
+			if is_instance_valid(d["sprite"]):
+				d["sprite"].texture = paired_closed_textures.get(orient, {}).get(part, paired_closed_textures["horizontal"]["left"])
+				var d_tween = create_tween()
+				d_tween.tween_property(d["sprite"], "scale", Vector2(1.2, 1.2), 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				d_tween.tween_property(d["sprite"], "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			grid[d["pos"].y][d["pos"].x] = 2 # Closed door blocks passage and line of sight
+			_spawn_dust_puff(grid_to_world(d["pos"]))
+			_show_floating_text(grid_to_world(d["pos"]), "PORTCULLIS LOCKED!", Color(0.95, 0.25, 0.25))
+			locked_count += 1
+	if locked_count > 0:
+		play_door_creak_sfx()
+		_log("[color=#ef4444][b]🔒 PORTCULLIS ENGAGED! Chamber doors slammed shut. Conquer all foes to unseal![/b][/color]")
+
+func _unlock_combat_chamber_doors(r_id: int) -> void:
+	var paired_open_textures = {
+		"horizontal": {
+			"left": load("res://assets/sprites/door_horiz_left_open.svg"),
+			"right": load("res://assets/sprites/door_horiz_right_open.svg")
+		},
+		"vertical": {
+			"top": load("res://assets/sprites/door_vert_top_open.svg"),
+			"bottom": load("res://assets/sprites/door_vert_bottom_open.svg")
+		}
+	}
+	var opened_count = 0
+	for d in doors:
+		if d.get("room_id", -1) == r_id:
+			d["is_open"] = true
+			var orient = d.get("orientation", "horizontal")
+			var part = d.get("part", "left")
+			if is_instance_valid(d["sprite"]):
+				d["sprite"].texture = paired_open_textures.get(orient, {}).get(part, paired_open_textures["horizontal"]["left"])
+				var d_tween = create_tween()
+				d_tween.tween_property(d["sprite"], "scale", Vector2(1.2, 1.2), 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				d_tween.tween_property(d["sprite"], "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			grid[d["pos"].y][d["pos"].x] = 0 # Floor walkable
+			_spawn_dust_puff(grid_to_world(d["pos"]))
+			_show_floating_text(grid_to_world(d["pos"]), "PORTCULLIS OPENED!", Color(0.2, 0.9, 0.4))
+			opened_count += 1
+	if opened_count > 0:
+		play_door_creak_sfx()
+		_log("[color=#22c55e][b]🔓 PORTCULLIS RAISED! Chamber unlocked. Passage restored.[/b][/color]")
+
 func _start_combat_countdown(engaged_monsters: Array[CombatUnit]) -> void:
 	current_mode = GameMode.COMBAT_COUNTDOWN
 	active_combat_enemies = engaged_monsters
+	_lock_combat_chamber_doors(current_combat_room_id)
 	
 	# Smoothly snap player to breach entrance grid tile inside the chamber
 	var snap_target = grid_to_world(player.grid_pos)
@@ -3929,6 +4018,10 @@ func _input(event: InputEvent) -> void:
 		elif current_mode == GameMode.COMBAT_PULSE and pulse_state == PulseState.PLANNING:
 			if event.keycode == KEY_SPACE:
 				_on_commit_pressed()
+			elif event.keycode == KEY_1 or event.keycode == KEY_KP_1:
+				_set_action_order("move_first")
+			elif event.keycode == KEY_2 or event.keycode == KEY_KP_2:
+				_set_action_order("attack_first")
 			elif event.keycode == KEY_T:
 				_on_toggle_telegraphs()
 			elif event.keycode == KEY_Q or event.keycode == KEY_TAB:
@@ -3984,12 +4077,80 @@ func _select_combat_move_dir(dir: Vector2i) -> void:
 		move_indicator.position = grid_to_world(target)
 		move_indicator.visible = true
 		_log("[color=#38bdf8]Move target → (%d, %d)[/color]" % [target.x, target.y])
+	_validate_attack_target_range()
 	_update_combat_plan_hud()
+
+func _set_action_order(order: String) -> void:
+	if player_action_order == order:
+		return
+	player_action_order = order
+	play_dice_lock_sfx()
+	_update_action_order_ui()
+	_validate_attack_target_range()
+	if player_action_order == "move_first":
+		_log("[color=#38bdf8]⚡ Action Order: [b][1] 👟 MOVE FIRST ➔ ⚔️ ATTACK[/b][/color]")
+		_show_floating_text(player.position, "MOVE FIRST [1]", Color(0.38, 0.74, 0.97))
+	else:
+		_log("[color=#f59e0b]⚡ Action Order: [b][2] ⚔️ ATTACK FIRST ➔ 👟 MOVE[/b][/color]")
+		_show_floating_text(player.position, "ATTACK FIRST [2]", Color(0.98, 0.65, 0.2))
+
+func _toggle_action_order() -> void:
+	if player_action_order == "move_first":
+		_set_action_order("attack_first")
+	else:
+		_set_action_order("move_first")
+
+func _update_action_order_ui() -> void:
+	if not is_instance_valid(action_order_btn):
+		return
+	var b_style = StyleBoxFlat.new()
+	b_style.set_corner_radius_all(5)
+	b_style.content_margin_left = 12
+	b_style.content_margin_right = 12
+	b_style.content_margin_top = 4
+	b_style.content_margin_bottom = 4
+	b_style.set_border_width_all(2)
+
+	if player_action_order == "move_first":
+		action_order_btn.text = "⚡ ORDER: [1] 👟 MOVE FIRST  ➔  ⚔️ ATTACK  [Press 1 / 2]"
+		b_style.bg_color = Color(0.08, 0.16, 0.26, 0.95)
+		b_style.border_color = Color(0.22, 0.74, 0.97)
+		action_order_btn.add_theme_color_override("font_color", Color(0.4, 0.85, 1.0))
+	else:
+		action_order_btn.text = "⚡ ORDER: [2] ⚔️ ATTACK FIRST  ➔  👟 MOVE  [Press 1 / 2]"
+		b_style.bg_color = Color(0.24, 0.12, 0.06, 0.95)
+		b_style.border_color = Color(0.98, 0.65, 0.2)
+		action_order_btn.add_theme_color_override("font_color", Color(1.0, 0.82, 0.3))
+	action_order_btn.add_theme_stylebox_override("normal", b_style)
+	action_order_btn.add_theme_stylebox_override("hover", b_style)
+	action_order_btn.add_theme_stylebox_override("pressed", b_style)
+
+func _validate_attack_target_range() -> void:
+	if player_attack_target == Vector2i(-1, -1):
+		return
+	var dist_curr = max(abs(player_attack_target.x - player.grid_pos.x), abs(player_attack_target.y - player.grid_pos.y))
+	var dist_move = 999
+	if player_action_order == "move_first" and player_move_target != Vector2i(-1, -1):
+		dist_move = max(abs(player_attack_target.x - player_move_target.x), abs(player_attack_target.y - player_move_target.y))
+	
+	var in_range = false
+	if player_action_order == "move_first":
+		in_range = (dist_move <= 1 or dist_curr <= 1)
+	else:
+		in_range = (dist_curr <= 1)
+		
+	if not in_range:
+		player_attack_target = Vector2i(-1, -1)
+		if is_instance_valid(attack_indicator):
+			attack_indicator.visible = false
+		if attack_reticle_tween and attack_reticle_tween.is_valid():
+			attack_reticle_tween.kill()
+		_log("[color=#f59e0b]⚠️ Target is now out of range after repositioning. Strike cancelled.[/color]")
 
 func _update_combat_plan_hud() -> void:
 	if not is_instance_valid(last_action_label):
 		return
-	var strike_str = "⚔️ Strike: None [Left-Click Tile/Enemy]"
+	var strike_str = "⚔️ Strike: None [Left-Click Adjacent]"
 	if player_attack_target != Vector2i(-1, -1):
 		strike_str = "⚔️ Strike: (%d, %d)" % [player_attack_target.x, player_attack_target.y]
 		for enemy in active_combat_enemies:
@@ -4001,7 +4162,8 @@ func _update_combat_plan_hud() -> void:
 	if player_move_target != Vector2i(-1, -1):
 		move_str = "🦶 Move: (%d, %d)" % [player_move_target.x, player_move_target.y]
 
-	last_action_label.text = "%s   •   %s" % [strike_str, move_str]
+	var order_badge = "[1: Move ➔ Strike]" if player_action_order == "move_first" else "[2: Strike ➔ Move]"
+	last_action_label.text = "%s   •   %s   •   %s" % [order_badge, strike_str, move_str]
 
 func _handle_combat_left_click(pos: Vector2i) -> void:
 	# LEFT-CLICK IS STRICTLY FOR DAMAGE / ATTACKING!
@@ -4018,6 +4180,7 @@ func _handle_combat_right_click(pos: Vector2i) -> void:
 		player_move_target = Vector2i(-1, -1)
 		move_indicator.visible = false
 		_log("[color=#94a3b8]Holding position.[/color]")
+		_validate_attack_target_range()
 		_update_combat_plan_hud()
 		return
 		
@@ -4039,6 +4202,7 @@ func _handle_combat_right_click(pos: Vector2i) -> void:
 			_log("[color=#38bdf8]Move destination → (%d, %d)[/color]" % [pos.x, pos.y])
 	else:
 		_log("[color=#94a3b8]Right-click adjacent floor tile to step (or use WASD).[/color]")
+	_validate_attack_target_range()
 	_update_combat_plan_hud()
 
 func _toggle_attack_target(pos: Vector2i, label: String) -> void:
@@ -4049,6 +4213,24 @@ func _toggle_attack_target(pos: Vector2i, label: String) -> void:
 			attack_reticle_tween.kill()
 		_log("[color=#94a3b8]Cancelled strike on %s[/color]" % label)
 	else:
+		# Range check: Starting melee range must be within 1 tile!
+		var dist_curr = max(abs(pos.x - player.grid_pos.x), abs(pos.y - player.grid_pos.y))
+		var dist_move = 999
+		if player_action_order == "move_first" and player_move_target != Vector2i(-1, -1):
+			dist_move = max(abs(pos.x - player_move_target.x), abs(pos.y - player_move_target.y))
+		
+		var in_range = false
+		if player_action_order == "move_first":
+			in_range = (dist_move <= 1 or dist_curr <= 1)
+		else:
+			in_range = (dist_curr <= 1)
+			
+		if not in_range:
+			play_attack_whiff_sfx()
+			_show_floating_text(grid_to_world(pos), "OUT OF RANGE (1 Tile Melee)", Color(0.95, 0.45, 0.2))
+			_log("[color=#ef4444]⚠️ Out of range! Melee strikes reach adjacent squares (1 tile).[/color]")
+			return
+
 		player_attack_target = pos
 		attack_indicator.position = grid_to_world(pos)
 		attack_indicator.visible = true
@@ -4175,10 +4357,13 @@ func _find_strafe_step(enemy: CombatUnit, prefer_retreat: bool = false) -> Vecto
 	]
 
 	var cur_dist_sq = (enemy.grid_pos - player.grid_pos).length_squared()
+	var r_rect = get_room_rect(current_combat_room_id)
 
 	for d in directions:
 		var n = enemy.grid_pos + d
 		if not is_valid_grid_pos(n) or grid[n.y][n.x] != 0:
+			continue
+		if r_rect.size != Vector2i.ZERO and not r_rect.has_point(n):
 			continue
 		if n == player.grid_pos or blocked.has(n):
 			continue
@@ -4233,12 +4418,16 @@ func _plan_enemy_intents() -> void:
 				
 			if can_charge and has_los:
 				var charge_tiles: Array[Vector2i] = []
+				var r_rect = get_room_rect(current_combat_room_id)
 				for step in range(1, 4):
 					var c_tile = enemy.grid_pos + charge_dir * step
-					if is_valid_grid_pos(c_tile) and grid[c_tile.y][c_tile.x] == 0:
+					var inside_room = (r_rect.size == Vector2i.ZERO or r_rect.has_point(c_tile))
+					if is_valid_grid_pos(c_tile) and grid[c_tile.y][c_tile.x] == 0 and inside_room:
 						charge_tiles.append(c_tile)
 						if show_telegraphs:
 							_spawn_danger_indicator(c_tile)
+					else:
+						break
 				enemy.facing_dir = charge_dir
 				enemy.set_intent("CHARGE", enemy.grid_pos + charge_dir * 3, charge_tiles)
 				continue
@@ -4390,10 +4579,12 @@ func _find_smart_path_step(from_pos: Vector2i, target_pos: Vector2i, current_uni
 	visited[from_pos] = from_pos
 	
 	var blocked: Dictionary = {}
+	var r_rect = get_room_rect(current_combat_room_id)
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
-			if grid[y][x] != 0:
-				blocked[Vector2i(x, y)] = true
+			var pos_i = Vector2i(x, y)
+			if grid[y][x] != 0 or (r_rect.size != Vector2i.ZERO and not r_rect.has_point(pos_i)):
+				blocked[pos_i] = true
 				
 	# Anti-clash coordination: block where other enemies are AND where they've claimed to move
 	for other in active_combat_enemies:
@@ -4497,51 +4688,342 @@ func _update_hud_display() -> void:
 func _resolve_pulse() -> void:
 	pulse_state = PulseState.RESOLVING
 	commit_button.disabled = true
-	phase_title.text = "💥 PULSE: SIMULTANEOUS CLASH!"
+	phase_title.text = "💥 PULSE: CLASH OF INITIATIVE!"
 	phase_title.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35))
 	
 	# Deep cinematic sub-bass heartbeat pulse impact!
 	play_pulse_heartbeat_sfx()
 	
-	var planned_player_pos = player_move_target if player_move_target != Vector2i(-1, -1) else player.grid_pos
+	# Hero action assignment based on player_action_order
+	var hero_first_type = "move" if player_action_order == "move_first" else "attack"
+	var hero_second_type = "attack" if player_action_order == "move_first" else "move"
 	
-	# STEP 1: MOVEMENT PHASE (0.35s)
-	_log("[b]▶ MOVEMENT PHASE[/b]")
-	var move_destinations = {}
-	move_destinations[player] = planned_player_pos
+	var combatant_plans: Array[Dictionary] = []
 	
+	# 1. Player's Sub-Phase Actions
+	var p_act1 = ""
+	var p_act2 = ""
+	if hero_first_type == "move" and player_move_target != Vector2i(-1, -1) and player_move_target != player.grid_pos:
+		p_act1 = "hero_move"
+	elif hero_first_type == "attack" and player_attack_target != Vector2i(-1, -1):
+		p_act1 = "hero_attack"
+
+	if hero_second_type == "move" and player_move_target != Vector2i(-1, -1) and player_move_target != player.grid_pos:
+		p_act2 = "hero_move"
+	elif hero_second_type == "attack" and player_attack_target != Vector2i(-1, -1):
+		p_act2 = "hero_attack"
+
+	combatant_plans.append({
+		"unit": player,
+		"dex": player.get_total_dex(),
+		"act_1": p_act1,
+		"act_2": p_act2
+	})
+
+	# 2. Enemies' Sub-Phase Actions
+	for enemy in active_combat_enemies:
+		if is_instance_valid(enemy) and enemy.is_alive and enemy.current_hp > 0:
+			var e_act1 = ""
+			var e_act2 = ""
+			if enemy.intent_type == "CHARGE":
+				e_act1 = "enemy_charge"
+			elif enemy.intent_type == "MOVE":
+				e_act1 = "enemy_move"
+			elif enemy.intent_type in ["BLAST", "SWEEP", "ATTACK"]:
+				var diff = (player.grid_pos - enemy.grid_pos).abs()
+				var chebyshev = max(diff.x, diff.y)
+				if (enemy.intent_type == "ATTACK" and chebyshev <= 1) or (enemy.intent_type == "SWEEP" and chebyshev <= 1) or (enemy.intent_type == "BLAST" and chebyshev <= 4):
+					e_act1 = "enemy_attack"
+				else:
+					e_act1 = "enemy_move"
+					e_act2 = "enemy_attack"
+			
+			combatant_plans.append({
+				"unit": enemy,
+				"dex": enemy.get_total_dex(),
+				"act_1": e_act1,
+				"act_2": e_act2
+			})
+
+	# -------------------------------------------------------------
+	# SUB-PHASE 1 (FIRST ACTIONS - RESOLVED BY DEXTERITY)
+	# -------------------------------------------------------------
+	_log("[b][color=#38bdf8]▶ SUB-PHASE 1: FIRST ACTIONS (DEX Initiative)[/color][/b]")
+	var sub1_actions: Array[Dictionary] = []
+	for p in combatant_plans:
+		if p["act_1"] != "":
+			sub1_actions.append({"unit": p["unit"], "dex": p["dex"], "action": p["act_1"]})
+	sub1_actions.sort_custom(func(a, b): return a["dex"] > b["dex"])
+
+	for item in sub1_actions:
+		if not is_instance_valid(item["unit"]) or not item["unit"].is_alive or item["unit"].current_hp <= 0:
+			continue
+		await _execute_turn_action(item["unit"], item["action"])
+
+	await get_tree().create_timer(0.20).timeout
+
+	active_combat_enemies = active_combat_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
+	if active_combat_enemies.is_empty():
+		_on_active_room_cleared()
+		return
+	if player.current_hp <= 0:
+		_game_over()
+		return
+
+	# -------------------------------------------------------------
+	# SUB-PHASE 2 (SECOND ACTIONS - RESOLVED BY DEXTERITY)
+	# -------------------------------------------------------------
+	_log("[b][color=#f59e0b]▶ SUB-PHASE 2: SECOND ACTIONS (DEX Initiative)[/color][/b]")
+	var sub2_actions: Array[Dictionary] = []
+	for p in combatant_plans:
+		if p["act_2"] != "":
+			sub2_actions.append({"unit": p["unit"], "dex": p["dex"], "action": p["act_2"]})
+	sub2_actions.sort_custom(func(a, b): return a["dex"] > b["dex"])
+
+	for item in sub2_actions:
+		if not is_instance_valid(item["unit"]) or not item["unit"].is_alive or item["unit"].current_hp <= 0:
+			continue
+		await _execute_turn_action(item["unit"], item["action"])
+
+	# Hazards, checks, cleanup, end of pulse
+	_process_hazard_tiles()
+	await get_tree().create_timer(0.25).timeout
+
+	if player.current_hp <= 0:
+		_game_over()
+		return
+
 	for enemy in active_combat_enemies:
 		if is_instance_valid(enemy) and enemy.is_alive:
-			move_destinations[enemy] = enemy.target_grid_pos if enemy.intent_type == "MOVE" else enemy.grid_pos
-			
-	for unit in move_destinations.keys():
-		var dest = move_destinations[unit]
-		if dest != unit.grid_pos:
-			var clash = false
-			for other_unit in move_destinations.keys():
-				if other_unit != unit and move_destinations[other_unit] == dest:
+			enemy.clear_intent()
+
+	active_combat_enemies = active_combat_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
+	if active_combat_enemies.is_empty():
+		_on_active_room_cleared()
+	else:
+		_start_planning_phase()
+
+func _execute_turn_action(unit: CombatUnit, action_name: String) -> void:
+	match action_name:
+		"hero_move":
+			if player_move_target != Vector2i(-1, -1) and player_move_target != player.grid_pos:
+				var dest = player_move_target
+				var clash = false
+				for other in active_combat_enemies:
+					if is_instance_valid(other) and other.is_alive and other.grid_pos == dest:
+						clash = true
+						break
+				if clash:
+					_log("[color=#f59e0b]⚡ Hero clashed into enemy on (%d, %d)! Stumbled back.[/color]" % [dest.x, dest.y])
+					_show_floating_text(grid_to_world(dest), "CLASH!", Color(0.95, 0.7, 0.1))
+					player.animate_bump_back(grid_to_world(player.grid_pos))
+				else:
+					player.grid_pos = dest
+					player.animate_move_to(grid_to_world(dest), 0.25)
+				player_move_target = Vector2i(-1, -1)
+				if is_instance_valid(move_indicator):
+					move_indicator.visible = false
+				await get_tree().create_timer(0.25).timeout
+
+		"hero_attack":
+			if player_attack_target != Vector2i(-1, -1):
+				var target_tile = player_attack_target
+				var dist = max(abs(target_tile.x - player.grid_pos.x), abs(target_tile.y - player.grid_pos.y))
+				if dist > 1:
+					play_attack_whiff_sfx()
+					_log("[color=#94a3b8]Hero struck empty air! Target is out of range (1 Tile Melee).[/color]")
+					_show_floating_text(grid_to_world(target_tile), "OUT OF RANGE!", Color(0.95, 0.45, 0.2))
+				else:
+					player.animate_attack_thrust(grid_to_world(target_tile))
+					var face = player.loaded_face
+					var base_dmg = face.get("damage", 0)
+					var dmg = base_dmg + (player.dmg_bonus if base_dmg > 0 else 0)
+					var is_knockback = face.get("knockback", false)
+
+					# Active Weapon Chassis Trait check
+					var main_w: ItemData = equipped_gear.get("hand_1", null)
+					var chassis_trait = main_w.trait_id if main_w != null else ""
+					if chassis_trait == "honed_edge" and dmg > 0:
+						dmg += 1
+					elif chassis_trait == "titans_grip" and dmg >= 5:
+						is_knockback = true
+
+					# Critical Hit calculation based on DEX and Estate Perks
+					var is_crit = false
+					if dmg > 0 and randf() < (player.get_crit_chance() + get_estate_crit_bonus()):
+						is_crit = true
+						dmg = int(float(dmg) * 1.5) + 2
+						_show_floating_text(player.position, "CRITICAL HIT!", Color(1.0, 0.45, 0.2))
+						_log("[color=#f97316][b]⚡ CRITICAL HIT! Strike amplified to %d DMG![/b][/color]" % dmg)
+					
+					var hit_enemy: CombatUnit = null
+					for enemy in active_combat_enemies:
+						if is_instance_valid(enemy) and enemy.is_alive and enemy.grid_pos == target_tile:
+							hit_enemy = enemy
+							break
+							
+					if hit_enemy:
+						if dmg == 0:
+							_log("[color=#94a3b8]Hero rolled MISS! Stumbled.[/color]")
+							await _play_attack_impact_animation(hit_enemy.position, face, false)
+							_show_floating_text(hit_enemy.position, "MISS!", Color(0.6, 0.6, 0.6))
+						else:
+							# CHECK SHIELDBEARER FRONTAL DEFENSE (Puzzle Mechanic!)
+							var attack_blocked = false
+							if hit_enemy.has_shield and not hit_enemy.shield_broken:
+								var attack_dir = (hit_enemy.grid_pos - player.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
+								if hit_enemy.facing_dir == -attack_dir or hit_enemy.facing_dir == Vector2i.ZERO:
+									if is_knockback or dmg >= 8:
+										hit_enemy.shield_broken = true
+										_log("[color=#38bdf8]⚡ Hero's heavy strike SHATTERED %s's shield![/color]" % hit_enemy.unit_name)
+										_show_floating_text(hit_enemy.position, "GUARD BROKEN!", Color(0.3, 0.8, 0.95))
+									else:
+										attack_blocked = true
+										_log("[color=#94a3b8]🛡️ %s's tower shield BLOCKED the front strike! (0 DMG - Flank or use Heavy!)[/color]" % hit_enemy.unit_name)
+										_show_floating_text(hit_enemy.position, "BLOCKED BY SHIELD!", Color(0.38, 0.74, 0.97))
+										
+							await _play_attack_impact_animation(hit_enemy.position, face, attack_blocked)
+							var attack_dir = (hit_enemy.position - player.position).normalized()
+							if attack_blocked:
+								_spawn_shield_barrier_vfx(hit_enemy.position)
+							elif is_knockback or dmg >= 8 or is_crit:
+								_spawn_shockwave(hit_enemy.position, Color(0.96, 0.72, 0.2))
+							else:
+								_spawn_slash_vfx(hit_enemy.position, attack_dir)
+								
+							if not attack_blocked:
+								var ability = face.get("ability", "none")
+								var ability_tier = face.get("ability_tier", 1) + player.get_status_potency_bonus()
+								var bypass_armor = (ability == "pierce")
+								hit_enemy.take_damage(dmg, attack_dir, bypass_armor)
+
+								if is_crit:
+									_log("[color=#f97316]Hero CRITICALLY struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
+									_show_floating_text(hit_enemy.position, "-%d CRIT!" % dmg, Color(1.0, 0.4, 0.2))
+								elif player.dmg_bonus > 0 and base_dmg > 0:
+									_log("[color=#22c55e]Hero struck %s for %d damage! (%d base + %d gear bonus)[/color]" % [hit_enemy.unit_name, dmg, base_dmg, player.dmg_bonus])
+									_show_floating_text(hit_enemy.position, "-%d DMG (+%d)" % [dmg, player.dmg_bonus], Color(0.95, 0.85, 0.2))
+								else:
+									_log("[color=#22c55e]Hero struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
+									_show_floating_text(hit_enemy.position, "-%d DMG" % dmg, Color(0.95, 0.85, 0.2))
+								
+								# Special Ability Procs
+								if ability == "slash":
+									hit_enemy.apply_bleed(ability_tier)
+									_show_floating_text(hit_enemy.position + Vector2(0, -22), "BLEED +%d!" % ability_tier, Color(0.9, 0.2, 0.2))
+									_log("[color=#ef4444]🩸 Slashed %s! (+%d Bleed)[/color]" % [hit_enemy.unit_name, ability_tier])
+								elif ability == "stun":
+									hit_enemy.apply_stun(ability_tier)
+									_show_floating_text(hit_enemy.position + Vector2(0, -22), "STUNNED!", Color(0.98, 0.85, 0.2))
+									_log("[color=#eab308]⚡ Hilt struck %s! (STUNNED for %d pulse)[/color]" % [hit_enemy.unit_name, ability_tier])
+								elif ability == "burn":
+									hit_enemy.apply_burn(ability_tier)
+									_show_floating_text(hit_enemy.position + Vector2(0, -22), "IGNITED!", Color(1.0, 0.5, 0.1))
+									_log("[color=#f97316]🔥 Ember branded %s! (Burn applied)[/color]" % hit_enemy.unit_name)
+								elif ability == "guard":
+									player.guard_armor += (2 + player.get_status_potency_bonus())
+									_show_floating_text(player.position + Vector2(0, -22), "+%d GUARD ARMOR" % (2 + player.get_status_potency_bonus()), Color(0.3, 0.8, 1.0))
+									_log("[color=#38bdf8]🛡️ Counter poise! Gained guard armor for next pulse.[/color]")
+								elif ability == "leech":
+									var heal = mini(player.max_hp - player.current_hp, 1 + player.get_status_potency_bonus())
+									if heal > 0:
+										player.current_hp += heal
+										if player.hp_bar:
+											player.hp_bar.value = player.current_hp
+										_show_floating_text(player.position + Vector2(0, -22), "+%d HP (LEECH)" % heal, Color(0.2, 0.9, 0.3))
+										_log("[color=#22c55e]🩸 Vampiric leech! Restored +%d HP.[/color]" % heal)
+
+								# Weapon Chassis Trait Procs
+								if chassis_trait == "serrated":
+									hit_enemy.apply_bleed(1)
+								elif chassis_trait == "ember_core":
+									hit_enemy.apply_burn(1)
+								elif chassis_trait == "phalanx_guard":
+									player.guard_armor += 2
+								elif chassis_trait == "vampiric" and is_crit:
+									var v_heal = mini(player.max_hp - player.current_hp, 2)
+									if v_heal > 0:
+										player.current_hp += v_heal
+										if player.hp_bar:
+											player.hp_bar.value = player.current_hp
+										_show_floating_text(player.position + Vector2(0, -22), "+2 HP (VAMPIRIC)", Color(0.2, 0.9, 0.3))
+								
+								# PUSH / WALL SLAM PUZZLE MECHANIC (Clamped to room boundaries)
+								if is_knockback and hit_enemy.is_alive:
+									var push_dir = (hit_enemy.grid_pos - player.grid_pos).clamp(Vector2i(-1, -1), Vector2i(1, 1))
+									var pushed_pos = hit_enemy.grid_pos + push_dir
+									var r_rect = get_room_rect(current_combat_room_id)
+									var is_wall = not is_valid_grid_pos(pushed_pos) or grid[pushed_pos.y][pushed_pos.x] != 0 or (r_rect.size != Vector2i.ZERO and not r_rect.has_point(pushed_pos))
+									
+									if is_wall:
+										hit_enemy.take_damage(4)
+										hit_enemy.set_stunned(true)
+										_log("[color=#eab308]💥 WALL SLAM! %s slammed into chamber wall (+4 DMG + STUNNED!)[/color]" % hit_enemy.unit_name)
+										_show_floating_text(hit_enemy.position, "WALL SLAM! (STUNNED)", Color(0.98, 0.8, 0.2))
+										hit_enemy.animate_bump_back(grid_to_world(hit_enemy.grid_pos))
+									else:
+										var collided_monster: CombatUnit = null
+										for other in active_combat_enemies:
+											if is_instance_valid(other) and other != hit_enemy and other.is_alive and other.grid_pos == pushed_pos:
+												collided_monster = other
+												break
+										if collided_monster:
+											collided_monster.take_damage(4)
+											hit_enemy.take_damage(4)
+											_log("[color=#f97316]💥 %s pushed into %s! COLLISION (4 DMG each)![/color]" % [hit_enemy.unit_name, collided_monster.unit_name])
+											_show_floating_text(collided_monster.position, "COLLISION! -4 HP", Color(0.95, 0.6, 0.1))
+										else:
+											hit_enemy.grid_pos = pushed_pos
+											hit_enemy.animate_move_to(grid_to_world(pushed_pos), 0.2)
+					else:
+						_log("[color=#94a3b8]Hero struck empty air! Target dodged.[/color]")
+						_show_floating_text(grid_to_world(target_tile), "WHIFF!", Color(0.6, 0.7, 0.8))
+				player_attack_target = Vector2i(-1, -1)
+				if is_instance_valid(attack_indicator):
+					attack_indicator.visible = false
+				await get_tree().create_timer(0.20).timeout
+
+		"enemy_move":
+			var enemy = unit
+			var dest = enemy.target_grid_pos
+			var r_rect = get_room_rect(current_combat_room_id)
+			var inside = (r_rect.size == Vector2i.ZERO or r_rect.has_point(dest))
+			if dest != enemy.grid_pos and is_valid_grid_pos(dest) and grid[dest.y][dest.x] == 0 and inside:
+				var clash = false
+				if player.grid_pos == dest:
 					clash = true
-					break
-			if clash:
-				_log("[color=#f59e0b]⚡ Clash on tile (%d, %d)! Stumbled back.[/color]" % [dest.x, dest.y])
-				_show_floating_text(grid_to_world(dest), "CLASH!", Color(0.95, 0.7, 0.1))
-				unit.animate_bump_back(grid_to_world(unit.grid_pos))
-			else:
-				unit.grid_pos = dest
-				unit.animate_move_to(grid_to_world(dest))
-				
-	await get_tree().create_timer(0.35).timeout
-	
-	# STEP 2: CHARGE RESOLUTION (Chargers rush forward, slam into walls or other units!)
-	for enemy in active_combat_enemies:
-		if is_instance_valid(enemy) and enemy.is_alive and enemy.intent_type == "CHARGE":
+				else:
+					for other in active_combat_enemies:
+						if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == dest:
+							clash = true
+							break
+				if clash:
+					_log("[color=#f59e0b]⚡ %s clashed on tile (%d, %d)! Stumbled back.[/color]" % [enemy.unit_name, dest.x, dest.y])
+					_show_floating_text(grid_to_world(dest), "CLASH!", Color(0.95, 0.7, 0.1))
+					enemy.animate_bump_back(grid_to_world(enemy.grid_pos))
+				else:
+					enemy.grid_pos = dest
+					enemy.animate_move_to(grid_to_world(dest), 0.2)
+				await get_tree().create_timer(0.20).timeout
+
+		"enemy_charge":
+			var enemy = unit
 			play_charger_rush_sfx()
 			var charge_path = enemy.telegraphed_tiles
 			var stopped = false
+			var r_rect = get_room_rect(current_combat_room_id)
 			for t_tile in charge_path:
 				if stopped: break
-				
-				# Check if tile has hero
+				var inside = (r_rect.size == Vector2i.ZERO or r_rect.has_point(t_tile))
+				if not inside or not is_valid_grid_pos(t_tile) or grid[t_tile.y][t_tile.x] != 0:
+					enemy.take_damage(6)
+					enemy.set_stunned(true)
+					_log("[color=#eab308]💥 %s CRASHED into chamber boundary! (6 DMG + STUNNED!)[/color]" % enemy.unit_name)
+					_show_floating_text(enemy.position, "WALL CRASH! STUNNED!", Color(0.98, 0.85, 0.2))
+					enemy.animate_bump_back(grid_to_world(enemy.grid_pos))
+					stopped = true
+					break
+
 				if player.grid_pos == t_tile:
 					enemy.animate_attack_thrust(grid_to_world(t_tile))
 					var charge_face = {"title": "CHARGE SLAM", "damage": 8, "icon": "res://assets/ui/intent_enemy_charge.svg", "roll": 6}
@@ -4552,7 +5034,6 @@ func _resolve_pulse() -> void:
 					stopped = true
 					break
 					
-				# Check if tile has other monster (Friendly Fire / Collision!)
 				for other in active_combat_enemies:
 					if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == t_tile:
 						other.take_damage(6)
@@ -4564,261 +5045,82 @@ func _resolve_pulse() -> void:
 						
 				if not stopped:
 					enemy.grid_pos = t_tile
-					enemy.animate_move_to(grid_to_world(t_tile), 0.15)
+					enemy.animate_move_to(grid_to_world(t_tile), 0.12)
 					
 			if not stopped:
-				# Check if charger slammed into a wall at end of rush!
 				var next_tile = enemy.grid_pos + enemy.facing_dir
-				if not is_valid_grid_pos(next_tile) or grid[next_tile.y][next_tile.x] != 0:
+				var r_inside = (r_rect.size == Vector2i.ZERO or r_rect.has_point(next_tile))
+				if not is_valid_grid_pos(next_tile) or grid[next_tile.y][next_tile.x] != 0 or not r_inside:
 					enemy.take_damage(6)
 					enemy.set_stunned(true)
 					_log("[color=#eab308]💥 %s CRASHED into wall! (6 Wall-Slam DMG + STUNNED!)[/color]" % enemy.unit_name)
 					_show_floating_text(enemy.position, "WALL CRASH! STUNNED!", Color(0.98, 0.85, 0.2))
 					enemy.animate_bump_back(grid_to_world(enemy.grid_pos))
-					
-	await get_tree().create_timer(0.25).timeout
-	
-	# STEP 3: PLAYER ATTACK PHASE (0.35s)
-	_log("[b]▶ HERO ATTACK PHASE[/b]")
-	if player_attack_target != Vector2i(-1, -1):
-		player.animate_attack_thrust(grid_to_world(player_attack_target))
-		var face = player.loaded_face
-		var base_dmg = face.get("damage", 0)
-		var dmg = base_dmg + (player.dmg_bonus if base_dmg > 0 else 0)
-		var is_knockback = face.get("knockback", false)
+			await get_tree().create_timer(0.20).timeout
 
-		# Active Weapon Chassis Trait check
-		var main_w: ItemData = equipped_gear.get("hand_1", null)
-		var chassis_trait = main_w.trait_id if main_w != null else ""
-		if chassis_trait == "honed_edge" and dmg > 0:
-			dmg += 1
-		elif chassis_trait == "titans_grip" and dmg >= 5:
-			is_knockback = true
+		"enemy_attack":
+			var enemy = unit
+			if enemy.intent_type == "BLAST":
+				play_pyro_flame_sfx()
+				enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
+				_log("[color=#f97316]🔥 %s detonated a Flame Blast![/color]" % enemy.unit_name)
+				_spawn_fire_blast_vfx(enemy.telegraphed_tiles)
+				_shake_camera(6.0, 0.2)
+				for b_tile in enemy.telegraphed_tiles:
+					_spawn_hazard_tile(b_tile)
+					if player.grid_pos == b_tile:
+						var blast_face = {"title": "FLAME BLAST", "damage": 7, "icon": "res://assets/ui/die_face_fire.svg", "roll": 5}
+						await _play_attack_impact_animation(player.position, blast_face, false)
+						player.take_damage(7, (player.position - grid_to_world(enemy.target_grid_pos)).normalized())
+						_log("[color=#ef4444]Hero caught in flame blast! (-7 HP)[/color]")
+						_show_floating_text(player.position, "-7 HP (FIRE)", Color(0.95, 0.25, 0.25))
+					for other in active_combat_enemies:
+						if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == b_tile:
+							other.take_damage(7, (other.position - grid_to_world(enemy.target_grid_pos)).normalized())
+							_log("[color=#f97316]Friendly fire! %s caught in blast (-7 HP)[/color]" % other.unit_name)
+							_show_floating_text(other.position, "-7 HP (FIRE)", Color(0.95, 0.6, 0.1))
+				await get_tree().create_timer(0.20).timeout
 
-		# Critical Hit calculation based on DEX and Estate Perks
-		var is_crit = false
-		if dmg > 0 and randf() < (player.get_crit_chance() + get_estate_crit_bonus()):
-			is_crit = true
-			dmg = int(float(dmg) * 1.5) + 2
-			_show_floating_text(player.position, "CRITICAL HIT!", Color(1.0, 0.45, 0.2))
-			_log("[color=#f97316][b]⚡ CRITICAL HIT! Strike amplified to %d DMG![/b][/color]" % dmg)
-		
-		var hit_enemy: CombatUnit = null
-		for enemy in active_combat_enemies:
-			if is_instance_valid(enemy) and enemy.is_alive and enemy.grid_pos == player_attack_target:
-				hit_enemy = enemy
-				break
+			elif enemy.intent_type == "SWEEP":
+				enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
+				_log("[color=#ef4444]🪓 %s unleashes a WIDE CLEAVE SWEEP![/color]" % enemy.unit_name)
+				_spawn_cleave_sweep_vfx(grid_to_world(enemy.target_grid_pos), enemy.facing_dir)
+				_shake_camera(5.0, 0.18)
+				for s_tile in enemy.telegraphed_tiles:
+					if player.grid_pos == s_tile:
+						var cleave_face = {"title": "CLEAVE SWEEP", "damage": 6, "icon": "res://assets/ui/icon_axe.svg", "roll": 5}
+						await _play_attack_impact_animation(player.position, cleave_face, false)
+						player.take_damage(6, (player.position - enemy.position).normalized())
+						_log("[color=#ef4444]Hero caught in cleave arc! (-6 HP)[/color]")
+						_show_floating_text(player.position, "-6 HP", Color(0.95, 0.25, 0.25))
+					for other in active_combat_enemies:
+						if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == s_tile:
+							other.take_damage(6, (other.position - enemy.position).normalized())
+							_log("[color=#f97316]Friendly fire! %s caught in cleave (-6 HP)[/color]" % other.unit_name)
+							_show_floating_text(other.position, "-6 HP", Color(0.95, 0.6, 0.1))
+				await get_tree().create_timer(0.20).timeout
+
+			elif enemy.intent_type == "ATTACK":
+				enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
+				var face = enemy.loaded_face
+				var dmg = face.get("damage", 4)
+				var e_dir = (grid_to_world(enemy.target_grid_pos) - enemy.position).normalized()
 				
-		if hit_enemy:
-			if dmg == 0:
-				_log("[color=#94a3b8]Hero rolled MISS! Stumbled.[/color]")
-				await _play_attack_impact_animation(hit_enemy.position, face, false)
-				_show_floating_text(hit_enemy.position, "MISS!", Color(0.6, 0.6, 0.6))
-			else:
-				# CHECK SHIELDBEARER FRONTAL DEFENSE (Puzzle Mechanic!)
-				var attack_blocked = false
-				if hit_enemy.has_shield and not hit_enemy.shield_broken:
-					var attack_dir = (hit_enemy.grid_pos - player.grid_pos).clamp(Vector2i(-1,-1), Vector2i(1,1))
-					# If hit comes directly from the front the shieldbearer is facing:
-					if hit_enemy.facing_dir == -attack_dir or hit_enemy.facing_dir == Vector2i.ZERO:
-						if is_knockback or dmg >= 8:
-							# Heavy or knockback breaks shield!
-							hit_enemy.shield_broken = true
-							_log("[color=#38bdf8]⚡ Hero's heavy strike SHATTERED %s's shield![/color]" % hit_enemy.unit_name)
-							_show_floating_text(hit_enemy.position, "GUARD BROKEN!", Color(0.3, 0.8, 0.95))
-						else:
-							attack_blocked = true
-							_log("[color=#94a3b8]🛡️ %s's tower shield BLOCKED the front strike! (0 DMG - Flank or use Heavy!)[/color]" % hit_enemy.unit_name)
-							_show_floating_text(hit_enemy.position, "BLOCKED BY SHIELD!", Color(0.38, 0.74, 0.97))
-							
-				await _play_attack_impact_animation(hit_enemy.position, face, attack_blocked)
-				var attack_dir = (hit_enemy.position - player.position).normalized()
-				if attack_blocked:
-					_spawn_shield_barrier_vfx(hit_enemy.position)
-				elif is_knockback or dmg >= 8 or is_crit:
-					_spawn_shockwave(hit_enemy.position, Color(0.96, 0.72, 0.2))
-				else:
-					_spawn_slash_vfx(hit_enemy.position, attack_dir)
-					
-				if not attack_blocked:
-					var ability = face.get("ability", "none")
-					var ability_tier = face.get("ability_tier", 1) + player.get_status_potency_bonus()
-					var bypass_armor = (ability == "pierce")
-					hit_enemy.take_damage(dmg, attack_dir, bypass_armor)
-
-					if is_crit:
-						_log("[color=#f97316]Hero CRITICALLY struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
-						_show_floating_text(hit_enemy.position, "-%d CRIT!" % dmg, Color(1.0, 0.4, 0.2))
-					elif player.dmg_bonus > 0 and base_dmg > 0:
-						_log("[color=#22c55e]Hero struck %s for %d damage! (%d base + %d gear/STR bonus)[/color]" % [hit_enemy.unit_name, dmg, base_dmg, player.dmg_bonus])
-						_show_floating_text(hit_enemy.position, "-%d DMG (+%d)" % [dmg, player.dmg_bonus], Color(0.95, 0.85, 0.2))
+				if player.grid_pos == enemy.target_grid_pos:
+					_spawn_slash_vfx(player.position, e_dir, Color(0.95, 0.35, 0.35))
+					_shake_camera(4.0, 0.15)
+					await _play_attack_impact_animation(player.position, face, false)
+					var taken = player.take_damage(dmg, e_dir)
+					if player.armor > 0 and dmg > taken:
+						_log("[color=#ef4444]%s struck Hero for %d damage! (🛡️ %d absorbed by Armor)[/color]" % [enemy.unit_name, taken, dmg - taken])
+						_show_floating_text(player.position, "-%d HP (🛡️-%d)" % [taken, dmg - taken], Color(0.95, 0.4, 0.4))
 					else:
-						_log("[color=#22c55e]Hero struck %s for %d damage![/color]" % [hit_enemy.unit_name, dmg])
-						_show_floating_text(hit_enemy.position, "-%d DMG" % dmg, Color(0.95, 0.85, 0.2))
-					
-					# Special Ability Procs
-					if ability == "slash":
-						hit_enemy.apply_bleed(ability_tier)
-						_show_floating_text(hit_enemy.position + Vector2(0, -22), "BLEED +%d!" % ability_tier, Color(0.9, 0.2, 0.2))
-						_log("[color=#ef4444]🩸 Slashed %s! (+%d Bleed)[/color]" % [hit_enemy.unit_name, ability_tier])
-					elif ability == "stun":
-						hit_enemy.apply_stun(ability_tier)
-						_show_floating_text(hit_enemy.position + Vector2(0, -22), "STUNNED!", Color(0.98, 0.85, 0.2))
-						_log("[color=#eab308]⚡ Hilt struck %s! (STUNNED for %d pulse)[/color]" % [hit_enemy.unit_name, ability_tier])
-					elif ability == "burn":
-						hit_enemy.apply_burn(ability_tier)
-						_show_floating_text(hit_enemy.position + Vector2(0, -22), "IGNITED!", Color(1.0, 0.5, 0.1))
-						_log("[color=#f97316]🔥 Ember branded %s! (Burn applied)[/color]" % hit_enemy.unit_name)
-					elif ability == "guard":
-						player.guard_armor += (2 + player.get_status_potency_bonus())
-						_show_floating_text(player.position + Vector2(0, -22), "+%d GUARD ARMOR" % (2 + player.get_status_potency_bonus()), Color(0.3, 0.8, 1.0))
-						_log("[color=#38bdf8]🛡️ Counter poise! Gained guard armor for next pulse.[/color]")
-					elif ability == "leech":
-						var heal = mini(player.max_hp - player.current_hp, 1 + player.get_status_potency_bonus())
-						if heal > 0:
-							player.current_hp += heal
-							if player.hp_bar:
-								player.hp_bar.value = player.current_hp
-							_show_floating_text(player.position + Vector2(0, -22), "+%d HP (LEECH)" % heal, Color(0.2, 0.9, 0.3))
-							_log("[color=#22c55e]🩸 Vampiric leech! Restored +%d HP.[/color]" % heal)
-
-					# Weapon Chassis Trait Procs
-					if chassis_trait == "serrated":
-						hit_enemy.apply_bleed(1)
-					elif chassis_trait == "ember_core":
-						hit_enemy.apply_burn(1)
-					elif chassis_trait == "phalanx_guard":
-						player.guard_armor += 2
-					elif chassis_trait == "vampiric" and is_crit:
-						var v_heal = mini(player.max_hp - player.current_hp, 2)
-						if v_heal > 0:
-							player.current_hp += v_heal
-							if player.hp_bar:
-								player.hp_bar.value = player.current_hp
-							_show_floating_text(player.position + Vector2(0, -22), "+2 HP (VAMPIRIC)", Color(0.2, 0.9, 0.3))
-					
-					# PUSH / WALL SLAM PUZZLE MECHANIC
-					if is_knockback and hit_enemy.is_alive:
-						var push_dir = (hit_enemy.grid_pos - player.grid_pos).clamp(Vector2i(-1, -1), Vector2i(1, 1))
-						var pushed_pos = hit_enemy.grid_pos + push_dir
-						
-						# Check if pushed into wall -> WALL SLAM + STUN!
-						if not is_valid_grid_pos(pushed_pos) or grid[pushed_pos.y][pushed_pos.x] != 0:
-							hit_enemy.take_damage(4)
-							hit_enemy.set_stunned(true)
-							_log("[color=#eab308]💥 WALL SLAM! %s slammed into wall (+4 DMG + STUNNED!)[/color]" % hit_enemy.unit_name)
-							_show_floating_text(hit_enemy.position, "WALL SLAM! (STUNNED)", Color(0.98, 0.8, 0.2))
-							hit_enemy.animate_bump_back(grid_to_world(hit_enemy.grid_pos))
-						else:
-							# Check if pushed into another monster -> COLLISION!
-							var collided_monster: CombatUnit = null
-							for other in active_combat_enemies:
-								if is_instance_valid(other) and other != hit_enemy and other.is_alive and other.grid_pos == pushed_pos:
-									collided_monster = other
-									break
-							if collided_monster:
-								collided_monster.take_damage(4)
-								hit_enemy.take_damage(4)
-								_log("[color=#f97316]💥 %s pushed into %s! COLLISION (4 DMG each)![/color]" % [hit_enemy.unit_name, collided_monster.unit_name])
-								_show_floating_text(collided_monster.position, "COLLISION! -4 HP", Color(0.95, 0.6, 0.1))
-							else:
-								hit_enemy.grid_pos = pushed_pos
-								hit_enemy.animate_move_to(grid_to_world(pushed_pos), 0.2)
-		else:
-			_log("[color=#94a3b8]Hero struck empty air! Target dodged.[/color]")
-			_show_floating_text(grid_to_world(player_attack_target), "WHIFF!", Color(0.6, 0.7, 0.8))
-			
-	active_combat_enemies = active_combat_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
-	if active_combat_enemies.is_empty():
-		_on_active_room_cleared()
-		return
-		
-	# STEP 4: ENEMY ATTACKS (Cleaves, Blasts, Strikes & Friendly Fire)
-	for enemy in active_combat_enemies:
-		if not is_instance_valid(enemy) or not enemy.is_alive: continue
-		
-		# PYROMANCER BLAST (AoE)
-		if enemy.intent_type == "BLAST":
-			play_pyro_flame_sfx()
-			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
-			_log("[color=#f97316]🔥 %s detonated a Flame Blast![/color]" % enemy.unit_name)
-			_spawn_fire_blast_vfx(enemy.telegraphed_tiles)
-			_shake_camera(6.0, 0.2)
-			for b_tile in enemy.telegraphed_tiles:
-				_spawn_hazard_tile(b_tile)
-				if player.grid_pos == b_tile:
-					var blast_face = {"title": "FLAME BLAST", "damage": 7, "icon": "res://assets/ui/die_face_fire.svg", "roll": 5}
-					await _play_attack_impact_animation(player.position, blast_face, false)
-					player.take_damage(7, (player.position - grid_to_world(enemy.target_grid_pos)).normalized())
-					_log("[color=#ef4444]Hero caught in flame blast! (-7 HP)[/color]")
-					_show_floating_text(player.position, "-7 HP (FIRE)", Color(0.95, 0.25, 0.25))
-				# Friendly fire on any other monster in blast!
-				for other in active_combat_enemies:
-					if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == b_tile:
-						other.take_damage(7, (other.position - grid_to_world(enemy.target_grid_pos)).normalized())
-						_log("[color=#f97316]Friendly fire! %s caught in blast (-7 HP)[/color]" % other.unit_name)
-						_show_floating_text(other.position, "-7 HP (FIRE)", Color(0.95, 0.6, 0.1))
-						
-		# ORC BRAWLER SWEEP (3-Tile Arc)
-		elif enemy.intent_type == "SWEEP":
-			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
-			_log("[color=#ef4444]🪓 %s unleashes a WIDE CLEAVE SWEEP![/color]" % enemy.unit_name)
-			_spawn_cleave_sweep_vfx(grid_to_world(enemy.target_grid_pos), enemy.facing_dir)
-			_shake_camera(5.0, 0.18)
-			for s_tile in enemy.telegraphed_tiles:
-				if player.grid_pos == s_tile:
-					var cleave_face = {"title": "CLEAVE SWEEP", "damage": 6, "icon": "res://assets/ui/icon_axe.svg", "roll": 5}
-					await _play_attack_impact_animation(player.position, cleave_face, false)
-					player.take_damage(6, (player.position - enemy.position).normalized())
-					_log("[color=#ef4444]Hero caught in cleave arc! (-6 HP)[/color]")
-					_show_floating_text(player.position, "-6 HP", Color(0.95, 0.25, 0.25))
-				for other in active_combat_enemies:
-					if is_instance_valid(other) and other != enemy and other.is_alive and other.grid_pos == s_tile:
-						other.take_damage(6, (other.position - enemy.position).normalized())
-						_log("[color=#f97316]Friendly fire! %s caught in cleave (-6 HP)[/color]" % other.unit_name)
-						_show_floating_text(other.position, "-6 HP", Color(0.95, 0.6, 0.1))
-						
-		# STANDARD MELEE STRIKE
-		elif enemy.intent_type == "ATTACK":
-			enemy.animate_attack_thrust(grid_to_world(enemy.target_grid_pos))
-			var face = enemy.loaded_face
-			var dmg = face.get("damage", 4)
-			var e_dir = (grid_to_world(enemy.target_grid_pos) - enemy.position).normalized()
-			
-			if player.grid_pos == enemy.target_grid_pos:
-				_spawn_slash_vfx(player.position, e_dir, Color(0.95, 0.35, 0.35))
-				_shake_camera(4.0, 0.15)
-				await _play_attack_impact_animation(player.position, face, false)
-				var taken = player.take_damage(dmg, e_dir)
-				if player.armor > 0 and dmg > taken:
-					_log("[color=#ef4444]%s struck Hero for %d damage! (🛡️ %d absorbed by Armor)[/color]" % [enemy.unit_name, taken, dmg - taken])
-					_show_floating_text(player.position, "-%d HP (🛡️-%d)" % [taken, dmg - taken], Color(0.95, 0.4, 0.4))
+						_log("[color=#ef4444]%s struck Hero for %d damage![/color]" % [enemy.unit_name, taken])
+						_show_floating_text(player.position, "-%d HP" % taken, Color(0.95, 0.25, 0.25))
 				else:
-					_log("[color=#ef4444]%s struck Hero for %d damage![/color]" % [enemy.unit_name, taken])
-					_show_floating_text(player.position, "-%d HP" % taken, Color(0.95, 0.25, 0.25))
-			else:
-				_log("[color=#38bdf8]Hero dodged %s's strike![/color]" % enemy.unit_name)
-				_show_floating_text(player.position, "DODGED!", Color(0.2, 0.8, 0.4))
-				
-	# STEP 5: HAZARD TILE TICKS
-	_process_hazard_tiles()
-	
-	await get_tree().create_timer(0.35).timeout
-	
-	if player.current_hp <= 0:
-		_game_over()
-		return
-		
-	# STEP 6: NEXT PULSE (Rolls & tumble animations trigger in _start_planning_phase)
-	for enemy in active_combat_enemies:
-		if is_instance_valid(enemy) and enemy.is_alive:
-			enemy.clear_intent()
-			
-	active_combat_enemies = active_combat_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
-	if active_combat_enemies.is_empty():
-		_on_active_room_cleared()
-	else:
-		_start_planning_phase()
+					_log("[color=#38bdf8]Hero dodged %s's strike![/color]" % enemy.unit_name)
+					_show_floating_text(player.position, "DODGED!", Color(0.2, 0.8, 0.4))
+				await get_tree().create_timer(0.20).timeout
 
 func _spawn_hazard_tile(pos: Vector2i) -> void:
 	if hazard_tiles.has(pos):
@@ -4866,6 +5168,8 @@ func _on_active_room_cleared() -> void:
 		if is_instance_valid(exp_chambers_label):
 			exp_chambers_label.text = "Chambers Conquered: %d / %d  |  Move with [WASD]" % [cleared_rooms.size(), total_hostile]
 	all_enemies = all_enemies.filter(func(e): return is_instance_valid(e) and e.is_alive and e.current_hp > 0)
+	
+	_unlock_combat_chamber_doors(current_combat_room_id)
 	
 	# Spawn chest for the room that was cleared
 	var chest_pos = player.grid_pos

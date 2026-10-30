@@ -1,19 +1,64 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Skeleton Shieldbearer with massive steel kite shield -->
-  <circle cx="32" cy="32" r="30" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
-  <!-- Skull in background -->
-  <circle cx="28" cy="24" r="10" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
-  <ellipse cx="25" cy="23" rx="2.5" ry="3.5" fill="#0284c7"/>
-  <ellipse cx="31" cy="23" rx="2.5" ry="3.5" fill="#0284c7"/>
-  <path d="M 24 30 L 32 30" stroke="#64748b" stroke-width="2"/>
-  <!-- Armored Pauldron -->
-  <circle cx="20" cy="34" r="7" fill="#64748b" stroke="#334155" stroke-width="1.5"/>
-  <!-- Massive Front Tower Kite Shield covering the front -->
-  <path d="M 30 14 L 52 14 Q 56 34 41 54 Q 26 34 30 14 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="2.5"/>
-  <!-- Shield Emblem / Boss -->
-  <path d="M 35 20 L 47 20 Q 50 34 41 46 Q 32 34 35 20 Z" fill="#0284c7" stroke="#7dd3fc" stroke-width="1.5"/>
-  <polygon points="41,26 44,32 41,38 38,32" fill="#f8fafc"/>
-  <circle cx="41" cy="32" r="2" fill="#38bdf8"/>
-  <!-- Spear tip peeking over shield -->
-  <polygon points="48,8 52,14 44,14" fill="#cbd5e1" stroke="#64748b" stroke-width="1"/>
+  <!-- Skeleton Shieldbearer (Standing full character sprite) -->
+  <!-- Shadow -->
+  <ellipse cx="32" cy="57" rx="17" ry="5" fill="#0a0c10" opacity="0.6"/>
+
+  <!-- Skeletal Armored Legs & Plated Greaves -->
+  <rect x="24" y="46" width="6" height="9" rx="1" fill="#475569"/>
+  <rect x="34" y="46" width="6" height="9" rx="1" fill="#475569"/>
+  <rect x="23" y="53" width="8" height="4" rx="1" fill="#1e293b"/>
+  <rect x="33" y="53" width="8" height="4" rx="1" fill="#1e293b"/>
+
+  <!-- Ribcage behind Heavy Steel Breastplate -->
+  <rect x="25" y="28" width="14" height="18" rx="2" fill="#334155"/>
+  <rect x="27" y="30" width="10" height="14" rx="1" fill="#475569"/>
+  <!-- Runed Belt -->
+  <rect x="24" y="42" width="16" height="4" fill="#0f172a"/>
+  <rect x="30" y="41" width="4" height="6" fill="#38bdf8"/>
+
+  <!-- Left: Spiked War Spear raised high behind shield -->
+  <g transform="translate(42, 6)">
+    <!-- Spear shaft -->
+    <line x1="6" y1="2" x2="6" y2="48" stroke="#78350f" stroke-width="2.5"/>
+    <!-- Iron Spearhead with barbed wings -->
+    <path d="M6 0 L10 10 L8 12 L6 9 L4 12 L2 10 Z" fill="#cbd5e1"/>
+    <path d="M6 0 L8 9 L6 11 L4 9 Z" fill="#f8fafc"/>
+  </g>
+
+  <!-- Skull Head with Dark Iron Helm -->
+  <rect x="26" y="14" width="12" height="12" rx="3" fill="#f1f5f9"/>
+  <!-- Iron Helm -->
+  <path d="M24 14 C24 7, 40 7, 40 14 L41 20 L23 20 Z" fill="#334155"/>
+  <rect x="24" y="19" width="16" height="3" fill="#64748b"/>
+  <!-- Eye sockets (Glowing cold azure cyan) -->
+  <circle cx="28.5" cy="22" r="2" fill="#0f172a"/>
+  <circle cx="28.5" cy="22" r="1.1" fill="#38bdf8"/>
+  <circle cx="28.5" cy="22" r="0.5" fill="#e0f2fe"/>
+  <circle cx="35.5" cy="22" r="2" fill="#0f172a"/>
+  <circle cx="35.5" cy="22" r="1.1" fill="#38bdf8"/>
+  <circle cx="35.5" cy="22" r="0.5" fill="#e0f2fe"/>
+  <!-- Jaw teeth -->
+  <rect x="29" y="26" width="6" height="3" fill="#e2e8f0"/>
+  <line x1="31" y1="26" x2="31" y2="29" stroke="#334155" stroke-width="0.8"/>
+  <line x1="33" y1="26" x2="33" y2="29" stroke="#334155" stroke-width="0.8"/>
+
+  <!-- Front: Towering Steel Kite Pavise Shield -->
+  <g transform="translate(10, 16)">
+    <!-- Tower Shield Silhouette -->
+    <path d="M4 0 L24 0 C24 22, 20 36, 14 42 C8 36, 4 22, 4 0 Z" fill="#1e293b"/>
+    <path d="M6 2 L22 2 C22 21, 18 34, 14 39 C10 34, 6 21, 6 2 Z" fill="#0f172a"/>
+    <path d="M4 0 L24 0 C24 22, 20 36, 14 42 C8 36, 4 22, 4 0 Z" stroke="#38bdf8" stroke-width="2" fill="none"/>
+    
+    <!-- Central Runic Cross & Boss -->
+    <rect x="13" y="6" width="2" height="26" fill="#38bdf8"/>
+    <rect x="8" y="12" width="12" height="2" fill="#38bdf8"/>
+    <!-- Glowing Gem Boss -->
+    <polygon points="14,10 18,13 14,16 10,13" fill="#7dd3fc"/>
+    <circle cx="14" cy="13" r="1.5" fill="#ffffff"/>
+    <!-- Iron Rivets on corners -->
+    <circle cx="7" cy="4" r="1" fill="#94a3b8"/>
+    <circle cx="21" cy="4" r="1" fill="#94a3b8"/>
+    <circle cx="7" cy="24" r="1" fill="#94a3b8"/>
+    <circle cx="21" cy="24" r="1" fill="#94a3b8"/>
+  </g>
 </svg>

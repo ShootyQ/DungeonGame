@@ -1,23 +1,58 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Cultist Pyromancer / Fire Mage -->
-  <circle cx="32" cy="32" r="30" fill="#260e1f" stroke="#e11d48" stroke-width="2.5"/>
-  <!-- Dark Hood -->
-  <path d="M 18 36 Q 16 12 32 10 Q 48 12 46 36 Q 32 30 18 36 Z" fill="#4c0519" stroke="#be123c" stroke-width="2"/>
-  <!-- Shadowed Face with Glowing Orange Eyes -->
-  <ellipse cx="32" cy="27" rx="11" ry="8" fill="#18040a"/>
-  <ellipse cx="28" cy="26" rx="2.5" ry="1.5" fill="#fb923c"/>
-  <circle cx="28" cy="26" r="1" fill="#fef08a"/>
-  <ellipse cx="36" cy="26" rx="2.5" ry="1.5" fill="#fb923c"/>
-  <circle cx="36" cy="26" r="1" fill="#fef08a"/>
-  <!-- Robe Torso -->
-  <path d="M 22 36 L 42 36 L 46 54 L 18 54 Z" fill="#881337" stroke="#9f1239" stroke-width="1.5"/>
-  <!-- Gold Amulet -->
-  <polygon points="32,38 36,44 32,50 28,44" fill="#fbbf24" stroke="#d97706" stroke-width="1"/>
-  <circle cx="32" cy="44" r="2.5" fill="#ef4444"/>
-  <!-- Flaming Staff on Right Hand -->
-  <line x1="48" y1="56" x2="48" y2="16" stroke="#78350f" stroke-width="3"/>
-  <!-- Flame Skull on Staff Top -->
-  <circle cx="48" cy="14" r="7" fill="#fb923c" stroke="#f97316" stroke-width="1.5"/>
-  <path d="M 44 14 Q 48 4 52 14 Q 54 8 48 2 Q 42 8 44 14 Z" fill="#ef4444"/>
-  <circle cx="48" cy="12" r="3" fill="#fef08a"/>
+  <!-- Cultist Pyromancer (Standing full character sprite) -->
+  <!-- Shadow -->
+  <ellipse cx="32" cy="57" rx="16" ry="5" fill="#0a0c10" opacity="0.6"/>
+
+  <!-- Tattered Crimson/Obsidian Robe Lower Skirt -->
+  <path d="M20 32 L44 32 L49 55 L15 55 Z" fill="#4c0519"/>
+  <!-- Robe pleats & dark obsidian lining -->
+  <path d="M26 32 L24 55 L29 55 L30 32 Z" fill="#881337"/>
+  <path d="M36 32 L34 55 L39 55 L38 32 Z" fill="#881337"/>
+  <!-- Jagged tattered hem -->
+  <polygon points="15,55 18,52 21,55 25,52 29,55 33,52 37,55 41,52 45,55 49,55" fill="#0a0c10"/>
+
+  <!-- Robe Torso & Mantle -->
+  <rect x="22" y="26" width="20" height="12" rx="3" fill="#881337"/>
+  <rect x="25" y="28" width="14" height="8" rx="2" fill="#be123c"/>
+  <!-- Gold Amulet of Pyromancy -->
+  <polygon points="32,29 36,35 32,41 28,35" fill="#fbbf24"/>
+  <circle cx="32" cy="35" r="2.5" fill="#ef4444"/>
+  <circle cx="32" cy="35" r="1.2" fill="#fef08a"/>
+
+  <!-- Occult Cowl / Hood -->
+  <path d="M19 28 C17 10, 47 10, 45 28 C41 24, 23 24, 19 28 Z" fill="#4c0519"/>
+  <path d="M21 26 C20 12, 44 12, 43 26 C39 23, 25 23, 21 26 Z" fill="#881337"/>
+  <!-- Deep Shadowed Face Void -->
+  <ellipse cx="32" cy="22" rx="10" ry="7" fill="#0f0206"/>
+  <!-- Burning Ember / Flame Eyes -->
+  <ellipse cx="28" cy="22" rx="2.5" ry="1.8" fill="#f97316"/>
+  <circle cx="28" cy="22" r="1.1" fill="#fef08a"/>
+  <ellipse cx="36" cy="22" rx="2.5" ry="1.8" fill="#f97316"/>
+  <circle cx="36" cy="22" r="1.1" fill="#fef08a"/>
+
+  <!-- Left Arm: Conjuring Hand with floating fire spark -->
+  <g transform="translate(10, 24)">
+    <rect x="4" y="8" width="6" height="10" rx="2" fill="#881337"/>
+    <circle cx="7" cy="18" r="3" fill="#450a0a"/>
+    <!-- Floating flame spark -->
+    <path d="M4 14 Q7 6 10 14 Q7 11 4 14 Z" fill="#f97316"/>
+    <circle cx="7" cy="13" r="1.5" fill="#fef08a"/>
+  </g>
+
+  <!-- Right Hand: Gnarled Ashwood Staff crowned with Flame Orb -->
+  <g transform="translate(42, 6)">
+    <!-- Staff Rod -->
+    <line x1="10" y1="8" x2="8" y2="50" stroke="#451a03" stroke-width="3"/>
+    <line x1="9" y1="8" x2="9" y2="50" stroke="#78350f" stroke-width="1.5"/>
+    <!-- Iron Staff Head Claws -->
+    <path d="M4 10 Q10 2 16 10" stroke="#71717a" stroke-width="2" fill="none"/>
+    <circle cx="10" cy="10" r="2" fill="#3f3f46"/>
+    <!-- Fiery Blast Orb -->
+    <circle cx="10" cy="5" r="7" fill="#ea580c"/>
+    <circle cx="10" cy="5" r="5" fill="#f97316"/>
+    <circle cx="10" cy="4" r="3" fill="#fde047"/>
+    <!-- Dancing Flame Wisps -->
+    <path d="M6 3 Q10 -5 14 3 Q10 0 6 3 Z" fill="#ef4444"/>
+    <path d="M8 2 Q10 -3 12 2 Z" fill="#ffffff"/>
+  </g>
 </svg>
