@@ -96,6 +96,7 @@ var planned_action_1: String = "none"
 var planned_action_2: String = "none"
 var planned_move_dest: Vector2i = Vector2i(-1, -1)
 var planned_attack_dest: Vector2i = Vector2i(-1, -1)
+var blast_cooldown: int = 0
 
 # Procedural Animation State
 var anim_time: float = 0.0
@@ -379,6 +380,7 @@ func set_dual_intent(act_1: String, act_2: String, move_dest: Vector2i, atk_dest
 	var has_charge = (act_1 == "enemy_charge" or act_2 == "enemy_charge")
 	var has_sweep = (act_1 == "enemy_sweep" or act_2 == "enemy_sweep")
 	var has_blast = (act_1 == "enemy_blast" or act_2 == "enemy_blast")
+	var has_recharge = (act_1 == "enemy_recharge" or act_2 == "enemy_recharge")
 	var has_attack = (act_1 == "enemy_attack" or act_2 == "enemy_attack")
 	var has_move = (act_1 == "enemy_move" or act_2 == "enemy_move")
 	
@@ -406,6 +408,15 @@ func set_dual_intent(act_1: String, act_2: String, move_dest: Vector2i, atk_dest
 			intent_label.text = "🔮 BLAST %d" % (dmg if dmg > 4 else 7)
 		intent_label.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
 		p_style.border_color = Color(0.95, 0.7, 0.1)
+	elif has_recharge:
+		intent_type = "RECHARGE"
+		intent_icon.texture = load("res://assets/ui/intent_enemy_blast.svg")
+		if has_move:
+			intent_label.text = "👟 & 🔮 RECHARGE"
+		else:
+			intent_label.text = "🔮 RECHARGING"
+		intent_label.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+		p_style.border_color = Color(0.2, 0.6, 0.9)
 	elif has_attack and has_move:
 		intent_type = "ATTACK"
 		intent_icon.texture = load("res://assets/ui/intent_enemy_attack.svg")
