@@ -29,12 +29,10 @@ var player_move_target: Vector2i = Vector2i(-1, -1)
 var player_move_target_2: Vector2i = Vector2i(-1, -1)
 var player_attack_target: Vector2i = Vector2i(-1, -1)
 var player_attack_target_2: Vector2i = Vector2i(-1, -1)
-var player_action_order: String = "move_first" # "move_first", "attack_first", "double_move", "double_attack"
+var player_action_order: String = "move_first" # "move_first", "attack_first"
 var action_order_btn: Button
 var stance_btn_1: Button
 var stance_btn_2: Button
-var stance_btn_3: Button
-var stance_btn_4: Button
 var move_indicator_2: Sprite2D
 var attack_indicator_2: Sprite2D
 
@@ -914,11 +912,11 @@ func _setup_hud() -> void:
 	pulse_center_vbox.add_child(timer_bar)
 	
 	var stance_hbox = HBoxContainer.new()
-	stance_hbox.add_theme_constant_override("separation", 4)
+	stance_hbox.add_theme_constant_override("separation", 6)
 	pulse_center_vbox.add_child(stance_hbox)
 
 	stance_btn_1 = Button.new()
-	stance_btn_1.text = "[1] 👟➔⚔️ Advance"
+	stance_btn_1.text = "[1] 👟 Advance (Move ➔ Hit)"
 	stance_btn_1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stance_btn_1.custom_minimum_size = Vector2(0, 22)
 	stance_btn_1.add_theme_font_size_override("font_size", 10)
@@ -926,28 +924,12 @@ func _setup_hud() -> void:
 	stance_hbox.add_child(stance_btn_1)
 
 	stance_btn_2 = Button.new()
-	stance_btn_2.text = "[2] ⚔️➔👟 Hit&Run"
+	stance_btn_2.text = "[2] ⚔️ Hit & Run (Hit ➔ Move)"
 	stance_btn_2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stance_btn_2.custom_minimum_size = Vector2(0, 22)
 	stance_btn_2.add_theme_font_size_override("font_size", 10)
 	stance_btn_2.pressed.connect(func(): _set_action_order("attack_first"))
 	stance_hbox.add_child(stance_btn_2)
-
-	stance_btn_3 = Button.new()
-	stance_btn_3.text = "[3] 👟➔👟 Sprint"
-	stance_btn_3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stance_btn_3.custom_minimum_size = Vector2(0, 22)
-	stance_btn_3.add_theme_font_size_override("font_size", 10)
-	stance_btn_3.pressed.connect(func(): _set_action_order("double_move"))
-	stance_hbox.add_child(stance_btn_3)
-
-	stance_btn_4 = Button.new()
-	stance_btn_4.text = "[4] ⚔️➔⚔️ Flurry"
-	stance_btn_4.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stance_btn_4.custom_minimum_size = Vector2(0, 22)
-	stance_btn_4.add_theme_font_size_override("font_size", 10)
-	stance_btn_4.pressed.connect(func(): _set_action_order("double_attack"))
-	stance_hbox.add_child(stance_btn_4)
 	
 	# Right: Action Buttons Grouped into 2 Clean Rows
 	var action_vbox = VBoxContainer.new()
@@ -4106,10 +4088,6 @@ func _input(event: InputEvent) -> void:
 				_set_action_order("move_first")
 			elif event.keycode == KEY_2 or event.keycode == KEY_KP_2:
 				_set_action_order("attack_first")
-			elif event.keycode == KEY_3 or event.keycode == KEY_KP_3:
-				_set_action_order("double_move")
-			elif event.keycode == KEY_4 or event.keycode == KEY_KP_4:
-				_set_action_order("double_attack")
 			elif event.keycode == KEY_T:
 				_on_toggle_telegraphs()
 			elif event.keycode == KEY_Q or event.keycode == KEY_TAB:
@@ -4152,45 +4130,51 @@ func _toggle_combat_targeting_mode() -> void:
 	_update_combat_plan_hud()
 
 func _select_combat_move_dir(dir: Vector2i) -> void:
-	if player_action_order == "double_attack":
-		_log("[color=#ef4444]⚠️ In FLURRY stance! You stand ground to strike twice. Press 1, 2, or 3 to move.[/color]")
-		_show_floating_text(player.position, "FLURRY: NO MOVE", Color(0.95, 0.4, 0.4))
-		return
+	# If player previously queued 2 attacks, moving removes the second attack
+	if player_attack_target_2 != Vector2i(-1, -1):
+		player_attack_target_2 = Vector2i(-1, -1)
+		if is_instance_valid(attack_indicator_2):
+			attack_indicator_2.visible = false
+		_log("[color=#38bdf8]Strike 2 removed. Planning 1 Strike + 1 Move.[/color]")
 
-	if player_action_order == "double_move":
-		if player_move_target == Vector2i(-1, -1):
-			var target1 = player.grid_pos + dir
-			if not is_valid_grid_pos(target1) or grid[target1.y][target1.x] != 0:
-				_log("[color=#ef4444]Cannot move into wall![/color]")
-				return
-			player_move_target = target1
-			move_indicator.position = grid_to_world(target1)
-			move_indicator.visible = true
-			_log("[color=#38bdf8]Sprint Step 1 → (%d, %d). Press direction again for Step 2.[/color]" % [target1.x, target1.y])
-		else:
-			var target2 = player_move_target + dir
-			if not is_valid_grid_pos(target2) or grid[target2.y][target2.x] != 0:
-				_log("[color=#ef4444]Cannot move into wall![/color]")
-				return
-			player_move_target_2 = target2
-			if is_instance_valid(move_indicator_2):
-				move_indicator_2.position = grid_to_world(target2)
-				move_indicator_2.visible = true
-			_log("[color=#22c55e]Sprint Step 2 → (%d, %d). 2-Tile Sprint Locked![/color]" % [target2.x, target2.y])
-	else:
-		var target = player.grid_pos + dir
-		if not is_valid_grid_pos(target) or grid[target.y][target.x] != 0:
+	if player_move_target == Vector2i(-1, -1):
+		var target1 = player.grid_pos + dir
+		if not is_valid_grid_pos(target1) or grid[target1.y][target1.x] != 0:
 			_log("[color=#ef4444]Cannot move into wall![/color]")
 			return
-		if player_move_target == target:
-			player_move_target = Vector2i(-1, -1)
-			move_indicator.visible = false
-			_log("[color=#94a3b8]Holding position.[/color]")
-		else:
-			player_move_target = target
-			move_indicator.position = grid_to_world(target)
-			move_indicator.visible = true
-			_log("[color=#38bdf8]Move target → (%d, %d)[/color]" % [target.x, target.y])
+		player_move_target = target1
+		move_indicator.position = grid_to_world(target1)
+		move_indicator.visible = true
+		play_dice_lock_sfx()
+		_log("[color=#38bdf8]Move destination → (%d, %d). Press direction again for Step 2.[/color]" % [target1.x, target1.y])
+	elif player_move_target_2 == Vector2i(-1, -1):
+		var target2 = player_move_target + dir
+		if not is_valid_grid_pos(target2) or grid[target2.y][target2.x] != 0:
+			_log("[color=#ef4444]Cannot move into wall![/color]")
+			return
+		player_move_target_2 = target2
+		if is_instance_valid(move_indicator_2):
+			move_indicator_2.position = grid_to_world(target2)
+			move_indicator_2.visible = true
+		# 2 moves clears attack
+		player_attack_target = Vector2i(-1, -1)
+		player_attack_target_2 = Vector2i(-1, -1)
+		attack_indicator.visible = false
+		if is_instance_valid(attack_indicator_2): attack_indicator_2.visible = false
+		play_dice_lock_sfx()
+		_log("[color=#22c55e]⚡ 2-Tile Move Queued → (%d, %d) then (%d, %d)![/color]" % [player_move_target.x, player_move_target.y, target2.x, target2.y])
+	else:
+		var target1 = player.grid_pos + dir
+		if not is_valid_grid_pos(target1) or grid[target1.y][target1.x] != 0:
+			_log("[color=#ef4444]Cannot move into wall![/color]")
+			return
+		player_move_target = target1
+		player_move_target_2 = Vector2i(-1, -1)
+		move_indicator.position = grid_to_world(target1)
+		move_indicator.visible = true
+		if is_instance_valid(move_indicator_2): move_indicator_2.visible = false
+		play_dice_lock_sfx()
+		_log("[color=#38bdf8]Move destination → (%d, %d)[/color]" % [target1.x, target1.y])
 
 	_validate_attack_target_range()
 	_update_combat_plan_hud()
@@ -4202,35 +4186,24 @@ func _set_action_order(order: String) -> void:
 	play_dice_lock_sfx()
 	_update_action_order_ui()
 	_validate_attack_target_range()
+	_update_combat_plan_hud()
 	if player_action_order == "move_first":
 		_log("[color=#38bdf8]⚡ Stance: [b][1] 👟 MOVE FIRST ➔ ⚔️ STRIKE[/b][/color]")
 		_show_floating_text(player.position, "ADVANCE [1]", Color(0.38, 0.74, 0.97))
 	elif player_action_order == "attack_first":
 		_log("[color=#f59e0b]⚡ Stance: [b][2] ⚔️ STRIKE FIRST ➔ 👟 MOVE[/b][/color]")
 		_show_floating_text(player.position, "HIT & RUN [2]", Color(0.98, 0.65, 0.2))
-	elif player_action_order == "double_move":
-		_log("[color=#22c55e]⚡ Stance: [b][3] 👟 ➔ 👟 SPRINT (2 TILES)[/b][/color]")
-		_show_floating_text(player.position, "SPRINT [3]", Color(0.3, 0.9, 0.4))
-	elif player_action_order == "double_attack":
-		_log("[color=#ef4444]⚡ Stance: [b][4] ⚔️ ➔ ⚔️ FLURRY (2 STRIKES)[/b][/color]")
-		_show_floating_text(player.position, "FLURRY [4]", Color(0.95, 0.35, 0.35))
 
 func _toggle_action_order() -> void:
 	if player_action_order == "move_first":
 		_set_action_order("attack_first")
-	elif player_action_order == "attack_first":
-		_set_action_order("double_move")
-	elif player_action_order == "double_move":
-		_set_action_order("double_attack")
 	else:
 		_set_action_order("move_first")
 
 func _update_action_order_ui() -> void:
 	var btns = [
 		{"btn": stance_btn_1, "id": "move_first", "color": Color(0.22, 0.74, 0.97)},
-		{"btn": stance_btn_2, "id": "attack_first", "color": Color(0.98, 0.65, 0.2)},
-		{"btn": stance_btn_3, "id": "double_move", "color": Color(0.3, 0.9, 0.4)},
-		{"btn": stance_btn_4, "id": "double_attack", "color": Color(0.95, 0.35, 0.35)}
+		{"btn": stance_btn_2, "id": "attack_first", "color": Color(0.98, 0.65, 0.2)}
 	]
 	for b_cfg in btns:
 		var btn: Button = b_cfg["btn"]
@@ -4239,10 +4212,10 @@ func _update_action_order_ui() -> void:
 		var is_active = (player_action_order == b_cfg["id"])
 		var style = StyleBoxFlat.new()
 		style.set_corner_radius_all(4)
-		style.content_margin_left = 6
-		style.content_margin_right = 6
-		style.content_margin_top = 2
-		style.content_margin_bottom = 2
+		style.content_margin_left = 8
+		style.content_margin_right = 8
+		style.content_margin_top = 3
+		style.content_margin_bottom = 3
 		style.set_border_width_all(2 if is_active else 1)
 		if is_active:
 			style.bg_color = Color(0.06, 0.12, 0.18, 0.98)
@@ -4259,7 +4232,8 @@ func _update_action_order_ui() -> void:
 func _validate_attack_target_range() -> void:
 	if player_attack_target == Vector2i(-1, -1):
 		return
-	if player_action_order == "double_move":
+	if player_move_target_2 != Vector2i(-1, -1):
+		# Two moves queued: no attacks allowed
 		player_attack_target = Vector2i(-1, -1)
 		player_attack_target_2 = Vector2i(-1, -1)
 		attack_indicator.visible = false
@@ -4287,26 +4261,48 @@ func _validate_attack_target_range() -> void:
 		if attack_reticle_tween and attack_reticle_tween.is_valid():
 			attack_reticle_tween.kill()
 		_log("[color=#f59e0b]⚠️ Target is now out of range after repositioning. Strike cancelled.[/color]")
+		return
+
+	# Validate second attack target if set
+	if player_attack_target_2 != Vector2i(-1, -1) and player_attack_target_2 != player_attack_target:
+		var dist2_curr = max(abs(player_attack_target_2.x - player.grid_pos.x), abs(player_attack_target_2.y - player.grid_pos.y))
+		var dist2_move = 999
+		if player_action_order == "move_first" and player_move_target != Vector2i(-1, -1):
+			dist2_move = max(abs(player_attack_target_2.x - player_move_target.x), abs(player_attack_target_2.y - player_move_target.y))
+		var in_range_2 = (dist2_move <= 1 or dist2_curr <= 1) if player_action_order == "move_first" else (dist2_curr <= 1)
+		if not in_range_2:
+			player_attack_target_2 = Vector2i(-1, -1)
+			if is_instance_valid(attack_indicator_2):
+				attack_indicator_2.visible = false
+			_log("[color=#f59e0b]⚠️ Strike 2 target out of range. Cancelled Strike 2.[/color]")
 
 func _update_combat_plan_hud() -> void:
 	if not is_instance_valid(last_action_label):
 		return
-	var order_badge = "[1: Advance]"
-	if player_action_order == "attack_first": order_badge = "[2: Hit&Run]"
-	elif player_action_order == "double_move": order_badge = "[3: Sprint 2x]"
-	elif player_action_order == "double_attack": order_badge = "[4: Flurry 2x]"
+	var order_badge = "[1: Move ➔ Hit]"
+	if player_move_target_2 != Vector2i(-1, -1):
+		order_badge = "[👟 2x Sprint: Move ➔ Move]"
+	elif player_attack_target_2 != Vector2i(-1, -1):
+		order_badge = "[⚔️ 2x Flurry: Hit ➔ Hit]"
+	elif player_action_order == "attack_first":
+		order_badge = "[2: Hit ➔ Move]"
 
 	var strike_str = "⚔️ Strike: None"
 	if player_attack_target != Vector2i(-1, -1):
-		strike_str = "⚔️ Strike 1: (%d, %d)" % [player_attack_target.x, player_attack_target.y]
-		if player_action_order == "double_attack" and player_attack_target_2 != Vector2i(-1, -1):
-			strike_str += " • Strike 2: (%d, %d)" % [player_attack_target_2.x, player_attack_target_2.y]
+		if player_attack_target_2 != Vector2i(-1, -1):
+			if player_attack_target_2 == player_attack_target:
+				strike_str = "⚔️ Strike: (%d, %d) [2x]" % [player_attack_target.x, player_attack_target.y]
+			else:
+				strike_str = "⚔️ Strike 1: (%d, %d) • Strike 2: (%d, %d)" % [player_attack_target.x, player_attack_target.y, player_attack_target_2.x, player_attack_target_2.y]
+		else:
+			strike_str = "⚔️ Strike: (%d, %d)" % [player_attack_target.x, player_attack_target.y]
 
 	var move_str = "🦶 Move: None"
 	if player_move_target != Vector2i(-1, -1):
-		move_str = "🦶 Step 1: (%d, %d)" % [player_move_target.x, player_move_target.y]
-		if player_action_order == "double_move" and player_move_target_2 != Vector2i(-1, -1):
-			move_str += " • Step 2: (%d, %d)" % [player_move_target_2.x, player_move_target_2.y]
+		if player_move_target_2 != Vector2i(-1, -1):
+			move_str = "🦶 Step 1: (%d, %d) • Step 2: (%d, %d)" % [player_move_target.x, player_move_target.y, player_move_target_2.x, player_move_target_2.y]
+		else:
+			move_str = "🦶 Step: (%d, %d)" % [player_move_target.x, player_move_target.y]
 
 	last_action_label.text = "%s   •   %s   •   %s" % [order_badge, strike_str, move_str]
 
@@ -4319,11 +4315,6 @@ func _handle_combat_left_click(pos: Vector2i) -> void:
 	_toggle_attack_target(pos, label)
 
 func _handle_combat_right_click(pos: Vector2i) -> void:
-	if player_action_order == "double_attack":
-		_log("[color=#ef4444]⚠️ In FLURRY stance! You stand your ground to strike twice. Press 1, 2, or 3 to move.[/color]")
-		_show_floating_text(player.position, "FLURRY: NO MOVE", Color(0.95, 0.4, 0.4))
-		return
-
 	if pos == player.grid_pos:
 		player_move_target = Vector2i(-1, -1)
 		player_move_target_2 = Vector2i(-1, -1)
@@ -4334,41 +4325,19 @@ func _handle_combat_right_click(pos: Vector2i) -> void:
 		_update_combat_plan_hud()
 		return
 
-	var diff = (pos - player.grid_pos).abs()
-	var dist_chebyshev = max(diff.x, diff.y)
+	# If player previously queued 2 attacks, right clicking a move removes the second attack!
+	if player_attack_target_2 != Vector2i(-1, -1):
+		player_attack_target_2 = Vector2i(-1, -1)
+		if is_instance_valid(attack_indicator_2):
+			attack_indicator_2.visible = false
+		_log("[color=#38bdf8]Strike 2 removed. Planning 1 Strike + 1 Move.[/color]")
 
-	if player_action_order == "double_move":
-		if dist_chebyshev == 1 and is_valid_grid_pos(pos) and grid[pos.y][pos.x] == 0:
-			if player_move_target == Vector2i(-1, -1):
-				player_move_target = pos
-				move_indicator.position = grid_to_world(pos)
-				move_indicator.visible = true
-				_log("[color=#38bdf8]Sprint Step 1 → (%d, %d). Click second tile for Step 2.[/color]" % [pos.x, pos.y])
-			else:
-				player_move_target_2 = pos
-				if is_instance_valid(move_indicator_2):
-					move_indicator_2.position = grid_to_world(pos)
-					move_indicator_2.visible = true
-				_log("[color=#22c55e]Sprint Step 2 → (%d, %d). 2-Tile Sprint Locked![/color]" % [pos.x, pos.y])
-			play_dice_lock_sfx()
-		elif dist_chebyshev == 2 and is_valid_grid_pos(pos) and grid[pos.y][pos.x] == 0:
-			var step_dir = (pos - player.grid_pos).clamp(Vector2i(-1, -1), Vector2i(1, 1))
-			var intermediate = player.grid_pos + step_dir
-			if is_valid_grid_pos(intermediate) and grid[intermediate.y][intermediate.x] == 0:
-				player_move_target = intermediate
-				player_move_target_2 = pos
-				move_indicator.position = grid_to_world(intermediate)
-				move_indicator.visible = true
-				if is_instance_valid(move_indicator_2):
-					move_indicator_2.position = grid_to_world(pos)
-					move_indicator_2.visible = true
-				play_dice_lock_sfx()
-				_log("[color=#22c55e]⚡ 2-Tile SPRINT queued → (%d, %d) then (%d, %d)![/color]" % [intermediate.x, intermediate.y, pos.x, pos.y])
-				_show_floating_text(grid_to_world(pos), "SPRINT 2 TILES!", Color(0.3, 0.9, 0.4))
-		else:
-			_log("[color=#94a3b8]Right-click floor tile within 2 spaces to sprint.[/color]")
-	else:
-		if dist_chebyshev == 1 and is_valid_grid_pos(pos) and grid[pos.y][pos.x] == 0:
+	var diff = (pos - player.grid_pos).abs()
+	var dist_from_hero = max(diff.x, diff.y)
+
+	# If player hasn't selected Step 1 yet
+	if player_move_target == Vector2i(-1, -1):
+		if dist_from_hero == 1 and is_valid_grid_pos(pos) and grid[pos.y][pos.x] == 0:
 			var is_enemy_tile = false
 			for enemy in active_combat_enemies:
 				if is_instance_valid(enemy) and enemy.is_alive and enemy.grid_pos == pos:
@@ -4381,81 +4350,149 @@ func _handle_combat_right_click(pos: Vector2i) -> void:
 				move_indicator.position = grid_to_world(pos)
 				move_indicator.visible = true
 				play_dice_lock_sfx()
-				_log("[color=#38bdf8]Move destination → (%d, %d)[/color]" % [pos.x, pos.y])
+				_log("[color=#38bdf8]Move destination → (%d, %d). Click another tile to step twice.[/color]" % [pos.x, pos.y])
+		elif dist_from_hero == 2 and is_valid_grid_pos(pos) and grid[pos.y][pos.x] == 0:
+			var step_dir = (pos - player.grid_pos).clamp(Vector2i(-1, -1), Vector2i(1, 1))
+			var intermediate = player.grid_pos + step_dir
+			if is_valid_grid_pos(intermediate) and grid[intermediate.y][intermediate.x] == 0:
+				player_move_target = intermediate
+				player_move_target_2 = pos
+				move_indicator.position = grid_to_world(intermediate)
+				move_indicator.visible = true
+				if is_instance_valid(move_indicator_2):
+					move_indicator_2.position = grid_to_world(pos)
+					move_indicator_2.visible = true
+				# Choosing 2 moves clears attack
+				player_attack_target = Vector2i(-1, -1)
+				player_attack_target_2 = Vector2i(-1, -1)
+				attack_indicator.visible = false
+				if is_instance_valid(attack_indicator_2): attack_indicator_2.visible = false
+				play_dice_lock_sfx()
+				_log("[color=#22c55e]⚡ 2-Tile SPRINT queued → (%d, %d) then (%d, %d)![/color]" % [intermediate.x, intermediate.y, pos.x, pos.y])
+				_show_floating_text(grid_to_world(pos), "SPRINT 2 TILES!", Color(0.3, 0.9, 0.4))
 		else:
-			_log("[color=#94a3b8]Right-click adjacent floor tile to step (or use WASD).[/color]")
+			_log("[color=#94a3b8]Right-click adjacent floor tile to step (or within 2 spaces to sprint).[/color]")
+	else:
+		# Player already has Step 1 selected
+		if pos == player_move_target:
+			if player_move_target_2 != Vector2i(-1, -1):
+				player_move_target_2 = Vector2i(-1, -1)
+				if is_instance_valid(move_indicator_2): move_indicator_2.visible = false
+				_log("[color=#94a3b8]Cancelled Step 2. Keeping Step 1.[/color]")
+			else:
+				player_move_target = Vector2i(-1, -1)
+				move_indicator.visible = false
+				_log("[color=#94a3b8]Holding position.[/color]")
+		elif pos == player_move_target_2:
+			player_move_target_2 = Vector2i(-1, -1)
+			if is_instance_valid(move_indicator_2): move_indicator_2.visible = false
+			_log("[color=#94a3b8]Cancelled Step 2. Keeping Step 1.[/color]")
+		else:
+			var dist_from_step1 = max(abs(pos.x - player_move_target.x), abs(pos.y - player_move_target.y))
+			if dist_from_step1 == 1 and is_valid_grid_pos(pos) and grid[pos.y][pos.x] == 0:
+				player_move_target_2 = pos
+				if is_instance_valid(move_indicator_2):
+					move_indicator_2.position = grid_to_world(pos)
+					move_indicator_2.visible = true
+				# Choosing 2 moves clears attack
+				player_attack_target = Vector2i(-1, -1)
+				player_attack_target_2 = Vector2i(-1, -1)
+				attack_indicator.visible = false
+				if is_instance_valid(attack_indicator_2): attack_indicator_2.visible = false
+				play_dice_lock_sfx()
+				_log("[color=#22c55e]⚡ Step 2 queued → (%d, %d). Moving 2 tiles![/color]" % [pos.x, pos.y])
+				_show_floating_text(grid_to_world(pos), "STEP 2 LOCKED", Color(0.3, 0.9, 0.4))
+			elif dist_from_hero == 1 and is_valid_grid_pos(pos) and grid[pos.y][pos.x] == 0:
+				player_move_target = pos
+				player_move_target_2 = Vector2i(-1, -1)
+				move_indicator.position = grid_to_world(pos)
+				move_indicator.visible = true
+				if is_instance_valid(move_indicator_2): move_indicator_2.visible = false
+				play_dice_lock_sfx()
+				_log("[color=#38bdf8]Move destination updated → (%d, %d)[/color]" % [pos.x, pos.y])
+			else:
+				_log("[color=#94a3b8]Right-click a tile adjacent to Step 1 to add Step 2.[/color]")
 
 	_validate_attack_target_range()
 	_update_combat_plan_hud()
 
 func _toggle_attack_target(pos: Vector2i, label: String) -> void:
-	if player_action_order == "double_move":
-		_log("[color=#38bdf8]⚠️ In SPRINT stance! You are moving twice this round. Press 1, 2, or 4 to attack.[/color]")
-		_show_floating_text(player.position, "SPRINT: NO ATTACK", Color(0.4, 0.8, 1.0))
+	# If player previously had 2 moves queued, clicking an attack removes Step 2!
+	if player_move_target_2 != Vector2i(-1, -1):
+		player_move_target_2 = Vector2i(-1, -1)
+		if is_instance_valid(move_indicator_2):
+			move_indicator_2.visible = false
+		_log("[color=#38bdf8]Step 2 sprint removed. Planning 1 Move + 1 Strike.[/color]")
+
+	# Check range for this tile
+	var dist_curr = max(abs(pos.x - player.grid_pos.x), abs(pos.y - player.grid_pos.y))
+	var dist_move = 999
+	if player_action_order == "move_first" and player_move_target != Vector2i(-1, -1):
+		dist_move = max(abs(pos.x - player_move_target.x), abs(pos.y - player_move_target.y))
+	
+	var in_range = false
+	if player_action_order == "move_first":
+		in_range = (dist_move <= 1 or dist_curr <= 1)
+	else:
+		in_range = (dist_curr <= 1)
+		
+	if not in_range:
+		play_attack_whiff_sfx()
+		_show_floating_text(grid_to_world(pos), "OUT OF RANGE (1 Tile Melee)", Color(0.95, 0.45, 0.2))
+		_log("[color=#ef4444]⚠️ Out of range! Melee strikes reach adjacent squares (1 tile).[/color]")
 		return
 
-	if player_action_order == "double_attack":
-		if player_attack_target == pos and player_attack_target_2 == pos:
-			player_attack_target = Vector2i(-1, -1)
+	# If no attack target yet: set Strike 1
+	if player_attack_target == Vector2i(-1, -1):
+		player_attack_target = pos
+		attack_indicator.position = grid_to_world(pos)
+		attack_indicator.visible = true
+		attack_indicator.scale = Vector2(1.35, 1.35)
+		if attack_reticle_tween and attack_reticle_tween.is_valid():
+			attack_reticle_tween.kill()
+		attack_reticle_tween = create_tween().set_loops()
+		attack_reticle_tween.tween_property(attack_indicator, "scale", Vector2(1.12, 1.12), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		attack_reticle_tween.tween_property(attack_indicator, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		play_dice_lock_sfx()
+		_log("[color=#ef4444]⚔️ Strike 1 queued on %s (%d, %d). Click again or another enemy for Strike 2![/color]" % [label, pos.x, pos.y])
+	elif player_attack_target_2 == Vector2i(-1, -1):
+		# Player ALREADY has Strike 1. Clicking again (same tile or adjacent target) sets Strike 2!
+		player_attack_target_2 = pos
+		if is_instance_valid(attack_indicator_2):
+			if pos == player_attack_target:
+				attack_indicator_2.position = grid_to_world(pos) + Vector2(0, -8)
+			else:
+				attack_indicator_2.position = grid_to_world(pos)
+			attack_indicator_2.visible = true
+		# Choosing 2 attacks clears any move!
+		player_move_target = Vector2i(-1, -1)
+		player_move_target_2 = Vector2i(-1, -1)
+		move_indicator.visible = false
+		if is_instance_valid(move_indicator_2): move_indicator_2.visible = false
+		play_dice_lock_sfx()
+		if pos == player_attack_target:
+			_log("[color=#ef4444]⚔️ Double Strike (2x Hits) queued on %s![/color]" % label)
+			_show_floating_text(grid_to_world(pos), "DOUBLE STRIKE!", Color(0.95, 0.3, 0.3))
+		else:
+			_log("[color=#f59e0b]⚔️ Dual Strikes queued: Strike 1 on (%d, %d), Strike 2 on %s (%d, %d)![/color]" % [player_attack_target.x, player_attack_target.y, label, pos.x, pos.y])
+			_show_floating_text(grid_to_world(pos), "STRIKE 2 LOCKED", Color(0.95, 0.5, 0.3))
+	else:
+		# Player already has Strike 1 and Strike 2
+		if pos == player_attack_target_2 or pos == player_attack_target:
 			player_attack_target_2 = Vector2i(-1, -1)
-			attack_indicator.visible = false
-			if is_instance_valid(attack_indicator_2): attack_indicator_2.visible = false
-			_log("[color=#94a3b8]Cancelled flurry strikes.[/color]")
-		elif player_attack_target == Vector2i(-1, -1):
-			player_attack_target = pos
-			player_attack_target_2 = pos
-			attack_indicator.position = grid_to_world(pos)
-			attack_indicator.visible = true
 			if is_instance_valid(attack_indicator_2):
-				attack_indicator_2.position = grid_to_world(pos) + Vector2(0, -6)
-				attack_indicator_2.visible = true
-			play_dice_lock_sfx()
-			_log("[color=#ef4444]⚔️ Double Strike (Flurry 2x) locked on %s![/color]" % label)
+				attack_indicator_2.visible = false
+			_log("[color=#94a3b8]Cancelled Strike 2. Keeping Strike 1.[/color]")
 		else:
 			player_attack_target_2 = pos
 			if is_instance_valid(attack_indicator_2):
 				attack_indicator_2.position = grid_to_world(pos)
 				attack_indicator_2.visible = true
 			play_dice_lock_sfx()
-			_log("[color=#f59e0b]⚔️ Flurry split: Strike 1 on (%d, %d), Strike 2 on %s (%d, %d)![/color]" % [player_attack_target.x, player_attack_target.y, label, pos.x, pos.y])
-	else:
-		if player_attack_target == pos:
-			player_attack_target = Vector2i(-1, -1)
-			attack_indicator.visible = false
-			if attack_reticle_tween and attack_reticle_tween.is_valid():
-				attack_reticle_tween.kill()
-			_log("[color=#94a3b8]Cancelled strike on %s[/color]" % label)
-		else:
-			var dist_curr = max(abs(pos.x - player.grid_pos.x), abs(pos.y - player.grid_pos.y))
-			var dist_move = 999
-			if player_action_order == "move_first" and player_move_target != Vector2i(-1, -1):
-				dist_move = max(abs(pos.x - player_move_target.x), abs(pos.y - player_move_target.y))
-			
-			var in_range = false
-			if player_action_order == "move_first":
-				in_range = (dist_move <= 1 or dist_curr <= 1)
-			else:
-				in_range = (dist_curr <= 1)
-				
-			if not in_range:
-				play_attack_whiff_sfx()
-				_show_floating_text(grid_to_world(pos), "OUT OF RANGE (1 Tile Melee)", Color(0.95, 0.45, 0.2))
-				_log("[color=#ef4444]⚠️ Out of range! Melee strikes reach adjacent squares (1 tile).[/color]")
-				return
+			_log("[color=#f59e0b]Strike 2 retargeted to %s (%d, %d)![/color]" % [label, pos.x, pos.y])
 
-			player_attack_target = pos
-			attack_indicator.position = grid_to_world(pos)
-			attack_indicator.visible = true
-			attack_indicator.scale = Vector2(1.35, 1.35)
-			
-			if attack_reticle_tween and attack_reticle_tween.is_valid():
-				attack_reticle_tween.kill()
-			attack_reticle_tween = create_tween().set_loops()
-			attack_reticle_tween.tween_property(attack_indicator, "scale", Vector2(1.12, 1.12), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-			attack_reticle_tween.tween_property(attack_indicator, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-			
-			play_dice_lock_sfx()
-			_log("[color=#ef4444]🎯 Locked strike on %s → (%d, %d)[/color]" % [label, pos.x, pos.y])
+	_validate_attack_target_range()
+	_update_combat_plan_hud()
 
 	for enemy in active_combat_enemies:
 		if is_instance_valid(enemy):
@@ -4964,21 +5001,29 @@ func _resolve_simultaneous_sub_beat(beat_num: int) -> void:
 	# 2. Determine who is moving on this beat
 	var hero_is_moving = false
 	var hero_move_dest = Vector2i(-1, -1)
-	if beat_num == 1:
-		if player_action_order in ["move_first", "double_move"]:
+	if player_move_target_2 != Vector2i(-1, -1):
+		# Double moving: Beat 1 is Step 1, Beat 2 is Step 2
+		if beat_num == 1:
 			if player_move_target != Vector2i(-1, -1) and player_move_target != player.grid_pos:
 				hero_is_moving = true
 				hero_move_dest = player_move_target
-	elif beat_num == 2:
-		if player_action_order == "attack_first":
+		elif beat_num == 2:
+			if player_move_target_2 != Vector2i(-1, -1) and player_move_target_2 != player.grid_pos:
+				hero_is_moving = true
+				hero_move_dest = player_move_target_2
+	elif player_attack_target_2 != Vector2i(-1, -1):
+		# Double attacking: hero does not move
+		hero_is_moving = false
+	else:
+		# Standard single move according to stance
+		if beat_num == 1 and player_action_order == "move_first":
 			if player_move_target != Vector2i(-1, -1) and player_move_target != player.grid_pos:
 				hero_is_moving = true
 				hero_move_dest = player_move_target
-		elif player_action_order == "double_move":
-			var dest_2 = player_move_target_2 if player_move_target_2 != Vector2i(-1, -1) else player_move_target
-			if dest_2 != Vector2i(-1, -1) and dest_2 != player.grid_pos:
+		elif beat_num == 2 and player_action_order == "attack_first":
+			if player_move_target != Vector2i(-1, -1) and player_move_target != player.grid_pos:
 				hero_is_moving = true
-				hero_move_dest = dest_2
+				hero_move_dest = player_move_target
 
 	var enemy_movers: Dictionary = {} # CombatUnit -> Vector2i
 	for enemy in active_combat_enemies:
@@ -5056,8 +5101,11 @@ func _resolve_simultaneous_sub_beat(beat_num: int) -> void:
 				move_indicator.visible = false
 		elif beat_num == 2:
 			player_move_target_2 = Vector2i(-1, -1)
+			player_move_target = Vector2i(-1, -1)
 			if is_instance_valid(move_indicator_2):
 				move_indicator_2.visible = false
+			if is_instance_valid(move_indicator):
+				move_indicator.visible = false
 
 	if any_movement or not clashed_units.is_empty():
 		await get_tree().create_timer(0.20).timeout
@@ -5067,21 +5115,29 @@ func _resolve_simultaneous_sub_beat(beat_num: int) -> void:
 	# -------------------------------------------------------------
 	var hero_is_attacking = false
 	var hero_attack_tile = Vector2i(-1, -1)
-	if beat_num == 1:
-		if player_action_order in ["attack_first", "double_attack"]:
+	if player_attack_target_2 != Vector2i(-1, -1):
+		# Double attacking: Beat 1 is Strike 1, Beat 2 is Strike 2
+		if beat_num == 1:
 			if player_attack_target != Vector2i(-1, -1):
 				hero_is_attacking = true
 				hero_attack_tile = player_attack_target
-	elif beat_num == 2:
-		if player_action_order == "move_first":
+		elif beat_num == 2:
+			if player_attack_target_2 != Vector2i(-1, -1):
+				hero_is_attacking = true
+				hero_attack_tile = player_attack_target_2
+	elif player_move_target_2 != Vector2i(-1, -1):
+		# Double moving: hero does not attack
+		hero_is_attacking = false
+	else:
+		# Standard single attack according to stance
+		if beat_num == 1 and player_action_order == "attack_first":
 			if player_attack_target != Vector2i(-1, -1):
 				hero_is_attacking = true
 				hero_attack_tile = player_attack_target
-		elif player_action_order == "double_attack":
-			var atk_2 = player_attack_target_2 if player_attack_target_2 != Vector2i(-1, -1) else player_attack_target
-			if atk_2 != Vector2i(-1, -1):
+		elif beat_num == 2 and player_action_order == "move_first":
+			if player_attack_target != Vector2i(-1, -1):
 				hero_is_attacking = true
-				hero_attack_tile = atk_2
+				hero_attack_tile = player_attack_target
 
 	var enemy_attacks: Array[Dictionary] = []
 	for enemy in active_combat_enemies:
@@ -5111,8 +5167,11 @@ func _resolve_simultaneous_sub_beat(beat_num: int) -> void:
 				attack_indicator.visible = false
 		elif beat_num == 2:
 			player_attack_target_2 = Vector2i(-1, -1)
+			player_attack_target = Vector2i(-1, -1)
 			if is_instance_valid(attack_indicator_2):
 				attack_indicator_2.visible = false
+			if is_instance_valid(attack_indicator):
+				attack_indicator.visible = false
 
 	# Resolve Enemy Attacks Outcome
 	for ea in enemy_attacks:
