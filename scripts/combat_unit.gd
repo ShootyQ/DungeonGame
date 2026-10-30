@@ -92,6 +92,10 @@ var loaded_face: Dictionary = {}
 var intent_type: String = "NONE" # "NONE", "MOVE", "ATTACK", "CHARGE", "SWEEP", "BLAST", "STUNNED"
 var target_grid_pos: Vector2i = Vector2i.ZERO
 var is_targeted: bool = false
+var planned_action_1: String = "none"
+var planned_action_2: String = "none"
+var planned_move_dest: Vector2i = Vector2i(-1, -1)
+var planned_attack_dest: Vector2i = Vector2i(-1, -1)
 
 # Procedural Animation State
 var anim_time: float = 0.0
@@ -342,10 +346,95 @@ func set_stunned(val: bool) -> void:
 func clear_intent() -> void:
 	intent_type = "NONE"
 	target_grid_pos = grid_pos
+	planned_action_1 = "none"
+	planned_action_2 = "none"
+	planned_move_dest = Vector2i(-1, -1)
+	planned_attack_dest = Vector2i(-1, -1)
 	telegraphed_tiles.clear()
 	set_targeted(false)
 	if intent_plate:
 		intent_plate.visible = false
+
+func set_dual_intent(act_1: String, act_2: String, move_dest: Vector2i, atk_dest: Vector2i, p_telegraphed: Array = [], dmg: int = 4) -> void:
+	planned_action_1 = act_1
+	planned_action_2 = act_2
+	planned_move_dest = move_dest
+	planned_attack_dest = atk_dest
+	target_grid_pos = atk_dest if atk_dest != Vector2i(-1, -1) else move_dest
+	telegraphed_tiles = p_telegraphed
+	
+	if not intent_plate:
+		return
+		
+	var p_style = StyleBoxFlat.new()
+	p_style.bg_color = Color(0.06, 0.08, 0.12, 0.95)
+	p_style.set_corner_radius_all(4)
+	p_style.set_border_width_all(1.5)
+	p_style.content_margin_left = 6
+	p_style.content_margin_right = 6
+	p_style.content_margin_top = 2
+	p_style.content_margin_bottom = 2
+	
+	# Determine summary presentation for dual telegraph
+	var has_charge = (act_1 == "enemy_charge" or act_2 == "enemy_charge")
+	var has_sweep = (act_1 == "enemy_sweep" or act_2 == "enemy_sweep")
+	var has_blast = (act_1 == "enemy_blast" or act_2 == "enemy_blast")
+	var has_attack = (act_1 == "enemy_attack" or act_2 == "enemy_attack")
+	var has_move = (act_1 == "enemy_move" or act_2 == "enemy_move")
+	
+	if has_charge:
+		intent_type = "CHARGE"
+		intent_icon.texture = load("res://assets/ui/intent_enemy_charge.svg")
+		intent_label.text = "⚡ CHARGE %d" % (dmg if dmg > 4 else 8)
+		intent_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.2))
+		p_style.border_color = Color(0.95, 0.45, 0.1)
+	elif has_sweep:
+		intent_type = "SWEEP"
+		intent_icon.texture = load("res://assets/ui/intent_enemy_sweep.svg")
+		if has_move:
+			intent_label.text = "👟 & 🪓 %d" % (dmg if dmg > 4 else 6)
+		else:
+			intent_label.text = "🪓 CLEAVE %d" % (dmg if dmg > 4 else 6)
+		intent_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.65))
+		p_style.border_color = Color(0.9, 0.25, 0.6)
+	elif has_blast:
+		intent_type = "BLAST"
+		intent_icon.texture = load("res://assets/ui/intent_enemy_blast.svg")
+		if has_move:
+			intent_label.text = "👟 & 🔮 %d" % (dmg if dmg > 4 else 7)
+		else:
+			intent_label.text = "🔮 BLAST %d" % (dmg if dmg > 4 else 7)
+		intent_label.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
+		p_style.border_color = Color(0.95, 0.7, 0.1)
+	elif has_attack and has_move:
+		intent_type = "ATTACK"
+		intent_icon.texture = load("res://assets/ui/intent_enemy_attack.svg")
+		intent_label.text = "👟 & ⚔️ %d" % dmg
+		intent_label.add_theme_color_override("font_color", Color(0.98, 0.4, 0.4))
+		p_style.border_color = Color(0.9, 0.3, 0.3)
+	elif has_attack:
+		intent_type = "ATTACK"
+		intent_icon.texture = load("res://assets/ui/intent_enemy_attack.svg")
+		intent_label.text = "⚔️ %d DMG" % dmg
+		intent_label.add_theme_color_override("font_color", Color(0.98, 0.35, 0.35))
+		p_style.border_color = Color(0.9, 0.2, 0.2)
+	elif has_move:
+		intent_type = "MOVE"
+		intent_icon.texture = load("res://assets/ui/intent_enemy_move.svg")
+		intent_label.text = "👟 2 STEPS" if (act_1 == "enemy_move" and act_2 == "enemy_move") else "👟 MOVE"
+		intent_label.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+		p_style.border_color = Color(0.2, 0.6, 0.9)
+	else:
+		intent_plate.visible = false
+		return
+		
+	intent_plate.add_theme_stylebox_override("panel", p_style)
+	intent_plate.visible = true
+	
+	# Scale punch animation
+	intent_plate.scale = Vector2(1.15, 1.15)
+	var tween = create_tween()
+	tween.tween_property(intent_plate, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func set_targeted(val: bool) -> void:
 	is_targeted = val

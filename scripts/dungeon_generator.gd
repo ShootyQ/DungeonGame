@@ -3,9 +3,9 @@ extends RefCounted
 
 const GRID_WIDTH: int = 80
 const GRID_HEIGHT: int = 60
-const TARGET_ROOMS: int = 20
-const MIN_ROOM_SIZE: int = 6
-const MAX_ROOM_SIZE: int = 9
+const TARGET_ROOMS: int = 14
+const MIN_ROOM_SIZE: int = 9
+const MAX_ROOM_SIZE: int = 13
 const ROOM_PADDING: int = 2 # Minimum wall tiles between rooms
 
 # Biome definitions for thematic rooms
@@ -28,8 +28,8 @@ static func generate() -> Dictionary:
 	var rooms: Array[Dictionary] = []
 	
 	# 1. Place Room 0 (Player Entrance Chamber) on Western border
-	var r0_w = 8
-	var r0_h = 7
+	var r0_w = 11
+	var r0_h = 9
 	var r0_x = 4
 	var r0_y = int(GRID_HEIGHT * 0.5) - int(r0_h * 0.5)
 	var r0_rect = Rect2i(r0_x, r0_y, r0_w, r0_h)
@@ -44,15 +44,15 @@ static func generate() -> Dictionary:
 	})
 
 	# 2. Place Room TARGET_ROOMS-1 (Grand Boss Throne Room) on Eastern border
-	var boss_w = 12
-	var boss_h = 10
+	var boss_w = 14
+	var boss_h = 12
 	var boss_x = GRID_WIDTH - boss_w - 5
 	var boss_y = int(GRID_HEIGHT * 0.5) - int(boss_h * 0.5)
 	var boss_rect = Rect2i(boss_x, boss_y, boss_w, boss_h)
 	
 	# 3. Randomly place intermediate rooms
 	var attempts = 0
-	var max_attempts = 1500
+	var max_attempts = 3000
 	var desired_rooms = TARGET_ROOMS
 	
 	# Keep boss room reserved
