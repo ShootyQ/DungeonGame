@@ -676,7 +676,7 @@ func _setup_hud() -> void:
 
 	var hero_title = Label.new()
 	hero_title.text = "🛡️ KNIGHT HERO"
-	hero_title.add_theme_font_size_override("font_size", 14)
+	hero_title.add_theme_font_size_override("font_size", 13)
 	hero_title.add_theme_color_override("font_color", Color(0.35, 0.85, 0.98))
 	hero_vbox.add_child(hero_title)
 
@@ -695,18 +695,12 @@ func _setup_hud() -> void:
 	exp_hp_bar.max_value = 30
 	exp_hp_bar.value = 30
 	exp_hp_bar.show_percentage = false
-	exp_hp_bar.custom_minimum_size = Vector2(90, 8)
+	exp_hp_bar.custom_minimum_size = Vector2(85, 8)
 	var hp_fill = StyleBoxFlat.new()
 	hp_fill.bg_color = Color(0.2, 0.8, 0.4)
 	hp_fill.set_corner_radius_all(2)
 	exp_hp_bar.add_theme_stylebox_override("fill", hp_fill)
 	hp_hbox.add_child(exp_hp_bar)
-
-	exp_gold_label = Label.new()
-	exp_gold_label.text = "🪙 100 Gold"
-	exp_gold_label.add_theme_font_size_override("font_size", 12)
-	exp_gold_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
-	hp_hbox.add_child(exp_gold_label)
 
 	# Center: Dungeon Objective & Chambers Progress
 	var obj_vbox = VBoxContainer.new()
@@ -716,21 +710,28 @@ func _setup_hud() -> void:
 
 	var exp_title = Label.new()
 	exp_title.text = "🏰 DUNGEON DEPTHS • EXPLORATION"
-	exp_title.add_theme_font_size_override("font_size", 15)
+	exp_title.add_theme_font_size_override("font_size", 14)
 	exp_title.add_theme_color_override("font_color", Color(0.3, 0.85, 0.55))
 	obj_vbox.add_child(exp_title)
 
 	var total_hostile = maxi(1, dungeon_rooms.size() - 1)
 	exp_chambers_label = Label.new()
-	exp_chambers_label.text = "Chambers Breached: 0 / %d  |  Move with [WASD]  |  Breach chamber doors to engage" % total_hostile
-	exp_chambers_label.add_theme_font_size_override("font_size", 12)
+	exp_chambers_label.text = "Chambers: 0 / %d  •  [WASD] Move  •  Breach doors to battle" % total_hostile
+	exp_chambers_label.add_theme_font_size_override("font_size", 11)
 	exp_chambers_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
 	obj_vbox.add_child(exp_chambers_label)
 
-	# Right: Action Buttons
+	# Right: Action Buttons & Currency
 	var right_btn_hbox = HBoxContainer.new()
 	right_btn_hbox.add_theme_constant_override("separation", 8)
+	right_btn_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	exp_hbox.add_child(right_btn_hbox)
+
+	exp_gold_label = Label.new()
+	exp_gold_label.text = "🪙 100 Gold"
+	exp_gold_label.add_theme_font_size_override("font_size", 12)
+	exp_gold_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
+	right_btn_hbox.add_child(exp_gold_label)
 
 	var exp_bag_btn = Button.new()
 	exp_bag_btn.text = "🎒 Backpack (B)"
@@ -984,13 +985,20 @@ func _setup_hud() -> void:
 
 func _setup_backpack_ui() -> void:
 	backpack_modal = PanelContainer.new()
-	backpack_modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	backpack_modal.custom_minimum_size = Vector2(1060, 640)
-	backpack_modal.offset_left = -530
-	backpack_modal.offset_top = -320
-	backpack_modal.offset_right = 530
-	backpack_modal.offset_bottom = 320
 	backpack_modal.visible = false
+	hud_root.add_child(backpack_modal)
+
+	backpack_modal.anchor_left = 0.5
+	backpack_modal.anchor_right = 0.5
+	backpack_modal.anchor_top = 0.5
+	backpack_modal.anchor_bottom = 0.5
+	backpack_modal.offset_left = -520
+	backpack_modal.offset_right = 520
+	backpack_modal.offset_top = -285
+	backpack_modal.offset_bottom = 285
+	backpack_modal.custom_minimum_size = Vector2(1040, 570)
+	backpack_modal.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	backpack_modal.grow_vertical = Control.GROW_DIRECTION_BOTH
 	
 	var b_style = StyleBoxFlat.new()
 	b_style.bg_color = Color(0.06, 0.08, 0.12, 0.98)
@@ -1002,7 +1010,6 @@ func _setup_backpack_ui() -> void:
 	b_style.content_margin_top = 12
 	b_style.content_margin_bottom = 12
 	backpack_modal.add_theme_stylebox_override("panel", b_style)
-	hud_root.add_child(backpack_modal)
 	
 	var main_vbox = VBoxContainer.new()
 	main_vbox.add_theme_constant_override("separation", 10)
@@ -1067,7 +1074,7 @@ func _setup_backpack_ui() -> void:
 	# LEFT PANE: PAPER DOLL & ATTRIBUTES (Width ~450px)
 	# =========================================================
 	var left_pane = PanelContainer.new()
-	left_pane.custom_minimum_size = Vector2(450, 0)
+	left_pane.custom_minimum_size = Vector2(425, 0)
 	var lp_style = StyleBoxFlat.new()
 	lp_style.bg_color = Color(0.09, 0.11, 0.17, 0.90)
 	lp_style.border_color = Color(0.25, 0.35, 0.50)
@@ -1234,6 +1241,7 @@ func _setup_backpack_ui() -> void:
 	# Paper Doll Scroll Container (10 Slots Layout)
 	var pd_scroll = ScrollContainer.new()
 	pd_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pd_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left_vbox.add_child(pd_scroll)
 	
 	char_paper_doll_container = VBoxContainer.new()
@@ -1350,7 +1358,8 @@ func _setup_backpack_ui() -> void:
 	# Stash Cards Scroll Container
 	inventory_scroll = ScrollContainer.new()
 	inventory_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	inventory_scroll.custom_minimum_size = Vector2(0, 220)
+	inventory_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	inventory_scroll.custom_minimum_size = Vector2(0, 190)
 	right_pane.add_child(inventory_scroll)
 	
 	inventory_stash_container = GridContainer.new()
@@ -2279,10 +2288,12 @@ func _create_slot_card(slot_name: String) -> Control:
 	title_lbl.text = ItemData.get_slot_title(slot_name).to_upper()
 	title_lbl.add_theme_font_size_override("font_size", 9)
 	title_lbl.add_theme_color_override("font_color", Color(0.45, 0.75, 0.95))
+	title_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	vbox.add_child(title_lbl)
 	
 	var name_lbl = Label.new()
 	name_lbl.add_theme_font_size_override("font_size", 11)
+	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	if is_hand_2_blocked:
 		name_lbl.text = "🔒 2H BLOCKED"
 		name_lbl.add_theme_color_override("font_color", Color(0.95, 0.4, 0.4))
@@ -2296,6 +2307,7 @@ func _create_slot_card(slot_name: String) -> Control:
 	
 	var sub_lbl = Label.new()
 	sub_lbl.add_theme_font_size_override("font_size", 9)
+	sub_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	if is_hand_2_blocked:
 		sub_lbl.text = "Two-Handed Lock"
 		sub_lbl.add_theme_color_override("font_color", Color(0.8, 0.5, 0.5))
@@ -2303,7 +2315,7 @@ func _create_slot_card(slot_name: String) -> Control:
 		sub_lbl.text = item.get_stat_summary()
 		sub_lbl.add_theme_color_override("font_color", Color(0.3, 0.85, 0.5))
 	else:
-		sub_lbl.text = "Click stash to equip"
+		sub_lbl.text = "Click to equip"
 		sub_lbl.add_theme_color_override("font_color", Color(0.4, 0.45, 0.55))
 	vbox.add_child(sub_lbl)
 	
@@ -2350,7 +2362,7 @@ func _render_active_weapon_dice_rack() -> void:
 		var is_loaded = (face.get("title") == player.loaded_face.get("title") and face.get("damage") == player.loaded_face.get("damage") and face.get("roll") == player.loaded_face.get("roll"))
 		
 		var card = PanelContainer.new()
-		card.custom_minimum_size = Vector2(85, 110)
+		card.custom_minimum_size = Vector2(0, 118)
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		
 		var c_style = StyleBoxFlat.new()
@@ -2468,7 +2480,7 @@ func _render_backpack_inventory_cards() -> void:
 		
 	for it in filtered_items:
 		var card = PanelContainer.new()
-		card.custom_minimum_size = Vector2(250, 56)
+		card.custom_minimum_size = Vector2(0, 54)
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		
 		var c_style = StyleBoxFlat.new()
@@ -2489,14 +2501,14 @@ func _render_backpack_inventory_cards() -> void:
 		
 		var icon = TextureRect.new()
 		icon.texture = load(it.icon_path)
-		icon.custom_minimum_size = Vector2(36, 36)
+		icon.custom_minimum_size = Vector2(32, 32)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		hbox.add_child(icon)
 		
 		var vbox = VBoxContainer.new()
 		vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		vbox.add_theme_constant_override("separation", 2)
+		vbox.add_theme_constant_override("separation", 1)
 		hbox.add_child(vbox)
 		
 		var name_lbl = Label.new()
@@ -2510,7 +2522,8 @@ func _render_backpack_inventory_cards() -> void:
 		elif it.item_type == "trophy":
 			tag = " [ESTATE TROPHY]"
 		name_lbl.text = it.name + tag
-		name_lbl.add_theme_font_size_override("font_size", 12)
+		name_lbl.add_theme_font_size_override("font_size", 11)
+		name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		if it.item_type == "face":
 			name_lbl.add_theme_color_override("font_color", Color(0.98, 0.90, 0.45))
 		elif it.item_type == "trophy":
@@ -2521,11 +2534,14 @@ func _render_backpack_inventory_cards() -> void:
 		
 		var stat_lbl = Label.new()
 		stat_lbl.text = ItemData.get_slot_title(it.slot) + " | " + it.get_stat_summary()
-		stat_lbl.add_theme_font_size_override("font_size", 10)
+		stat_lbl.add_theme_font_size_override("font_size", 9)
+		stat_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		stat_lbl.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97) if it.item_type != "face" else Color(0.85, 0.85, 0.90))
 		vbox.add_child(stat_lbl)
 		
 		var action_btn = Button.new()
+		action_btn.custom_minimum_size = Vector2(62, 26)
+		action_btn.add_theme_font_size_override("font_size", 9)
 		if it.item_type == "face":
 			action_btn.text = "🔧 Socket"
 			action_btn.pressed.connect(func(): _prompt_socket_face(it))
@@ -2540,6 +2556,8 @@ func _render_backpack_inventory_cards() -> void:
 
 		var sell_btn = Button.new()
 		var s_val = it.get_sell_value()
+		sell_btn.custom_minimum_size = Vector2(50, 26)
+		sell_btn.add_theme_font_size_override("font_size", 9)
 		sell_btn.text = "💰 %dg" % s_val
 		sell_btn.tooltip_text = "Sell %s to Town Merchant for %d Gold" % [it.name, s_val]
 		var it_to_sell = it
@@ -2825,6 +2843,7 @@ func _render_blacksmith_ui() -> void:
 
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	blacksmith_view_container.add_child(scroll)
 
 	var vbox = VBoxContainer.new()
@@ -3196,6 +3215,7 @@ func _render_estate_ui() -> void:
 
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	estate_view_container.add_child(scroll)
 
 	var vbox = VBoxContainer.new()
