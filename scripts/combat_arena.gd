@@ -706,8 +706,9 @@ func _setup_hud() -> void:
 	explore_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	explore_banner.offset_left = 16
 	explore_banner.offset_right = -16
-	explore_banner.offset_top = 10
-	explore_banner.offset_bottom = 74
+	explore_banner.offset_top = 8
+	explore_banner.offset_bottom = 66
+	explore_banner.clip_contents = true
 	var exp_style = StyleBoxFlat.new()
 	exp_style.bg_color = Color(0.08, 0.10, 0.16, 0.94)
 	exp_style.border_color = Color(0.22, 0.74, 0.5)
@@ -715,13 +716,13 @@ func _setup_hud() -> void:
 	exp_style.set_corner_radius_all(8)
 	exp_style.content_margin_left = 14
 	exp_style.content_margin_right = 14
-	exp_style.content_margin_top = 6
-	exp_style.content_margin_bottom = 6
+	exp_style.content_margin_top = 4
+	exp_style.content_margin_bottom = 4
 	explore_banner.add_theme_stylebox_override("panel", exp_style)
 	hud_root.add_child(explore_banner)
 	
 	var exp_hbox = HBoxContainer.new()
-	exp_hbox.add_theme_constant_override("separation", 16)
+	exp_hbox.add_theme_constant_override("separation", 14)
 	explore_banner.add_child(exp_hbox)
 	
 	# Left: Hero Status & Health Bar
@@ -731,7 +732,7 @@ func _setup_hud() -> void:
 
 	var hero_title = Label.new()
 	hero_title.text = "🛡️ KNIGHT HERO"
-	hero_title.add_theme_font_size_override("font_size", 13)
+	hero_title.add_theme_font_size_override("font_size", 12)
 	hero_title.add_theme_color_override("font_color", Color(0.35, 0.85, 0.98))
 	hero_vbox.add_child(hero_title)
 
@@ -741,7 +742,7 @@ func _setup_hud() -> void:
 
 	exp_hp_label = Label.new()
 	exp_hp_label.text = "❤️ 30 / 30"
-	exp_hp_label.add_theme_font_size_override("font_size", 12)
+	exp_hp_label.add_theme_font_size_override("font_size", 11)
 	exp_hp_label.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35))
 	hp_hbox.add_child(exp_hp_label)
 
@@ -750,7 +751,7 @@ func _setup_hud() -> void:
 	exp_hp_bar.max_value = 30
 	exp_hp_bar.value = 30
 	exp_hp_bar.show_percentage = false
-	exp_hp_bar.custom_minimum_size = Vector2(85, 8)
+	exp_hp_bar.custom_minimum_size = Vector2(80, 8)
 	var hp_fill = StyleBoxFlat.new()
 	hp_fill.bg_color = Color(0.2, 0.8, 0.4)
 	hp_fill.set_corner_radius_all(2)
@@ -765,8 +766,9 @@ func _setup_hud() -> void:
 
 	var exp_title = Label.new()
 	exp_title.text = "🏰 DUNGEON DEPTHS • EXPLORATION"
-	exp_title.add_theme_font_size_override("font_size", 14)
+	exp_title.add_theme_font_size_override("font_size", 13)
 	exp_title.add_theme_color_override("font_color", Color(0.3, 0.85, 0.55))
+	exp_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	obj_vbox.add_child(exp_title)
 
 	var total_hostile = maxi(1, dungeon_rooms.size() - 1)
@@ -774,6 +776,7 @@ func _setup_hud() -> void:
 	exp_chambers_label.text = "Chambers: 0 / %d  •  [WASD] Move  •  Breach doors to battle" % total_hostile
 	exp_chambers_label.add_theme_font_size_override("font_size", 11)
 	exp_chambers_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
+	exp_chambers_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	obj_vbox.add_child(exp_chambers_label)
 
 	# Right: Action Buttons & Currency
@@ -819,16 +822,17 @@ func _setup_hud() -> void:
 	combat_hud.offset_left = 16
 	combat_hud.offset_right = -16
 	combat_hud.offset_top = 8
-	combat_hud.offset_bottom = 114
+	combat_hud.offset_bottom = 110
+	combat_hud.clip_contents = true
 	var c_style = StyleBoxFlat.new()
 	c_style.bg_color = Color(0.08, 0.10, 0.15, 0.96)
 	c_style.border_color = Color(0.22, 0.74, 0.97)
 	c_style.set_border_width_all(2)
 	c_style.set_corner_radius_all(8)
-	c_style.content_margin_left = 14
-	c_style.content_margin_right = 14
-	c_style.content_margin_top = 5
-	c_style.content_margin_bottom = 5
+	c_style.content_margin_left = 12
+	c_style.content_margin_right = 12
+	c_style.content_margin_top = 4
+	c_style.content_margin_bottom = 4
 	combat_hud.add_theme_stylebox_override("panel", c_style)
 	combat_hud.visible = false
 	hud_root.add_child(combat_hud)
@@ -838,33 +842,34 @@ func _setup_hud() -> void:
 	combat_hud.add_child(combat_vbox)
 
 	var combat_main_hbox = HBoxContainer.new()
-	combat_main_hbox.add_theme_constant_override("separation", 16)
+	combat_main_hbox.add_theme_constant_override("separation", 12)
 	combat_vbox.add_child(combat_main_hbox)
 	
 	# Big Pulse Roll Showcase Panel
 	var roll_card = PanelContainer.new()
-	roll_card.custom_minimum_size = Vector2(210, 64)
+	roll_card.custom_minimum_size = Vector2(215, 60)
+	roll_card.clip_contents = true
 	var rc_style = StyleBoxFlat.new()
 	rc_style.bg_color = Color(0.06, 0.08, 0.13, 0.98)
 	rc_style.border_color = Color(0.98, 0.82, 0.2, 0.9)
 	rc_style.set_border_width_all(2)
 	rc_style.set_corner_radius_all(8)
 	rc_style.content_margin_left = 8
-	rc_style.content_margin_right = 10
+	rc_style.content_margin_right = 8
 	rc_style.content_margin_top = 4
 	rc_style.content_margin_bottom = 4
 	roll_card.add_theme_stylebox_override("panel", rc_style)
 	combat_main_hbox.add_child(roll_card)
 
 	var rc_hbox = HBoxContainer.new()
-	rc_hbox.add_theme_constant_override("separation", 10)
+	rc_hbox.add_theme_constant_override("separation", 8)
 	rc_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	roll_card.add_child(rc_hbox)
 
-	# 54x54 Hero Die Icon with tooltip and click to open bag
+	# 48x48 Hero Die Icon with tooltip and click to open bag
 	player_die_icon = TextureRect.new()
-	player_die_icon.custom_minimum_size = Vector2(54, 54)
-	player_die_icon.pivot_offset = Vector2(27, 27)
+	player_die_icon.custom_minimum_size = Vector2(48, 48)
+	player_die_icon.pivot_offset = Vector2(24, 24)
 	player_die_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	player_die_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	player_die_icon.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -876,19 +881,22 @@ func _setup_hud() -> void:
 	rc_hbox.add_child(player_die_icon)
 
 	var die_vbox = VBoxContainer.new()
+	die_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	die_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	rc_hbox.add_child(die_vbox)
 
 	player_die_title = Label.new()
 	player_die_title.text = "⚔️ 4 DMG"
-	player_die_title.add_theme_font_size_override("font_size", 19)
+	player_die_title.add_theme_font_size_override("font_size", 17)
 	player_die_title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+	player_die_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	die_vbox.add_child(player_die_title)
 
 	player_die_desc = Label.new()
 	player_die_desc.text = "SLASH • [L-Click]"
-	player_die_desc.add_theme_font_size_override("font_size", 11)
+	player_die_desc.add_theme_font_size_override("font_size", 10)
 	player_die_desc.add_theme_color_override("font_color", Color(0.38, 0.78, 0.95))
+	player_die_desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	die_vbox.add_child(player_die_desc)
 	
 	# Center: Pulse Timer & Phase
@@ -1001,19 +1009,24 @@ func _setup_hud() -> void:
 
 	# Bottom Status Sub-Row
 	var status_hbox = HBoxContainer.new()
+	status_hbox.add_theme_constant_override("separation", 10)
 	combat_vbox.add_child(status_hbox)
 
 	last_action_label = Label.new()
-	last_action_label.text = "⚔️ Strike: None [L-Click]   •   🦶 Move: Hold [R-Click / WASD]"
+	last_action_label.text = "⚔️ Strike: None [L-Click]   •   🦶 Move: [R-Click / WASD]"
 	last_action_label.add_theme_font_size_override("font_size", 11)
 	last_action_label.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
 	last_action_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	last_action_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	status_hbox.add_child(last_action_label)
 
 	enemy_intel_label = Label.new()
 	enemy_intel_label.text = "Monsters engaged"
 	enemy_intel_label.add_theme_font_size_override("font_size", 11)
 	enemy_intel_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+	enemy_intel_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	enemy_intel_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	enemy_intel_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	status_hbox.add_child(enemy_intel_label)
 	
 	# 3. Fullscreen Dramatic 3-2-1 Countdown Overlay (Centered Perfectly)
@@ -1084,31 +1097,28 @@ func _setup_backpack_ui() -> void:
 	backpack_modal.visible = false
 	hud_root.add_child(backpack_modal)
 
-	backpack_modal.anchor_left = 0.5
-	backpack_modal.anchor_right = 0.5
-	backpack_modal.anchor_top = 0.5
-	backpack_modal.anchor_bottom = 0.5
-	backpack_modal.offset_left = -520
-	backpack_modal.offset_right = 520
-	backpack_modal.offset_top = -285
-	backpack_modal.offset_bottom = 285
-	backpack_modal.custom_minimum_size = Vector2(1040, 570)
-	backpack_modal.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	backpack_modal.grow_vertical = Control.GROW_DIRECTION_BOTH
+	backpack_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backpack_modal.offset_left = 16
+	backpack_modal.offset_right = -16
+	backpack_modal.offset_top = 70
+	backpack_modal.offset_bottom = -76
+	backpack_modal.clip_contents = true
 	
 	var b_style = StyleBoxFlat.new()
 	b_style.bg_color = Color(0.06, 0.08, 0.12, 0.98)
 	b_style.border_color = Color(0.92, 0.65, 0.15)
 	b_style.set_border_width_all(2)
 	b_style.set_corner_radius_all(10)
-	b_style.content_margin_left = 18
-	b_style.content_margin_right = 18
-	b_style.content_margin_top = 12
-	b_style.content_margin_bottom = 12
+	b_style.content_margin_left = 14
+	b_style.content_margin_right = 14
+	b_style.content_margin_top = 10
+	b_style.content_margin_bottom = 10
 	backpack_modal.add_theme_stylebox_override("panel", b_style)
 	
 	var main_vbox = VBoxContainer.new()
-	main_vbox.add_theme_constant_override("separation", 10)
+	main_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_vbox.add_theme_constant_override("separation", 8)
 	backpack_modal.add_child(main_vbox)
 	
 	# Top Modal Header Row
@@ -1118,7 +1128,7 @@ func _setup_backpack_ui() -> void:
 	
 	var title = Label.new()
 	title.text = "🏰 STRONGHOLD"
-	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_font_size_override("font_size", 15)
 	title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
 	header_hbox.add_child(title)
 	
@@ -1128,24 +1138,28 @@ func _setup_backpack_ui() -> void:
 
 	var hero_tab_btn = Button.new()
 	hero_tab_btn.text = "🎒 Hero & Armory"
+	hero_tab_btn.add_theme_font_size_override("font_size", 12)
 	hero_tab_btn.pressed.connect(func(): _switch_backpack_view("hero"))
 	nav_hbox.add_child(hero_tab_btn)
 	view_tab_buttons["hero"] = hero_tab_btn
 
 	var smith_tab_btn = Button.new()
 	smith_tab_btn.text = "🔨 Town Blacksmith"
+	smith_tab_btn.add_theme_font_size_override("font_size", 12)
 	smith_tab_btn.pressed.connect(func(): _switch_backpack_view("blacksmith"))
 	nav_hbox.add_child(smith_tab_btn)
 	view_tab_buttons["blacksmith"] = smith_tab_btn
 
 	var custom_tab_btn = Button.new()
 	custom_tab_btn.text = "🎨 Character Creator"
+	custom_tab_btn.add_theme_font_size_override("font_size", 12)
 	custom_tab_btn.pressed.connect(func(): _switch_backpack_view("custom"))
 	nav_hbox.add_child(custom_tab_btn)
 	view_tab_buttons["custom"] = custom_tab_btn
 
 	var estate_tab_btn = Button.new()
 	estate_tab_btn.text = "🏛️ Estate Manor"
+	estate_tab_btn.add_theme_font_size_override("font_size", 12)
 	estate_tab_btn.pressed.connect(func(): _switch_backpack_view("estate"))
 	nav_hbox.add_child(estate_tab_btn)
 	view_tab_buttons["estate"] = estate_tab_btn
@@ -1162,63 +1176,70 @@ func _setup_backpack_ui() -> void:
 	
 	var close_btn = Button.new()
 	close_btn.text = "✕ Close"
-	close_btn.custom_minimum_size = Vector2(80, 30)
+	close_btn.custom_minimum_size = Vector2(76, 28)
+	close_btn.add_theme_font_size_override("font_size", 12)
 	close_btn.pressed.connect(_toggle_backpack)
 	header_hbox.add_child(close_btn)
 	
 	# Body: 2 Main Columns for Hero View
 	var body_hbox = HBoxContainer.new()
+	body_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body_hbox.add_theme_constant_override("separation", 16)
+	body_hbox.add_theme_constant_override("separation", 12)
 	main_vbox.add_child(body_hbox)
 	hero_view_container = body_hbox
 	
 	# =========================================================
-	# LEFT PANE: PAPER DOLL & ATTRIBUTES (Width ~450px)
+	# LEFT PANE: PAPER DOLL & ATTRIBUTES (Compact 375px)
 	# =========================================================
 	var left_pane = PanelContainer.new()
-	left_pane.custom_minimum_size = Vector2(425, 0)
+	left_pane.custom_minimum_size = Vector2(375, 0)
+	left_pane.clip_contents = true
 	var lp_style = StyleBoxFlat.new()
 	lp_style.bg_color = Color(0.09, 0.11, 0.17, 0.90)
 	lp_style.border_color = Color(0.25, 0.35, 0.50)
 	lp_style.set_border_width_all(1)
 	lp_style.set_corner_radius_all(8)
-	lp_style.content_margin_left = 12
-	lp_style.content_margin_right = 12
-	lp_style.content_margin_top = 10
-	lp_style.content_margin_bottom = 10
+	lp_style.content_margin_left = 10
+	lp_style.content_margin_right = 10
+	lp_style.content_margin_top = 8
+	lp_style.content_margin_bottom = 8
 	left_pane.add_theme_stylebox_override("panel", lp_style)
 	body_hbox.add_child(left_pane)
 	
 	var left_vbox = VBoxContainer.new()
-	left_vbox.add_theme_constant_override("separation", 8)
+	left_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_vbox.add_theme_constant_override("separation", 6)
 	left_pane.add_child(left_vbox)
 	
 	# Profile Header
 	var prof_hbox = HBoxContainer.new()
-	prof_hbox.add_theme_constant_override("separation", 10)
+	prof_hbox.add_theme_constant_override("separation", 8)
 	left_vbox.add_child(prof_hbox)
 	
 	var hero_portrait = TextureRect.new()
 	hero_portrait.texture = load("res://assets/sprites/hero.svg")
-	hero_portrait.custom_minimum_size = Vector2(42, 42)
+	hero_portrait.custom_minimum_size = Vector2(36, 36)
 	hero_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	hero_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	prof_hbox.add_child(hero_portrait)
 	
 	var prof_txt = VBoxContainer.new()
+	prof_txt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	prof_hbox.add_child(prof_txt)
 	
 	char_title_label = Label.new()
 	char_title_label.text = "⚔️ SIR ROWAN - ABYSS PALADIN"
-	char_title_label.add_theme_font_size_override("font_size", 15)
+	char_title_label.add_theme_font_size_override("font_size", 14)
 	char_title_label.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+	char_title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	prof_txt.add_child(char_title_label)
 	
 	var prof_sub = Label.new()
 	prof_sub.text = "Equippable Slots (Click equipped item to unequip)"
-	prof_sub.add_theme_font_size_override("font_size", 11)
+	prof_sub.add_theme_font_size_override("font_size", 10)
 	prof_sub.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	prof_sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	prof_txt.add_child(prof_sub)
 	
 	# Level & EXP Progression Bar
@@ -1228,10 +1249,10 @@ func _setup_backpack_ui() -> void:
 	lvl_p_style.border_color = Color(0.98, 0.82, 0.2)
 	lvl_p_style.set_border_width_all(1)
 	lvl_p_style.set_corner_radius_all(6)
-	lvl_p_style.content_margin_left = 10
-	lvl_p_style.content_margin_right = 10
-	lvl_p_style.content_margin_top = 6
-	lvl_p_style.content_margin_bottom = 6
+	lvl_p_style.content_margin_left = 8
+	lvl_p_style.content_margin_right = 8
+	lvl_p_style.content_margin_top = 4
+	lvl_p_style.content_margin_bottom = 4
 	level_panel.add_theme_stylebox_override("panel", lvl_p_style)
 	left_vbox.add_child(level_panel)
 
@@ -1242,7 +1263,7 @@ func _setup_backpack_ui() -> void:
 	var level_head_hbox = HBoxContainer.new()
 	char_level_label = Label.new()
 	char_level_label.text = "⭐ LEVEL 1 PALADIN"
-	char_level_label.add_theme_font_size_override("font_size", 12)
+	char_level_label.add_theme_font_size_override("font_size", 11)
 	char_level_label.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
 	level_head_hbox.add_child(char_level_label)
 
@@ -1258,14 +1279,14 @@ func _setup_backpack_ui() -> void:
 	level_vbox.add_child(level_head_hbox)
 
 	char_exp_bar = ProgressBar.new()
-	char_exp_bar.custom_minimum_size = Vector2(0, 8)
+	char_exp_bar.custom_minimum_size = Vector2(0, 6)
 	char_exp_bar.show_percentage = false
 	var exp_bg = StyleBoxFlat.new()
 	exp_bg.bg_color = Color(0.12, 0.15, 0.22)
-	exp_bg.set_corner_radius_all(4)
+	exp_bg.set_corner_radius_all(3)
 	var exp_fill = StyleBoxFlat.new()
 	exp_fill.bg_color = Color(0.2, 0.75, 0.95)
-	exp_fill.set_corner_radius_all(4)
+	exp_fill.set_corner_radius_all(3)
 	char_exp_bar.add_theme_stylebox_override("background", exp_bg)
 	char_exp_bar.add_theme_stylebox_override("fill", exp_fill)
 	level_vbox.add_child(char_exp_bar)
@@ -1277,61 +1298,61 @@ func _setup_backpack_ui() -> void:
 	sp_style.border_color = Color(0.2, 0.28, 0.4)
 	sp_style.set_border_width_all(1)
 	sp_style.set_corner_radius_all(6)
-	sp_style.content_margin_left = 10
-	sp_style.content_margin_right = 10
-	sp_style.content_margin_top = 6
-	sp_style.content_margin_bottom = 6
+	sp_style.content_margin_left = 8
+	sp_style.content_margin_right = 8
+	sp_style.content_margin_top = 5
+	sp_style.content_margin_bottom = 5
 	stats_panel.add_theme_stylebox_override("panel", sp_style)
 	left_vbox.add_child(stats_panel)
 	
 	var stats_vbox = VBoxContainer.new()
-	stats_vbox.add_theme_constant_override("separation", 4)
+	stats_vbox.add_theme_constant_override("separation", 3)
 	stats_panel.add_child(stats_vbox)
 
 	var stats_hbox = HBoxContainer.new()
 	stats_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	stats_hbox.add_theme_constant_override("separation", 16)
+	stats_hbox.add_theme_constant_override("separation", 12)
 	stats_vbox.add_child(stats_hbox)
 	
 	char_hp_label = Label.new()
 	char_hp_label.text = "❤️ HP: 35"
-	char_hp_label.add_theme_font_size_override("font_size", 12)
+	char_hp_label.add_theme_font_size_override("font_size", 11)
 	char_hp_label.add_theme_color_override("font_color", Color(0.3, 0.9, 0.45))
 	stats_hbox.add_child(char_hp_label)
 	
 	char_armor_label = Label.new()
 	char_armor_label.text = "🛡️ ARMOR: 0"
-	char_armor_label.add_theme_font_size_override("font_size", 12)
+	char_armor_label.add_theme_font_size_override("font_size", 11)
 	char_armor_label.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
 	stats_hbox.add_child(char_armor_label)
 	
 	char_dmg_label = Label.new()
 	char_dmg_label.text = "⚔️ BONUS DMG: +0"
-	char_dmg_label.add_theme_font_size_override("font_size", 12)
+	char_dmg_label.add_theme_font_size_override("font_size", 11)
 	char_dmg_label.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
 	stats_hbox.add_child(char_dmg_label)
 
 	# Row 2: Core Attributes (STR, DEX, INT)
 	var attrs_hbox = HBoxContainer.new()
 	attrs_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	attrs_hbox.add_theme_constant_override("separation", 14)
+	attrs_hbox.add_theme_constant_override("separation", 10)
 	stats_vbox.add_child(attrs_hbox)
 
 	char_str_label = Label.new()
 	char_str_label.text = "💪 STR: 10"
-	char_str_label.add_theme_font_size_override("font_size", 11)
+	char_str_label.add_theme_font_size_override("font_size", 10)
 	char_str_label.add_theme_color_override("font_color", Color(0.95, 0.45, 0.35))
 	attrs_hbox.add_child(char_str_label)
 
 	char_dex_label = Label.new()
 	char_dex_label.text = "🏃 DEX: 10"
-	char_dex_label.add_theme_font_size_override("font_size", 11)
+	char_dex_label.add_theme_font_size_override("font_size", 10)
 	char_dex_label.add_theme_color_override("font_color", Color(0.35, 0.85, 0.55))
 	attrs_hbox.add_child(char_dex_label)
 
 	char_int_label = Label.new()
 	char_int_label.text = "🧠 INT: 10"
-	char_int_label.add_theme_font_size_override("font_size", 11)
+	char_int_label.add_theme_font_size_override("font_size", 10)
 	char_int_label.add_theme_color_override("font_color", Color(0.45, 0.75, 1.0))
 	attrs_hbox.add_child(char_int_label)
 
@@ -1349,7 +1370,7 @@ func _setup_backpack_ui() -> void:
 	
 	char_paper_doll_container = VBoxContainer.new()
 	char_paper_doll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	char_paper_doll_container.add_theme_constant_override("separation", 6)
+	char_paper_doll_container.add_theme_constant_override("separation", 5)
 	pd_scroll.add_child(char_paper_doll_container)
 	
 	# =========================================================
@@ -1357,66 +1378,74 @@ func _setup_backpack_ui() -> void:
 	# =========================================================
 	var right_pane = VBoxContainer.new()
 	right_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_pane.add_theme_constant_override("separation", 8)
+	right_pane.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_pane.clip_contents = true
+	right_pane.add_theme_constant_override("separation", 6)
 	body_hbox.add_child(right_pane)
 	
 	# Section 1: Active Equipped Weapon & Physical Dice Rack
 	var active_sec_panel = PanelContainer.new()
+	active_sec_panel.clip_contents = true
 	var act_style = StyleBoxFlat.new()
 	act_style.bg_color = Color(0.10, 0.13, 0.19, 0.85)
 	act_style.border_color = Color(0.2, 0.7, 0.95)
 	act_style.set_border_width_all(1)
 	act_style.set_corner_radius_all(6)
-	act_style.content_margin_left = 12
-	act_style.content_margin_right = 12
-	act_style.content_margin_top = 6
-	act_style.content_margin_bottom = 8
+	act_style.content_margin_left = 10
+	act_style.content_margin_right = 10
+	act_style.content_margin_top = 5
+	act_style.content_margin_bottom = 6
 	active_sec_panel.add_theme_stylebox_override("panel", act_style)
 	right_pane.add_child(active_sec_panel)
 	
 	var act_vbox = VBoxContainer.new()
-	act_vbox.add_theme_constant_override("separation", 6)
+	act_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	act_vbox.add_theme_constant_override("separation", 5)
 	active_sec_panel.add_child(act_vbox)
 	
 	var act_header_hbox = HBoxContainer.new()
+	act_header_hbox.add_theme_constant_override("separation", 8)
 	act_vbox.add_child(act_header_hbox)
 	
 	equipped_weapon_title = Label.new()
 	equipped_weapon_title.text = "⚔️ MAIN HAND: RUSTY D6 SWORD"
-	equipped_weapon_title.add_theme_font_size_override("font_size", 14)
+	equipped_weapon_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	equipped_weapon_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	equipped_weapon_title.add_theme_font_size_override("font_size", 13)
 	equipped_weapon_title.add_theme_color_override("font_color", Color(0.35, 0.85, 0.98))
 	act_header_hbox.add_child(equipped_weapon_title)
 	
-	var eq_spacer = Control.new()
-	eq_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	act_header_hbox.add_child(eq_spacer)
-	
 	equipped_weapon_stats = Label.new()
 	equipped_weapon_stats.text = "Mean DMG: 4.0 | Faces: 6"
-	equipped_weapon_stats.add_theme_font_size_override("font_size", 12)
+	equipped_weapon_stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	equipped_weapon_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	equipped_weapon_stats.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	equipped_weapon_stats.add_theme_font_size_override("font_size", 11)
 	equipped_weapon_stats.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
 	act_header_hbox.add_child(equipped_weapon_stats)
 	
 	# The 6-Face Visual Rack
 	dice_rack_container = HBoxContainer.new()
+	dice_rack_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dice_rack_container.add_theme_constant_override("separation", 6)
 	act_vbox.add_child(dice_rack_container)
 
 	# Active Weapon Chassis Trait Banner
 	active_weapon_trait_label = Label.new()
 	active_weapon_trait_label.text = "⚡ CHASSIS TRAIT: Standard (No trait)"
+	active_weapon_trait_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	active_weapon_trait_label.add_theme_font_size_override("font_size", 11)
 	active_weapon_trait_label.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
 	act_vbox.add_child(active_weapon_trait_label)
 	
 	# Section 2: Stash & Armory Filter Tabs
 	var stash_header_hbox = HBoxContainer.new()
-	stash_header_hbox.add_theme_constant_override("separation", 6)
+	stash_header_hbox.add_theme_constant_override("separation", 5)
 	right_pane.add_child(stash_header_hbox)
 	
 	var stash_lbl = Label.new()
 	stash_lbl.text = "📦 STASH:"
-	stash_lbl.add_theme_font_size_override("font_size", 13)
+	stash_lbl.add_theme_font_size_override("font_size", 12)
 	stash_lbl.add_theme_color_override("font_color", Color(0.95, 0.75, 0.2))
 	stash_header_hbox.add_child(stash_lbl)
 	
@@ -1425,6 +1454,7 @@ func _setup_backpack_ui() -> void:
 	for tab_name in tabs:
 		var tab_btn = Button.new()
 		tab_btn.text = tab_name
+		tab_btn.add_theme_font_size_override("font_size", 11)
 		tab_btn.pressed.connect(func():
 			selected_inventory_tab = tab_name
 			_update_tab_button_styles()
@@ -1433,46 +1463,47 @@ func _setup_backpack_ui() -> void:
 		stash_header_hbox.add_child(tab_btn)
 		filter_tab_buttons[tab_name] = tab_btn
 		
-	var stash_spacer = Control.new()
-	stash_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stash_header_hbox.add_child(stash_spacer)
-	
 	var click_hint = Label.new()
 	click_hint.text = "[Socket Faces or Equip Items]"
-	click_hint.add_theme_font_size_override("font_size", 11)
+	click_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	click_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	click_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	click_hint.add_theme_font_size_override("font_size", 10)
 	click_hint.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
 	stash_header_hbox.add_child(click_hint)
 	
 	# Socket Selection Prompt Bar (Appears when Socketing a loose face)
 	socket_prompt_bar = PanelContainer.new()
+	socket_prompt_bar.clip_contents = true
 	var sock_style = StyleBoxFlat.new()
 	sock_style.bg_color = Color(0.10, 0.14, 0.22, 0.98)
 	sock_style.border_color = Color(0.98, 0.82, 0.2)
 	sock_style.set_border_width_all(2)
 	sock_style.set_corner_radius_all(6)
-	sock_style.content_margin_left = 10
-	sock_style.content_margin_right = 10
-	sock_style.content_margin_top = 6
-	sock_style.content_margin_bottom = 6
+	sock_style.content_margin_left = 8
+	sock_style.content_margin_right = 8
+	sock_style.content_margin_top = 5
+	sock_style.content_margin_bottom = 5
 	socket_prompt_bar.add_theme_stylebox_override("panel", sock_style)
 	socket_prompt_bar.visible = false
 	right_pane.add_child(socket_prompt_bar)
 
 	# Stash Cards & Diablo Grid Area
 	var stash_body_hbox = HBoxContainer.new()
+	stash_body_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stash_body_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stash_body_hbox.add_theme_constant_override("separation", 12)
+	stash_body_hbox.add_theme_constant_override("separation", 10)
 	right_pane.add_child(stash_body_hbox)
 
 	inventory_scroll = ScrollContainer.new()
 	inventory_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inventory_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inventory_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	inventory_scroll.custom_minimum_size = Vector2(300, 190)
+	inventory_scroll.custom_minimum_size = Vector2(0, 0)
 	stash_body_hbox.add_child(inventory_scroll)
 	
 	inventory_stash_container = GridContainer.new()
-	inventory_stash_container.columns = 6
+	inventory_stash_container.columns = 8
 	inventory_stash_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inventory_stash_container.add_theme_constant_override("h_separation", 6)
 	inventory_stash_container.add_theme_constant_override("v_separation", 6)
@@ -1480,8 +1511,9 @@ func _setup_backpack_ui() -> void:
 
 	# Diablo-style Detailed Inspector Tooltip Panel
 	item_tooltip_panel = PanelContainer.new()
-	item_tooltip_panel.custom_minimum_size = Vector2(240, 190)
+	item_tooltip_panel.custom_minimum_size = Vector2(265, 0)
 	item_tooltip_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	item_tooltip_panel.clip_contents = true
 	var tt_style = StyleBoxFlat.new()
 	tt_style.bg_color = Color(0.05, 0.07, 0.11, 0.98)
 	tt_style.border_color = Color(0.98, 0.82, 0.2)
@@ -1495,17 +1527,21 @@ func _setup_backpack_ui() -> void:
 	stash_body_hbox.add_child(item_tooltip_panel)
 
 	var tt_vbox = VBoxContainer.new()
+	tt_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tt_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tt_vbox.add_theme_constant_override("separation", 4)
 	item_tooltip_panel.add_child(tt_vbox)
 
 	item_tooltip_title = Label.new()
 	item_tooltip_title.text = "ITEM INSPECTOR"
+	item_tooltip_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	item_tooltip_title.add_theme_font_size_override("font_size", 12)
 	item_tooltip_title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
 	tt_vbox.add_child(item_tooltip_title)
 
 	item_tooltip_type = Label.new()
 	item_tooltip_type.text = "Hover an item to inspect"
+	item_tooltip_type.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	item_tooltip_type.add_theme_font_size_override("font_size", 10)
 	item_tooltip_type.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
 	tt_vbox.add_child(item_tooltip_type)
@@ -1515,6 +1551,7 @@ func _setup_backpack_ui() -> void:
 
 	item_tooltip_stats = Label.new()
 	item_tooltip_stats.text = ""
+	item_tooltip_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	item_tooltip_stats.add_theme_font_size_override("font_size", 10)
 	item_tooltip_stats.add_theme_color_override("font_color", Color(0.3, 0.9, 0.45))
 	tt_vbox.add_child(item_tooltip_stats)
@@ -1530,24 +1567,22 @@ func _setup_backpack_ui() -> void:
 	var tt_sep2 = HSeparator.new()
 	tt_vbox.add_child(tt_sep2)
 
-	var tt_bottom_hbox = HBoxContainer.new()
-	tt_vbox.add_child(tt_bottom_hbox)
+	var tt_bottom_vbox = VBoxContainer.new()
+	tt_bottom_vbox.add_theme_constant_override("separation", 2)
+	tt_vbox.add_child(tt_bottom_vbox)
 
 	item_tooltip_value = Label.new()
 	item_tooltip_value.text = ""
 	item_tooltip_value.add_theme_font_size_override("font_size", 10)
 	item_tooltip_value.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
-	tt_bottom_hbox.add_child(item_tooltip_value)
-
-	var b_spacer = Control.new()
-	b_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tt_bottom_hbox.add_child(b_spacer)
+	tt_bottom_vbox.add_child(item_tooltip_value)
 
 	item_tooltip_actions = Label.new()
 	item_tooltip_actions.text = ""
-	item_tooltip_actions.add_theme_font_size_override("font_size", 9)
+	item_tooltip_actions.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	item_tooltip_actions.add_theme_font_size_override("font_size", 10)
 	item_tooltip_actions.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
-	tt_bottom_hbox.add_child(item_tooltip_actions)
+	tt_bottom_vbox.add_child(item_tooltip_actions)
 	
 	# Legacy container references
 	backpack_items_container = VBoxContainer.new()
@@ -2415,21 +2450,29 @@ func _render_paper_doll_slots() -> void:
 	r5.add_child(_create_slot_card("boots"))
 	char_paper_doll_container.add_child(r5)
 
+func _safe_load_tex(path: String, fallback: String = "res://assets/items/item_sword_starter.svg") -> Texture2D:
+	if path != "" and ResourceLoader.exists(path):
+		return load(path)
+	if fallback != "" and ResourceLoader.exists(fallback):
+		return load(fallback)
+	return null
+
 func _create_slot_card(slot_name: String) -> Control:
 	var item: ItemData = equipped_gear.get(slot_name, null)
 	var main_w: ItemData = equipped_gear.get("hand_1", null)
 	var is_hand_2_blocked = (slot_name == "hand_2" and main_w != null and main_w.hands == 2)
 	
 	var card = PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 52)
+	card.custom_minimum_size = Vector2(0, 48)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.clip_contents = true
 	
 	var c_style = StyleBoxFlat.new()
 	c_style.set_corner_radius_all(6)
-	c_style.content_margin_left = 6
-	c_style.content_margin_right = 6
-	c_style.content_margin_top = 4
-	c_style.content_margin_bottom = 4
+	c_style.content_margin_left = 5
+	c_style.content_margin_right = 5
+	c_style.content_margin_top = 3
+	c_style.content_margin_bottom = 3
 	
 	if is_hand_2_blocked:
 		c_style.bg_color = Color(0.24, 0.08, 0.08, 0.90)
@@ -2446,22 +2489,22 @@ func _create_slot_card(slot_name: String) -> Control:
 	card.add_theme_stylebox_override("panel", c_style)
 	
 	var hbox = HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 6)
+	hbox.add_theme_constant_override("separation", 5)
 	card.add_child(hbox)
 	
 	var icon = TextureRect.new()
-	icon.custom_minimum_size = Vector2(34, 34)
+	icon.custom_minimum_size = Vector2(28, 28)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	
 	if is_hand_2_blocked:
-		icon.texture = load("res://assets/items/slot_hand_2.svg")
+		icon.texture = _safe_load_tex("res://assets/items/slot_hand_2.svg")
 		icon.modulate = Color(1.0, 0.35, 0.35, 0.8)
 	elif item != null:
-		icon.texture = load(item.icon_path)
+		icon.texture = _safe_load_tex(item.icon_path)
 		icon.modulate = Color.WHITE
 	else:
-		icon.texture = load(ItemData.get_slot_silhouette(slot_name))
+		icon.texture = _safe_load_tex(ItemData.get_slot_silhouette(slot_name))
 		icon.modulate = Color(1.0, 1.0, 1.0, 0.45)
 	hbox.add_child(icon)
 	
@@ -2478,7 +2521,7 @@ func _create_slot_card(slot_name: String) -> Control:
 	vbox.add_child(title_lbl)
 	
 	var name_lbl = Label.new()
-	name_lbl.add_theme_font_size_override("font_size", 11)
+	name_lbl.add_theme_font_size_override("font_size", 10)
 	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	if is_hand_2_blocked:
 		name_lbl.text = "🔒 2H BLOCKED"
@@ -2508,9 +2551,12 @@ func _create_slot_card(slot_name: String) -> Control:
 	if item != null:
 		var unequip_btn = Button.new()
 		unequip_btn.text = "✕"
+		unequip_btn.custom_minimum_size = Vector2(20, 20)
+		unequip_btn.add_theme_font_size_override("font_size", 9)
 		unequip_btn.tooltip_text = "Unequip %s to stash" % item.name
 		unequip_btn.pressed.connect(func(): _unequip_item_from_slot(slot_name))
 		hbox.add_child(unequip_btn)
+		card.mouse_entered.connect(func(): _show_item_tooltip(item))
 		
 	return card
 
@@ -2529,7 +2575,7 @@ func _render_active_weapon_dice_rack() -> void:
 			active_weapon_trait_label.add_theme_color_override("font_color", Color(0.55, 0.60, 0.70))
 
 	if player and player.die:
-		equipped_weapon_stats.text = "Faces: %d  |  Avg DMG: %.1f  |  Loaded Face: %s (%d DMG)" % [
+		equipped_weapon_stats.text = "Faces: %d  |  Avg DMG: %.1f  |  Loaded: %s (%d DMG)" % [
 			player.die.faces.size(),
 			player.die.get_average_damage(),
 			player.loaded_face.get("title", "NONE"),
@@ -2548,15 +2594,16 @@ func _render_active_weapon_dice_rack() -> void:
 		var is_loaded = (face.get("title") == player.loaded_face.get("title") and face.get("damage") == player.loaded_face.get("damage") and face.get("roll") == player.loaded_face.get("roll"))
 		
 		var card = PanelContainer.new()
-		card.custom_minimum_size = Vector2(0, 118)
+		card.custom_minimum_size = Vector2(0, 106)
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.clip_contents = true
 		
 		var c_style = StyleBoxFlat.new()
 		c_style.set_corner_radius_all(6)
 		c_style.content_margin_left = 4
 		c_style.content_margin_right = 4
-		c_style.content_margin_top = 4
-		c_style.content_margin_bottom = 4
+		c_style.content_margin_top = 3
+		c_style.content_margin_bottom = 3
 		
 		if is_loaded:
 			c_style.bg_color = Color(0.20, 0.16, 0.06, 0.95)
@@ -2570,20 +2617,21 @@ func _render_active_weapon_dice_rack() -> void:
 		dice_rack_container.add_child(card)
 		
 		var cvbox = VBoxContainer.new()
+		cvbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		cvbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		cvbox.add_theme_constant_override("separation", 2)
+		cvbox.add_theme_constant_override("separation", 1)
 		card.add_child(cvbox)
 		
 		var roll_lbl = Label.new()
 		roll_lbl.text = "FACE %d" % face.get("roll", i + 1)
 		roll_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		roll_lbl.add_theme_font_size_override("font_size", 10)
+		roll_lbl.add_theme_font_size_override("font_size", 9)
 		roll_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2) if is_loaded else Color(0.38, 0.74, 0.97))
 		cvbox.add_child(roll_lbl)
 		
 		var icon_rect = TextureRect.new()
-		icon_rect.texture = load(face.get("icon", "res://assets/ui/die_face_1.svg"))
-		icon_rect.custom_minimum_size = Vector2(32, 32)
+		icon_rect.texture = _safe_load_tex(face.get("icon", "res://assets/ui/die_face_1.svg"), "res://assets/ui/die_face_1.svg")
+		icon_rect.custom_minimum_size = Vector2(28, 28)
 		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		cvbox.add_child(icon_rect)
@@ -2591,7 +2639,8 @@ func _render_active_weapon_dice_rack() -> void:
 		var t_lbl = Label.new()
 		t_lbl.text = face.get("title", "")
 		t_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		t_lbl.add_theme_font_size_override("font_size", 10)
+		t_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		t_lbl.add_theme_font_size_override("font_size", 9)
 		t_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
 		cvbox.add_child(t_lbl)
 		
@@ -2599,7 +2648,7 @@ func _render_active_weapon_dice_rack() -> void:
 		var dmg = face.get("damage", 0)
 		d_lbl.text = "%d DMG" % dmg if dmg > 0 else "0 DMG"
 		d_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		d_lbl.add_theme_font_size_override("font_size", 11)
+		d_lbl.add_theme_font_size_override("font_size", 10)
 		d_lbl.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4) if dmg > 0 else Color(0.6, 0.6, 0.6))
 		cvbox.add_child(d_lbl)
 		
@@ -2615,7 +2664,7 @@ func _render_active_weapon_dice_rack() -> void:
 			var act_tag = Label.new()
 			act_tag.text = "▶ READY"
 			act_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			act_tag.add_theme_font_size_override("font_size", 9)
+			act_tag.add_theme_font_size_override("font_size", 8)
 			act_tag.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
 			cvbox.add_child(act_tag)
 
@@ -2707,7 +2756,7 @@ func _render_backpack_inventory_cards() -> void:
 
 		# Inner Icon - centered and properly fitted
 		var icon = TextureRect.new()
-		icon.texture = load(it.icon_path)
+		icon.texture = _safe_load_tex(it.icon_path)
 		icon.custom_minimum_size = Vector2(40, 40)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -2824,36 +2873,44 @@ func _prompt_socket_face(face_item: ItemData) -> void:
 	
 	socket_prompt_bar.visible = true
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 6)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 5)
 	socket_prompt_bar.add_child(vbox)
 
 	var head_hbox = HBoxContainer.new()
+	head_hbox.add_theme_constant_override("separation", 8)
 	var prompt_title = Label.new()
-	prompt_title.text = "🔧 Choose which slot to overwrite with [%s] (Extracted face goes to stash):" % face_item.name
-	prompt_title.add_theme_font_size_override("font_size", 12)
+	prompt_title.text = "🔧 Choose which slot to overwrite with [%s] (Old face extracted to stash):" % face_item.name
+	prompt_title.add_theme_font_size_override("font_size", 11)
 	prompt_title.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
 	prompt_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	prompt_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	head_hbox.add_child(prompt_title)
 
 	var cancel_btn = Button.new()
 	cancel_btn.text = "✖ Cancel"
+	cancel_btn.add_theme_font_size_override("font_size", 10)
 	cancel_btn.pressed.connect(func(): socket_prompt_bar.visible = false)
 	head_hbox.add_child(cancel_btn)
 	vbox.add_child(head_hbox)
 
 	var slots_hbox = HBoxContainer.new()
-	slots_hbox.add_theme_constant_override("separation", 6)
+	slots_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slots_hbox.add_theme_constant_override("separation", 5)
 	vbox.add_child(slots_hbox)
 
 	if player and player.die and not player.die.faces.is_empty():
 		for idx in range(mini(6, player.die.faces.size())):
 			var cur_f = player.die.faces[idx]
 			var s_btn = Button.new()
-			s_btn.custom_minimum_size = Vector2(100, 38)
+			s_btn.custom_minimum_size = Vector2(0, 34)
 			s_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			s_btn.clip_text = true
+			s_btn.add_theme_font_size_override("font_size", 9)
 			var d_val = cur_f.get("damage", 1)
 			var f_title = cur_f.get("title", "STRIKE")
 			s_btn.text = "Slot %d\n%s (%d)" % [idx + 1, f_title, d_val]
+			s_btn.tooltip_text = "Overwrite Slot %d: %s (%d DMG)" % [idx + 1, f_title, d_val]
 			s_btn.pressed.connect(func(): _socket_face_into_slot(face_item, idx))
 			slots_hbox.add_child(s_btn)
 
@@ -3361,12 +3418,14 @@ func _render_blacksmith_ui() -> void:
 
 	var sdesc = Label.new()
 	sdesc.text = "Extract socketed faces safely into your inventory (25g), reforge weapon chassis traits (75g), hone blade edges (+1 DMG for 50g), or acquire forged stock!"
+	sdesc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sdesc.add_theme_font_size_override("font_size", 11)
 	sdesc.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
 	hvbox.add_child(sdesc)
 
 	# 2. Active Weapon Station
 	var forge_panel = PanelContainer.new()
+	forge_panel.clip_contents = true
 	var fp_style = StyleBoxFlat.new()
 	fp_style.bg_color = Color(0.08, 0.10, 0.15, 0.95)
 	fp_style.border_color = Color(0.3, 0.45, 0.65)
@@ -3380,6 +3439,7 @@ func _render_blacksmith_ui() -> void:
 	vbox.add_child(forge_panel)
 
 	var fvbox = VBoxContainer.new()
+	fvbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fvbox.add_theme_constant_override("separation", 10)
 	forge_panel.add_child(fvbox)
 
@@ -3393,7 +3453,7 @@ func _render_blacksmith_ui() -> void:
 	fvbox.add_child(w_head_hbox)
 
 	var w_icon = TextureRect.new()
-	w_icon.texture = load(cur_w.icon_path if cur_w else "res://assets/items/item_sword_starter.svg")
+	w_icon.texture = _safe_load_tex(cur_w.icon_path if cur_w else "res://assets/items/item_sword_starter.svg")
 	w_icon.custom_minimum_size = Vector2(40, 40)
 	w_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	w_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -3405,12 +3465,14 @@ func _render_blacksmith_ui() -> void:
 
 	var w_title_lbl = Label.new()
 	w_title_lbl.text = "⚔️ Active Weapon: %s  |  Trait: %s" % [w_name, t_title]
+	w_title_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	w_title_lbl.add_theme_font_size_override("font_size", 14)
 	w_title_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
 	w_info_vbox.add_child(w_title_lbl)
 
 	var w_desc_lbl = Label.new()
 	w_desc_lbl.text = "Trait Effect: %s" % t_desc
+	w_desc_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	w_desc_lbl.add_theme_font_size_override("font_size", 11)
 	w_desc_lbl.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
 	w_info_vbox.add_child(w_desc_lbl)
@@ -3434,11 +3496,13 @@ func _render_blacksmith_ui() -> void:
 	# 6 Sockets Extraction Rack
 	var sock_lbl = Label.new()
 	sock_lbl.text = "🔧 Weapon Sockets & Extraction Service (Click 'Extract' to unsocket any face into Stash for 25g):"
+	sock_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	sock_lbl.add_theme_font_size_override("font_size", 12)
 	sock_lbl.add_theme_color_override("font_color", Color(0.95, 0.82, 0.2))
 	fvbox.add_child(sock_lbl)
 
 	var sock_hbox = HBoxContainer.new()
+	sock_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sock_hbox.add_theme_constant_override("separation", 8)
 	fvbox.add_child(sock_hbox)
 
@@ -3446,8 +3510,9 @@ func _render_blacksmith_ui() -> void:
 		for i in range(mini(6, player.die.faces.size())):
 			var face = player.die.faces[i]
 			var scard = PanelContainer.new()
-			scard.custom_minimum_size = Vector2(130, 110)
+			scard.custom_minimum_size = Vector2(0, 108)
 			scard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			scard.clip_contents = true
 			var sc_style = StyleBoxFlat.new()
 			sc_style.bg_color = Color(0.06, 0.08, 0.12, 0.9)
 			sc_style.border_color = Color(0.25, 0.35, 0.5)
@@ -3461,6 +3526,7 @@ func _render_blacksmith_ui() -> void:
 			sock_hbox.add_child(scard)
 
 			var scvbox = VBoxContainer.new()
+			scvbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			scvbox.alignment = BoxContainer.ALIGNMENT_CENTER
 			scvbox.add_theme_constant_override("separation", 2)
 			scard.add_child(scvbox)
@@ -3473,7 +3539,7 @@ func _render_blacksmith_ui() -> void:
 			scvbox.add_child(s_num)
 
 			var s_icon = TextureRect.new()
-			s_icon.texture = load(face.get("icon", "res://assets/ui/die_face_1.svg"))
+			s_icon.texture = _safe_load_tex(face.get("icon", "res://assets/ui/die_face_1.svg"), "res://assets/ui/die_face_1.svg")
 			s_icon.custom_minimum_size = Vector2(28, 28)
 			s_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			s_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -3482,6 +3548,7 @@ func _render_blacksmith_ui() -> void:
 			var s_title = Label.new()
 			s_title.text = face.get("title", "STRIKE")
 			s_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			s_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 			s_title.add_theme_font_size_override("font_size", 10)
 			s_title.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
 			scvbox.add_child(s_title)
@@ -3535,8 +3602,9 @@ func _render_blacksmith_ui() -> void:
 
 	for face_item in blacksmith_face_wares:
 		var wcard = PanelContainer.new()
-		wcard.custom_minimum_size = Vector2(150, 80)
+		wcard.custom_minimum_size = Vector2(0, 80)
 		wcard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		wcard.clip_contents = true
 		var wc_style = StyleBoxFlat.new()
 		wc_style.bg_color = Color(0.08, 0.10, 0.15, 0.9)
 		wc_style.border_color = Color(0.98, 0.82, 0.2)
@@ -3550,12 +3618,14 @@ func _render_blacksmith_ui() -> void:
 		wares_hbox.add_child(wcard)
 
 		var wcvbox = VBoxContainer.new()
+		wcvbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		wcvbox.alignment = BoxContainer.ALIGNMENT_CENTER
 		wcard.add_child(wcvbox)
 
 		var w_name_l = Label.new()
 		w_name_l.text = face_item.name
 		w_name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		w_name_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		w_name_l.add_theme_font_size_override("font_size", 11)
 		w_name_l.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
 		wcvbox.add_child(w_name_l)
@@ -3564,6 +3634,7 @@ func _render_blacksmith_ui() -> void:
 		var w_stat_l = Label.new()
 		w_stat_l.text = "%d DMG %s" % [face_item.dmg_bonus, eff_str]
 		w_stat_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		w_stat_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		w_stat_l.add_theme_font_size_override("font_size", 10)
 		w_stat_l.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4))
 		wcvbox.add_child(w_stat_l)
@@ -3588,8 +3659,9 @@ func _render_blacksmith_ui() -> void:
 
 	for wp_item in blacksmith_weapon_wares:
 		var wcard = PanelContainer.new()
-		wcard.custom_minimum_size = Vector2(170, 80)
+		wcard.custom_minimum_size = Vector2(0, 80)
 		wcard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		wcard.clip_contents = true
 		var wc_style = StyleBoxFlat.new()
 		wc_style.bg_color = Color(0.08, 0.10, 0.15, 0.9)
 		wc_style.border_color = Color(0.38, 0.74, 0.97)
@@ -3603,12 +3675,14 @@ func _render_blacksmith_ui() -> void:
 		wares_hbox.add_child(wcard)
 
 		var wcvbox = VBoxContainer.new()
+		wcvbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		wcvbox.alignment = BoxContainer.ALIGNMENT_CENTER
 		wcard.add_child(wcvbox)
 
 		var w_name_l = Label.new()
 		w_name_l.text = wp_item.name
 		w_name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		w_name_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		w_name_l.add_theme_font_size_override("font_size", 11)
 		w_name_l.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
 		wcvbox.add_child(w_name_l)
@@ -3616,6 +3690,7 @@ func _render_blacksmith_ui() -> void:
 		var w_stat_l = Label.new()
 		w_stat_l.text = "Trait: %s" % wp_item.trait_name
 		w_stat_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		w_stat_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		w_stat_l.add_theme_font_size_override("font_size", 10)
 		w_stat_l.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
 		wcvbox.add_child(w_stat_l)
@@ -3733,6 +3808,7 @@ func _render_estate_ui() -> void:
 
 	var m_desc = Label.new()
 	m_desc.text = "Mount rare trophies recovered from the dungeon onto marble pedestals in your manor hall. Every mounted collectible activates passive Estate Perks for your hero!"
+	m_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	m_desc.add_theme_font_size_override("font_size", 11)
 	m_desc.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
 	mhvbox.add_child(m_desc)
@@ -3776,6 +3852,7 @@ func _render_estate_ui() -> void:
 	var p_text = " • ".join(active_parts) if not active_parts.is_empty() else "No trophies currently placed. Mount trophies from your stash to activate estate perks!"
 	var p_lbl = Label.new()
 	p_lbl.text = p_text
+	p_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	p_lbl.add_theme_font_size_override("font_size", 11)
 	p_lbl.add_theme_color_override("font_color", Color(0.38, 0.85, 0.55) if not active_parts.is_empty() else Color(0.65, 0.70, 0.80))
 	p_vbox.add_child(p_lbl)
@@ -3783,14 +3860,16 @@ func _render_estate_ui() -> void:
 	# 3. Pedestals Grid (6 slots)
 	var ped_grid = GridContainer.new()
 	ped_grid.columns = 3
-	ped_grid.add_theme_constant_override("h_separation", 14)
-	ped_grid.add_theme_constant_override("v_separation", 14)
+	ped_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ped_grid.add_theme_constant_override("h_separation", 12)
+	ped_grid.add_theme_constant_override("v_separation", 12)
 	vbox.add_child(ped_grid)
 
 	for i in range(6):
 		var p_card = PanelContainer.new()
-		p_card.custom_minimum_size = Vector2(280, 130)
+		p_card.custom_minimum_size = Vector2(0, 124)
 		p_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		p_card.clip_contents = true
 		var pc_style = StyleBoxFlat.new()
 		pc_style.set_corner_radius_all(8)
 		pc_style.set_border_width_all(1)
@@ -3858,7 +3937,7 @@ func _render_estate_ui() -> void:
 			pcvbox.add_child(t_head_hbox)
 
 			var t_icon = TextureRect.new()
-			t_icon.texture = load(trophy.icon_path)
+			t_icon.texture = _safe_load_tex(trophy.icon_path)
 			t_icon.custom_minimum_size = Vector2(32, 32)
 			t_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			t_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

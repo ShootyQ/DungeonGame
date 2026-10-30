@@ -350,11 +350,12 @@ static func generate_random_weapon(floor_depth: int = 1) -> ItemData:
 	var it = ItemData.new()
 	var weapon_archetypes = [
 		{"name": "Knight's Arming Sword", "hands": 1, "icon": "res://assets/items/item_sword_starter.svg", "str": 1, "dex": 0, "int": 0},
-		{"name": "Executioner's Greatsword", "hands": 2, "icon": "res://assets/items/item_axe_executioner.svg", "str": 2, "dex": 0, "int": 0},
-		{"name": "Shadow Dirk", "hands": 1, "icon": "res://assets/items/item_dagger_parry.svg", "str": 0, "dex": 2, "int": 0},
-		{"name": "Phalanx Battleaxe", "hands": 1, "icon": "res://assets/items/item_axe_executioner.svg", "str": 1, "dex": 1, "int": 0},
-		{"name": "Crusher Warhammer", "hands": 2, "icon": "res://assets/items/item_warhammer_phalanx.svg", "str": 3, "dex": 0, "int": 0},
-		{"name": "Pyromancer's Scepter", "hands": 1, "icon": "res://assets/items/item_wand_pyro.svg", "str": 0, "dex": 0, "int": 2}
+		{"name": "Executioner's Greatsword", "hands": 2, "icon": "res://assets/items/item_executioner.svg", "str": 2, "dex": 0, "int": 0},
+		{"name": "Shadow Dirk", "hands": 1, "icon": "res://assets/items/item_dagger.svg", "str": 0, "dex": 2, "int": 0},
+		{"name": "Phalanx Battleaxe", "hands": 1, "icon": "res://assets/items/item_executioner.svg", "str": 1, "dex": 1, "int": 0},
+		{"name": "Crusher Warhammer", "hands": 2, "icon": "res://assets/items/item_warhammer.svg", "str": 3, "dex": 0, "int": 0},
+		{"name": "Pyromancer's Scepter", "hands": 1, "icon": "res://assets/items/item_chaos_staff.svg", "str": 0, "dex": 0, "int": 2},
+		{"name": "Spiked Morningstar", "hands": 1, "icon": "res://assets/items/item_spikes.svg", "str": 2, "dex": 0, "int": 0}
 	]
 	var arch = weapon_archetypes.pick_random()
 	it.id = "chassis_%s_%d" % [arch["name"].to_lower().replace(" ", "_"), randi() % 1000]
@@ -415,27 +416,27 @@ static func create_estate_trophy(p_id: String, p_name: String, p_desc: String) -
 	
 	match p_id:
 		"trophy_goblin_idol":
-			it.icon_path = "res://assets/items/item_crown_victory.svg"
+			it.icon_path = "res://assets/items/item_helmet.svg"
 			it.estate_perk_id = "gold_find"
 			it.estate_perk_desc = "+25% Dungeon Gold Find"
 		"trophy_gargoyle":
-			it.icon_path = "res://assets/items/item_shield_starter.svg"
+			it.icon_path = "res://assets/items/item_shield.svg"
 			it.estate_perk_id = "estate_armor"
 			it.estate_perk_desc = "+2 Base Armor"
 		"trophy_dragon_seal":
-			it.icon_path = "res://assets/items/item_ring_ruby.svg"
+			it.icon_path = "res://assets/items/item_ring_fury.svg"
 			it.estate_perk_id = "estate_crit"
 			it.estate_perk_desc = "+5% Critical Hit Chance"
 		"trophy_chalice":
-			it.icon_path = "res://assets/items/item_amulet_life.svg"
+			it.icon_path = "res://assets/items/item_necklace.svg"
 			it.estate_perk_id = "estate_hp"
 			it.estate_perk_desc = "+15 Max HP"
 		"trophy_obsidian_relic":
-			it.icon_path = "res://assets/items/item_wand_pyro.svg"
+			it.icon_path = "res://assets/items/item_tome.svg"
 			it.estate_perk_id = "estate_dmg"
 			it.estate_perk_desc = "+2 Flat Bonus DMG"
 		_:
-			it.icon_path = "res://assets/items/item_crown_victory.svg"
+			it.icon_path = "res://assets/items/item_ring_protection.svg"
 			it.estate_perk_id = "prestige"
 			it.estate_perk_desc = "+10 Estate Prestige"
 			
