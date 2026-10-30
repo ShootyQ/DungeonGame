@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Right Hand: Steel Longsword -->
+  <g transform="translate(44, 14)">
+    <!-- Blade -->
+    <path d="M4 2 L6 0 L8 2 L7 24 L5 24 Z" fill="#f8fafc"/>
+    <line x1="6" y1="2" x2="6" y2="24" stroke="#94a3b8" stroke-width="1"/>
+    <!-- Crossguard -->
+    <rect x="1" y="24" width="10" height="3" rx="1" fill="#f59e0b"/>
+    <!-- Grip & Pommel -->
+    <rect x="4.5" y="27" width="3" height="6" fill="#78350f"/>
+    <circle cx="6" cy="34" r="2" fill="#f59e0b"/>
+  </g>
+</svg>

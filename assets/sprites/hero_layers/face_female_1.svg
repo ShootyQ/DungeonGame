@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Female Face 1: Fierce Valkyrie (Bright skin, emerald green eyes) -->
+  <rect x="25" y="13" width="14" height="15" rx="5" fill="#fde2e4"/>
+  <!-- Eyes -->
+  <rect x="27" y="18" width="3" height="3" rx="1" fill="#0f172a"/>
+  <rect x="34" y="18" width="3" height="3" rx="1" fill="#0f172a"/>
+  <circle cx="28.5" cy="19.5" r="0.9" fill="#10b981"/>
+  <circle cx="35.5" cy="19.5" r="0.9" fill="#10b981"/>
+  <!-- Delicate brows & lips -->
+  <line x1="26.5" y1="16.5" x2="30" y2="16" stroke="#582f0e" stroke-width="1"/>
+  <line x1="33.5" y1="16" x2="37" y2="16.5" stroke="#582f0e" stroke-width="1"/>
+  <rect x="30" y="23.5" width="4" height="1.5" rx="0.5" fill="#e11d48"/>
+</svg>

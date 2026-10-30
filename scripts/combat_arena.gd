@@ -111,6 +111,24 @@ var inventory_items: Array[ItemData] = []
 var selected_inventory_tab: String = "All"
 var room_torches: Dictionary = {} # room_id -> Array[{sconce, glow}]
 
+# Character Creation & Customization State
+var char_custom_view_container: VBoxContainer
+var custom_gender: String = "male"
+var custom_face: int = 1
+var custom_hair: String = "short_brown"
+var custom_cloak: String = "cloak_blue"
+var custom_preview_visual: HeroVisual
+
+# Diablo Inventory UI State
+var item_tooltip_panel: PanelContainer
+var item_tooltip_title: Label
+var item_tooltip_type: Label
+var item_tooltip_stats: Label
+var item_tooltip_desc: Label
+var item_tooltip_value: Label
+var item_tooltip_actions: Label
+var selected_stash_item: ItemData = null
+
 # Character Sheet UI Nodes
 var char_title_label: Label
 var char_level_label: Label
@@ -1120,6 +1138,12 @@ func _setup_backpack_ui() -> void:
 	nav_hbox.add_child(smith_tab_btn)
 	view_tab_buttons["blacksmith"] = smith_tab_btn
 
+	var custom_tab_btn = Button.new()
+	custom_tab_btn.text = "🎨 Character Creator"
+	custom_tab_btn.pressed.connect(func(): _switch_backpack_view("custom"))
+	nav_hbox.add_child(custom_tab_btn)
+	view_tab_buttons["custom"] = custom_tab_btn
+
 	var estate_tab_btn = Button.new()
 	estate_tab_btn.text = "🏛️ Estate Manor"
 	estate_tab_btn.pressed.connect(func(): _switch_backpack_view("estate"))
@@ -1434,19 +1458,96 @@ func _setup_backpack_ui() -> void:
 	socket_prompt_bar.visible = false
 	right_pane.add_child(socket_prompt_bar)
 
-	# Stash Cards Scroll Container
+	# Stash Cards & Diablo Grid Area
+	var stash_body_hbox = HBoxContainer.new()
+	stash_body_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stash_body_hbox.add_theme_constant_override("separation", 12)
+	right_pane.add_child(stash_body_hbox)
+
 	inventory_scroll = ScrollContainer.new()
+	inventory_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inventory_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inventory_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	inventory_scroll.custom_minimum_size = Vector2(0, 190)
-	right_pane.add_child(inventory_scroll)
+	inventory_scroll.custom_minimum_size = Vector2(300, 190)
+	stash_body_hbox.add_child(inventory_scroll)
 	
 	inventory_stash_container = GridContainer.new()
-	inventory_stash_container.columns = 2
+	inventory_stash_container.columns = 6
 	inventory_stash_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	inventory_stash_container.add_theme_constant_override("h_separation", 8)
+	inventory_stash_container.add_theme_constant_override("h_separation", 6)
 	inventory_stash_container.add_theme_constant_override("v_separation", 6)
 	inventory_scroll.add_child(inventory_stash_container)
+
+	# Diablo-style Detailed Inspector Tooltip Panel
+	item_tooltip_panel = PanelContainer.new()
+	item_tooltip_panel.custom_minimum_size = Vector2(240, 190)
+	item_tooltip_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var tt_style = StyleBoxFlat.new()
+	tt_style.bg_color = Color(0.05, 0.07, 0.11, 0.98)
+	tt_style.border_color = Color(0.98, 0.82, 0.2)
+	tt_style.set_border_width_all(1.5)
+	tt_style.set_corner_radius_all(6)
+	tt_style.content_margin_left = 10
+	tt_style.content_margin_right = 10
+	tt_style.content_margin_top = 8
+	tt_style.content_margin_bottom = 8
+	item_tooltip_panel.add_theme_stylebox_override("panel", tt_style)
+	stash_body_hbox.add_child(item_tooltip_panel)
+
+	var tt_vbox = VBoxContainer.new()
+	tt_vbox.add_theme_constant_override("separation", 4)
+	item_tooltip_panel.add_child(tt_vbox)
+
+	item_tooltip_title = Label.new()
+	item_tooltip_title.text = "ITEM INSPECTOR"
+	item_tooltip_title.add_theme_font_size_override("font_size", 12)
+	item_tooltip_title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
+	tt_vbox.add_child(item_tooltip_title)
+
+	item_tooltip_type = Label.new()
+	item_tooltip_type.text = "Hover an item to inspect"
+	item_tooltip_type.add_theme_font_size_override("font_size", 10)
+	item_tooltip_type.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	tt_vbox.add_child(item_tooltip_type)
+
+	var tt_sep1 = HSeparator.new()
+	tt_vbox.add_child(tt_sep1)
+
+	item_tooltip_stats = Label.new()
+	item_tooltip_stats.text = ""
+	item_tooltip_stats.add_theme_font_size_override("font_size", 10)
+	item_tooltip_stats.add_theme_color_override("font_color", Color(0.3, 0.9, 0.45))
+	tt_vbox.add_child(item_tooltip_stats)
+
+	item_tooltip_desc = Label.new()
+	item_tooltip_desc.text = "Move your mouse over grid squares to view attributes, socket dice, or equip items."
+	item_tooltip_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	item_tooltip_desc.add_theme_font_size_override("font_size", 10)
+	item_tooltip_desc.add_theme_color_override("font_color", Color(0.75, 0.8, 0.88))
+	item_tooltip_desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tt_vbox.add_child(item_tooltip_desc)
+
+	var tt_sep2 = HSeparator.new()
+	tt_vbox.add_child(tt_sep2)
+
+	var tt_bottom_hbox = HBoxContainer.new()
+	tt_vbox.add_child(tt_bottom_hbox)
+
+	item_tooltip_value = Label.new()
+	item_tooltip_value.text = ""
+	item_tooltip_value.add_theme_font_size_override("font_size", 10)
+	item_tooltip_value.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
+	tt_bottom_hbox.add_child(item_tooltip_value)
+
+	var b_spacer = Control.new()
+	b_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tt_bottom_hbox.add_child(b_spacer)
+
+	item_tooltip_actions = Label.new()
+	item_tooltip_actions.text = ""
+	item_tooltip_actions.add_theme_font_size_override("font_size", 9)
+	item_tooltip_actions.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	tt_bottom_hbox.add_child(item_tooltip_actions)
 	
 	# Legacy container references
 	backpack_items_container = VBoxContainer.new()
@@ -1460,6 +1561,12 @@ func _setup_backpack_ui() -> void:
 	blacksmith_view_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	blacksmith_view_container.visible = false
 	main_vbox.add_child(blacksmith_view_container)
+
+	char_custom_view_container = VBoxContainer.new()
+	char_custom_view_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	char_custom_view_container.visible = false
+	main_vbox.add_child(char_custom_view_container)
+	_setup_character_customization_view()
 	
 	estate_view_container = VBoxContainer.new()
 	estate_view_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2551,97 +2658,148 @@ func _render_backpack_inventory_cards() -> void:
 					
 	if filtered_items.is_empty():
 		var empty_lbl = Label.new()
-		empty_lbl.text = "No items in this category. Slay monsters & loot chests to acquire gear!"
-		empty_lbl.add_theme_font_size_override("font_size", 12)
+		empty_lbl.text = "No items in category.\nSlay monsters & loot chests!"
+		empty_lbl.add_theme_font_size_override("font_size", 11)
 		empty_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
 		inventory_stash_container.add_child(empty_lbl)
+		_show_item_tooltip(null)
 		return
 		
+	# Reset tooltip to first item or selected item
+	if selected_stash_item != null and filtered_items.has(selected_stash_item):
+		_show_item_tooltip(selected_stash_item)
+	else:
+		_show_item_tooltip(filtered_items[0])
+
 	for it in filtered_items:
-		var card = PanelContainer.new()
-		card.custom_minimum_size = Vector2(0, 54)
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		
-		var c_style = StyleBoxFlat.new()
-		c_style.bg_color = Color(0.08, 0.10, 0.15, 0.85)
-		c_style.border_color = Color(0.25, 0.35, 0.50) if it.item_type != "face" else Color(0.98, 0.82, 0.2)
-		c_style.set_border_width_all(1)
-		c_style.set_corner_radius_all(6)
-		c_style.content_margin_left = 8
-		c_style.content_margin_right = 8
-		c_style.content_margin_top = 4
-		c_style.content_margin_bottom = 4
-		card.add_theme_stylebox_override("panel", c_style)
-		inventory_stash_container.add_child(card)
-		
-		var hbox = HBoxContainer.new()
-		hbox.add_theme_constant_override("separation", 8)
-		card.add_child(hbox)
-		
+		var slot_btn = Button.new()
+		slot_btn.custom_minimum_size = Vector2(46, 46)
+		slot_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		slot_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+		var b_style = StyleBoxFlat.new()
+		b_style.set_corner_radius_all(4)
+		b_style.content_margin_left = 3
+		b_style.content_margin_right = 3
+		b_style.content_margin_top = 3
+		b_style.content_margin_bottom = 3
+
+		if it == selected_stash_item:
+			b_style.bg_color = Color(0.22, 0.18, 0.08, 0.95)
+			b_style.border_color = Color(0.98, 0.82, 0.2)
+			b_style.set_border_width_all(2)
+		elif it.item_type == "face":
+			b_style.bg_color = Color(0.14, 0.12, 0.06, 0.90)
+			b_style.border_color = Color(0.95, 0.75, 0.2)
+			b_style.set_border_width_all(1)
+		elif it.item_type == "trophy":
+			b_style.bg_color = Color(0.16, 0.08, 0.20, 0.90)
+			b_style.border_color = Color(0.75, 0.35, 0.95)
+			b_style.set_border_width_all(1)
+		else:
+			b_style.bg_color = Color(0.08, 0.10, 0.15, 0.85)
+			b_style.border_color = Color(0.25, 0.35, 0.50)
+			b_style.set_border_width_all(1)
+
+		slot_btn.add_theme_stylebox_override("normal", b_style)
+		slot_btn.add_theme_stylebox_override("hover", b_style)
+		slot_btn.add_theme_stylebox_override("pressed", b_style)
+
+		# Inner Icon
 		var icon = TextureRect.new()
 		icon.texture = load(it.icon_path)
-		icon.custom_minimum_size = Vector2(32, 32)
+		icon.custom_minimum_size = Vector2(36, 36)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		hbox.add_child(icon)
-		
-		var vbox = VBoxContainer.new()
-		vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		vbox.add_theme_constant_override("separation", 1)
-		hbox.add_child(vbox)
-		
-		var name_lbl = Label.new()
-		var tag = ""
-		if it.hands == 2:
-			tag = " [2H]"
-		elif it.hands == 1 and it.item_type == "weapon":
-			tag = " [1H]"
-		elif it.item_type == "face":
-			tag = " [DIE FACE]"
-		elif it.item_type == "trophy":
-			tag = " [ESTATE TROPHY]"
-		name_lbl.text = it.name + tag
-		name_lbl.add_theme_font_size_override("font_size", 11)
-		name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		if it.item_type == "face":
-			name_lbl.add_theme_color_override("font_color", Color(0.98, 0.90, 0.45))
-		elif it.item_type == "trophy":
-			name_lbl.add_theme_color_override("font_color", Color(0.95, 0.75, 0.2))
-		else:
-			name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
-		vbox.add_child(name_lbl)
-		
-		var stat_lbl = Label.new()
-		stat_lbl.text = ItemData.get_slot_title(it.slot) + " | " + it.get_stat_summary()
-		stat_lbl.add_theme_font_size_override("font_size", 9)
-		stat_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		stat_lbl.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97) if it.item_type != "face" else Color(0.85, 0.85, 0.90))
-		vbox.add_child(stat_lbl)
-		
-		var action_btn = Button.new()
-		action_btn.custom_minimum_size = Vector2(62, 26)
-		action_btn.add_theme_font_size_override("font_size", 9)
-		if it.item_type == "face":
-			action_btn.text = "🔧 Socket"
-			action_btn.pressed.connect(func(): _prompt_socket_face(it))
-		elif it.item_type == "trophy":
-			action_btn.text = "🏛️ Manor"
-			action_btn.tooltip_text = "Mount onto an Estate Pedestal in your Manor to activate: " + it.estate_perk_desc
-			action_btn.pressed.connect(func(): _switch_backpack_view("estate"))
-		else:
-			action_btn.text = "⚔️ Equip"
-			action_btn.pressed.connect(func(): _equip_item_from_inventory(it))
-		hbox.add_child(action_btn)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot_btn.add_child(icon)
 
-		var sell_btn = Button.new()
-		var s_val = it.get_sell_value()
-		sell_btn.custom_minimum_size = Vector2(50, 26)
-		sell_btn.add_theme_font_size_override("font_size", 9)
-		sell_btn.text = "💰 %dg" % s_val
-		sell_btn.tooltip_text = "Sell %s to Town Merchant for %d Gold" % [it.name, s_val]
-		var it_to_sell = it
-		sell_btn.pressed.connect(func(): _sell_inventory_item(it_to_sell))
-		hbox.add_child(sell_btn)
+		# Small bottom-right tag
+		if it.hands == 2:
+			var tag_lbl = Label.new()
+			tag_lbl.text = "2H"
+			tag_lbl.add_theme_font_size_override("font_size", 8)
+			tag_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+			tag_lbl.position = Vector2(24, 28)
+			slot_btn.add_child(tag_lbl)
+		elif it.item_type == "face":
+			var dmg_val = it.face_data.get("damage", 1)
+			var tag_lbl = Label.new()
+			tag_lbl.text = "%d" % dmg_val
+			tag_lbl.add_theme_font_size_override("font_size", 9)
+			tag_lbl.add_theme_color_override("font_color", Color(0.3, 0.9, 0.45))
+			tag_lbl.position = Vector2(26, 26)
+			slot_btn.add_child(tag_lbl)
+
+		var cur_item = it
+		slot_btn.mouse_entered.connect(func():
+			_show_item_tooltip(cur_item)
+		)
+		slot_btn.pressed.connect(func():
+			selected_stash_item = cur_item
+			_on_inventory_item_clicked(cur_item)
+		)
+
+		inventory_stash_container.add_child(slot_btn)
+
+func _show_item_tooltip(item: ItemData) -> void:
+	if not item_tooltip_panel:
+		return
+	if item == null:
+		item_tooltip_title.text = "EMPTY SLOT"
+		item_tooltip_type.text = "No item selected"
+		item_tooltip_stats.text = ""
+		item_tooltip_desc.text = "Hover over any item square in your grid stash to inspect its power."
+		item_tooltip_value.text = ""
+		item_tooltip_actions.text = ""
+		return
+
+	var tag = ""
+	if item.hands == 2: tag = " (2-Handed)"
+	elif item.hands == 1 and item.item_type == "weapon": tag = " (1-Handed)"
+	elif item.item_type == "face": tag = " (Die Face)"
+	elif item.item_type == "trophy": tag = " (Estate Trophy)"
+
+	item_tooltip_title.text = item.name + tag
+	if item.item_type == "face":
+		item_tooltip_title.add_theme_color_override("font_color", Color(0.98, 0.88, 0.3))
+	elif item.item_type == "trophy":
+		item_tooltip_title.add_theme_color_override("font_color", Color(0.95, 0.65, 0.98))
+	else:
+		item_tooltip_title.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+
+	item_tooltip_type.text = "Slot: %s  •  Type: %s" % [ItemData.get_slot_title(item.slot), item.item_type.capitalize()]
+	
+	var stat_summary = item.get_stat_summary()
+	if item.item_type == "weapon" and item.trait_name != "":
+		stat_summary += "  •  Trait: " + item.trait_name
+	item_tooltip_stats.text = stat_summary if stat_summary != "" else "No base stat requirements"
+
+	var detailed_desc = item.desc
+	if item.trait_desc != "":
+		detailed_desc += "\nTrait: " + item.trait_desc
+	if item.estate_perk_desc != "":
+		detailed_desc += "\nEstate Perk: " + item.estate_perk_desc
+	item_tooltip_desc.text = detailed_desc
+
+	var s_val = item.get_sell_value()
+	item_tooltip_value.text = "💰 Value: %d Gold" % s_val
+
+	if item.item_type == "face":
+		item_tooltip_actions.text = "[L-Click: Socket into Active Weapon]"
+	elif item.item_type == "trophy":
+		item_tooltip_actions.text = "[L-Click: Go to Manor to Mount]"
+	else:
+		item_tooltip_actions.text = "[L-Click: Equip to %s]" % ItemData.get_slot_title(item.slot)
+
+func _on_inventory_item_clicked(item: ItemData) -> void:
+	if item.item_type == "face":
+		_prompt_socket_face(item)
+	elif item.item_type == "trophy":
+		_switch_backpack_view("estate")
+	else:
+		_equip_item_from_inventory(item)
+		_show_item_tooltip(item)
 
 func _prompt_socket_face(face_item: ItemData) -> void:
 	if not socket_prompt_bar:
@@ -2836,6 +2994,19 @@ func _recalculate_gear_stats() -> void:
 	if char_dmg_label:
 		char_dmg_label.text = "⚔️ BONUS DMG: +%d" % player.dmg_bonus
 
+	_update_hero_visual_gear()
+
+func _update_hero_visual_gear() -> void:
+	if not player or not is_instance_valid(player) or not player.hero_visual:
+		return
+	player.hero_visual.equipped_helmet = equipped_gear.get("helmet", null)
+	player.hero_visual.equipped_chest = equipped_gear.get("chestplate", null)
+	player.hero_visual.equipped_pants = equipped_gear.get("pants", null)
+	player.hero_visual.equipped_boots = equipped_gear.get("boots", null)
+	player.hero_visual.equipped_weapon = equipped_gear.get("hand_1", null)
+	player.hero_visual.equipped_offhand = equipped_gear.get("hand_2", null)
+	player.hero_visual.update_appearance()
+
 func _recalculate_equipped_stats() -> void:
 	_recalculate_gear_stats()
 
@@ -2845,6 +3016,8 @@ func _switch_backpack_view(view_name: String) -> void:
 		hero_view_container.visible = (view_name == "hero")
 	if is_instance_valid(blacksmith_view_container):
 		blacksmith_view_container.visible = (view_name == "blacksmith")
+	if is_instance_valid(char_custom_view_container):
+		char_custom_view_container.visible = (view_name == "custom")
 	if is_instance_valid(estate_view_container):
 		estate_view_container.visible = (view_name == "estate")
 
@@ -2861,8 +3034,226 @@ func _switch_backpack_view(view_name: String) -> void:
 			_render_backpack_ui()
 		"blacksmith":
 			_render_blacksmith_ui()
+		"custom":
+			_render_character_customization_ui()
 		"estate":
 			_render_estate_ui()
+
+func _setup_character_customization_view() -> void:
+	for c in char_custom_view_container.get_children():
+		char_custom_view_container.remove_child(c)
+		c.queue_free()
+
+	var custom_panel = PanelContainer.new()
+	var cp_style = StyleBoxFlat.new()
+	cp_style.bg_color = Color(0.08, 0.10, 0.16, 0.95)
+	cp_style.border_color = Color(0.98, 0.82, 0.2)
+	cp_style.set_border_width_all(1)
+	cp_style.set_corner_radius_all(8)
+	cp_style.content_margin_left = 16
+	cp_style.content_margin_right = 16
+	cp_style.content_margin_top = 14
+	cp_style.content_margin_bottom = 14
+	custom_panel.add_theme_stylebox_override("panel", cp_style)
+	char_custom_view_container.add_child(custom_panel)
+
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 24)
+	custom_panel.add_child(hbox)
+
+	# Left Column: Interactive Hero Live Preview (Enlarged)
+	var preview_panel = PanelContainer.new()
+	preview_panel.custom_minimum_size = Vector2(260, 360)
+	var pp_style = StyleBoxFlat.new()
+	pp_style.bg_color = Color(0.04, 0.06, 0.10, 0.95)
+	pp_style.border_color = Color(0.25, 0.35, 0.50)
+	pp_style.set_border_width_all(1)
+	pp_style.set_corner_radius_all(6)
+	preview_panel.add_theme_stylebox_override("panel", pp_style)
+	hbox.add_child(preview_panel)
+
+	var pvbox = VBoxContainer.new()
+	pvbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	pvbox.add_theme_constant_override("separation", 12)
+	preview_panel.add_child(pvbox)
+
+	var prev_title = Label.new()
+	prev_title.text = "HERO MIRROR"
+	prev_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	prev_title.add_theme_font_size_override("font_size", 13)
+	prev_title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
+	pvbox.add_child(prev_title)
+
+	var prev_center = Control.new()
+	prev_center.custom_minimum_size = Vector2(160, 200)
+	pvbox.add_child(prev_center)
+
+	custom_preview_visual = HeroVisual.new()
+	custom_preview_visual.position = Vector2(80, 100)
+	custom_preview_visual.scale = Vector2(2.6, 2.6)
+	prev_center.add_child(custom_preview_visual)
+
+	var prev_hint = Label.new()
+	prev_hint.text = "Appearance instantly updates in the dungeon!"
+	prev_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	prev_hint.add_theme_font_size_override("font_size", 10)
+	prev_hint.add_theme_color_override("font_color", Color(0.5, 0.6, 0.75))
+	pvbox.add_child(prev_hint)
+
+	# Right Column: Controls for Gender, Faces, Hair, Cloak
+	var controls_vbox = VBoxContainer.new()
+	controls_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	controls_vbox.add_theme_constant_override("separation", 12)
+	hbox.add_child(controls_vbox)
+
+	var head_lbl = Label.new()
+	head_lbl.text = "🎨 CHARACTER CREATOR & BARBER"
+	head_lbl.add_theme_font_size_override("font_size", 16)
+	head_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+	controls_vbox.add_child(head_lbl)
+
+	var sub_lbl = Label.new()
+	sub_lbl.text = "Customize your champion's gender, battle-worn portrait face, hairstyles, and cloak style."
+	sub_lbl.add_theme_font_size_override("font_size", 11)
+	sub_lbl.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	controls_vbox.add_child(sub_lbl)
+
+	var sep = HSeparator.new()
+	controls_vbox.add_child(sep)
+
+	# 1. Gender Selection
+	var gender_box = HBoxContainer.new()
+	gender_box.add_theme_constant_override("separation", 10)
+	controls_vbox.add_child(gender_box)
+
+	var g_lbl = Label.new()
+	g_lbl.text = "Body Type / Gender:"
+	g_lbl.custom_minimum_size = Vector2(140, 0)
+	g_lbl.add_theme_font_size_override("font_size", 12)
+	gender_box.add_child(g_lbl)
+
+	var m_btn = Button.new()
+	m_btn.text = "♂ Male Champion"
+	m_btn.pressed.connect(func(): _set_character_gender("male"))
+	gender_box.add_child(m_btn)
+
+	var f_btn = Button.new()
+	f_btn.text = "♀ Female Champion"
+	f_btn.pressed.connect(func(): _set_character_gender("female"))
+	gender_box.add_child(f_btn)
+
+	# 2. Face Selection
+	var face_box = HBoxContainer.new()
+	face_box.add_theme_constant_override("separation", 10)
+	controls_vbox.add_child(face_box)
+
+	var f_lbl = Label.new()
+	f_lbl.text = "Portrait Face:"
+	f_lbl.custom_minimum_size = Vector2(140, 0)
+	f_lbl.add_theme_font_size_override("font_size", 12)
+	face_box.add_child(f_lbl)
+
+	for face_idx in [1, 2, 3]:
+		var f_opt_btn = Button.new()
+		f_opt_btn.text = "Face %d" % face_idx
+		f_opt_btn.pressed.connect(func(): _set_character_face(face_idx))
+		face_box.add_child(f_opt_btn)
+
+	# 3. Hairstyle Selection
+	var hair_box = HBoxContainer.new()
+	hair_box.add_theme_constant_override("separation", 10)
+	controls_vbox.add_child(hair_box)
+
+	var h_lbl = Label.new()
+	h_lbl.text = "Hairstyle & Color:"
+	h_lbl.custom_minimum_size = Vector2(140, 0)
+	h_lbl.add_theme_font_size_override("font_size", 12)
+	hair_box.add_child(h_lbl)
+
+	var hair_opts = [
+		{"id": "short_brown", "title": "Trimmed Brown"},
+		{"id": "spiky_blonde", "title": "Spiky Blonde"},
+		{"id": "long_black", "title": "Raven Locks"},
+		{"id": "braid_red", "title": "Crimson Braid"},
+		{"id": "none", "title": "Bald / Shaved"}
+	]
+	for h_opt in hair_opts:
+		var h_btn = Button.new()
+		h_btn.text = h_opt["title"]
+		var h_id = h_opt["id"]
+		h_btn.pressed.connect(func(): _set_character_hair(h_id))
+		hair_box.add_child(h_btn)
+
+	# 4. Cloak Selection
+	var cloak_box = HBoxContainer.new()
+	cloak_box.add_theme_constant_override("separation", 10)
+	controls_vbox.add_child(cloak_box)
+
+	var clk_lbl = Label.new()
+	clk_lbl.text = "Hero Cloak:"
+	clk_lbl.custom_minimum_size = Vector2(140, 0)
+	clk_lbl.add_theme_font_size_override("font_size", 12)
+	cloak_box.add_child(clk_lbl)
+
+	var cloak_opts = [
+		{"id": "cloak_blue", "title": "Royal Blue"},
+		{"id": "cloak_red", "title": "Crimson Velvet"},
+		{"id": "none", "title": "No Cloak"}
+	]
+	for c_opt in cloak_opts:
+		var c_btn = Button.new()
+		c_btn.text = c_opt["title"]
+		var c_id = c_opt["id"]
+		c_btn.pressed.connect(func(): _set_character_cloak(c_id))
+		cloak_box.add_child(c_btn)
+
+	_sync_customization_preview()
+
+func _set_character_gender(new_gender: String) -> void:
+	custom_gender = new_gender
+	if player and player.hero_visual:
+		player.hero_visual.gender = custom_gender
+	_sync_customization_preview()
+	_update_hero_visual_gear()
+
+func _set_character_face(new_face_id: int) -> void:
+	custom_face = new_face_id
+	if player and player.hero_visual:
+		player.hero_visual.face_id = custom_face
+	_sync_customization_preview()
+	_update_hero_visual_gear()
+
+func _set_character_hair(new_hair_id: String) -> void:
+	custom_hair = new_hair_id
+	if player and player.hero_visual:
+		player.hero_visual.hair_id = custom_hair
+	_sync_customization_preview()
+	_update_hero_visual_gear()
+
+func _set_character_cloak(new_cloak_id: String) -> void:
+	custom_cloak = new_cloak_id
+	if player and player.hero_visual:
+		player.hero_visual.cloak_id = custom_cloak
+	_sync_customization_preview()
+	_update_hero_visual_gear()
+
+func _sync_customization_preview() -> void:
+	if not custom_preview_visual:
+		return
+	custom_preview_visual.gender = custom_gender
+	custom_preview_visual.face_id = custom_face
+	custom_preview_visual.hair_id = custom_hair
+	custom_preview_visual.cloak_id = custom_cloak
+	custom_preview_visual.equipped_helmet = equipped_gear.get("helmet", null)
+	custom_preview_visual.equipped_chest = equipped_gear.get("chestplate", null)
+	custom_preview_visual.equipped_pants = equipped_gear.get("pants", null)
+	custom_preview_visual.equipped_boots = equipped_gear.get("boots", null)
+	custom_preview_visual.equipped_weapon = equipped_gear.get("hand_1", null)
+	custom_preview_visual.equipped_offhand = equipped_gear.get("hand_2", null)
+	custom_preview_visual.update_appearance()
+
+func _render_character_customization_ui() -> void:
+	_sync_customization_preview()
 
 func _extract_face_from_active_weapon(slot_idx: int) -> void:
 	if not player or not player.die or slot_idx < 0 or slot_idx >= player.die.faces.size():
@@ -3626,9 +4017,11 @@ func _process_exploration_movement(delta: float) -> void:
 		move_vec = move_vec.normalized()
 		player.is_moving = true
 		if move_vec.x < -0.1 and player.sprite:
-			player.sprite.flip_h = true
+			if player.sprite is Sprite2D: player.sprite.flip_h = true
+			elif player.sprite.has_method("set_flip_h"): player.sprite.set_flip_h(true)
 		elif move_vec.x > 0.1 and player.sprite:
-			player.sprite.flip_h = false
+			if player.sprite is Sprite2D: player.sprite.flip_h = false
+			elif player.sprite.has_method("set_flip_h"): player.sprite.set_flip_h(false)
 			
 		exploration_dust_timer -= delta
 		if exploration_dust_timer <= 0.0:

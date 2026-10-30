@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Female Face 3: Highborne Sorceress (Porcelain pale skin, amber gold eyes) -->
+  <rect x="25" y="13" width="14" height="15" rx="5" fill="#fdf0d5"/>
+  <!-- Eyes -->
+  <rect x="27" y="18" width="3" height="3" rx="1" fill="#78350f"/>
+  <rect x="34" y="18" width="3" height="3" rx="1" fill="#78350f"/>
+  <circle cx="28.5" cy="19.5" r="0.9" fill="#f59e0b"/>
+  <circle cx="35.5" cy="19.5" r="0.9" fill="#f59e0b"/>
+  <!-- Elegant brows -->
+  <line x1="26.5" y1="16.5" x2="30" y2="15.8" stroke="#78350f" stroke-width="1"/>
+  <line x1="33.5" y1="15.8" x2="37" y2="16.5" stroke="#78350f" stroke-width="1"/>
+  <circle cx="32" cy="15" r="1.2" fill="#38bdf8"/>
+  <rect x="30" y="23.5" width="4" height="1.5" rx="0.5" fill="#be123c"/>
+</svg>

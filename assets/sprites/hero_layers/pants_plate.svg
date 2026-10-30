@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Plated Steel Leg Armor & Greaves -->
+  <rect x="25" y="44" width="6" height="10" rx="1" fill="#94a3b8"/>
+  <rect x="33" y="44" width="6" height="10" rx="1" fill="#94a3b8"/>
+  <rect x="26" y="46" width="4" height="6" fill="#cbd5e1"/>
+  <rect x="34" y="46" width="4" height="6" fill="#cbd5e1"/>
+  <rect x="24" y="52" width="8" height="4" rx="1" fill="#475569"/>
+  <rect x="32" y="52" width="8" height="4" rx="1" fill="#475569"/>
+</svg>
