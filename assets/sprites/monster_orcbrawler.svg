@@ -1,53 +1,60 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Orc Brawler (Standing full character sprite) -->
+  <!-- Orc Brawler / Warlord (Standing full character sprite) -->
   <!-- Shadow -->
   <ellipse cx="32" cy="57" rx="19" ry="6" fill="#0a0c10" opacity="0.6"/>
 
-  <!-- Massive Thick Legs & Spiked Boots -->
+  <!-- Massive Thick Legs & Spiked Heavy Boots -->
   <rect x="20" y="46" width="9" height="10" rx="2" fill="#2d4a1d"/>
   <rect x="35" y="46" width="9" height="10" rx="2" fill="#2d4a1d"/>
-  <rect x="18" y="53" width="12" height="4" rx="1" fill="#27272a"/>
-  <rect x="34" y="53" width="12" height="4" rx="1" fill="#27272a"/>
+  <rect x="18" y="53" width="12" height="4" rx="1" fill="#18181b"/>
+  <rect x="34" y="53" width="12" height="4" rx="1" fill="#18181b"/>
+  <!-- Iron toe caps with spikes -->
+  <polygon points="18,54 15,55 18,56" fill="#cbd5e1"/>
+  <polygon points="46,54 49,55 46,56" fill="#cbd5e1"/>
 
-  <!-- Ragged Studded Leather Kilt -->
-  <polygon points="18,38 46,38 43,48 21,48" fill="#581c87"/>
-  <rect x="18" y="38" width="28" height="4" fill="#3b0764"/>
-  <circle cx="24" cy="40" r="1.5" fill="#e2e8f0"/>
-  <circle cx="32" cy="40" r="1.5" fill="#e2e8f0"/>
-  <circle cx="40" cy="40" r="1.5" fill="#e2e8f0"/>
+  <!-- Ragged Studded Leather War Kilt -->
+  <polygon points="17,38 47,38 44,48 20,48" fill="#4c1d95"/>
+  <rect x="17" y="38" width="30" height="4" fill="#2e1065"/>
+  <circle cx="23" cy="40" r="1.5" fill="#cbd5e1"/>
+  <circle cx="32" cy="40" r="2.2" fill="#e2e8f0"/>
+  <circle cx="41" cy="40" r="1.5" fill="#cbd5e1"/>
 
   <!-- Broad Muscular Torso -->
-  <path d="M18 24 L46 24 L43 40 L21 40 Z" fill="#365314"/>
+  <path d="M17 24 L47 24 L44 40 L20 40 Z" fill="#365314"/>
   <!-- Chest Pectorals & Abs definition -->
   <ellipse cx="26" cy="29" rx="6" ry="4" fill="#4d7c0f"/>
   <ellipse cx="38" cy="29" rx="6" ry="4" fill="#4d7c0f"/>
-  <rect x="28" y="33" width="8" height="5" rx="1" fill="#4d7c0f"/>
+  <rect x="27" y="33" width="10" height="5" rx="1" fill="#4d7c0f"/>
   <!-- Crimson War Paint stripes across chest -->
   <line x1="20" y1="26" x2="30" y2="34" stroke="#dc2626" stroke-width="2.5"/>
   <line x1="44" y1="26" x2="34" y2="34" stroke="#dc2626" stroke-width="2.5"/>
 
   <!-- Spiked Iron Pauldron (Left Shoulder) -->
-  <path d="M12 20 L20 20 L22 28 L10 28 Z" fill="#3f3f46"/>
-  <polygon points="12,20 14,14 16,20" fill="#94a3b8"/>
-  <polygon points="18,20 20,14 22,20" fill="#94a3b8"/>
+  <path d="M11 20 L20 20 L22 28 L9 28 Z" fill="#3f3f46"/>
+  <polygon points="11,20 13,13 16,20" fill="#cbd5e1"/>
+  <polygon points="17,20 19,13 22,20" fill="#cbd5e1"/>
 
   <!-- Spiked Iron Pauldron (Right Shoulder) -->
-  <path d="M44 20 L52 20 L54 28 L42 28 Z" fill="#3f3f46"/>
-  <polygon points="44,20 46,14 48,20" fill="#94a3b8"/>
-  <polygon points="50,20 52,14 54,20" fill="#94a3b8"/>
+  <path d="M44 20 L53 20 L55 28 L42 28 Z" fill="#3f3f46"/>
+  <polygon points="44,20 46,13 49,20" fill="#cbd5e1"/>
+  <polygon points="50,20 52,13 55,20" fill="#cbd5e1"/>
 
   <!-- Orc Head & Fierce Jaws -->
-  <ellipse cx="32" cy="18" rx="11" ry="9" fill="#365314"/>
-  <ellipse cx="32" cy="18" rx="9" ry="7" fill="#4d7c0f"/>
-  <!-- Beady Yellow Savage Eyes -->
-  <ellipse cx="28" cy="16" rx="2.2" ry="1.8" fill="#facc15"/>
-  <circle cx="28" cy="16" r="1.1" fill="#7f1d1d"/>
-  <ellipse cx="36" cy="16" rx="2.2" ry="1.8" fill="#facc15"/>
-  <circle cx="36" cy="16" r="1.1" fill="#7f1d1d"/>
+  <ellipse cx="32" cy="17" rx="11" ry="9" fill="#365314"/>
+  <ellipse cx="32" cy="17" rx="9" ry="7" fill="#4d7c0f"/>
+  <!-- Iron Brow / War Plate -->
+  <path d="M23 13 Q32 10 41 13 L40 15 Q32 12 24 15 Z" fill="#27272a"/>
+  <!-- Beady Glowing Yellow Savage Eyes -->
+  <ellipse cx="27.5" cy="16" rx="2.5" ry="1.8" fill="#facc15"/>
+  <circle cx="27.5" cy="16" r="1.1" fill="#7f1d1d"/>
+  <ellipse cx="36.5" cy="16" rx="2.5" ry="1.8" fill="#facc15"/>
+  <circle cx="36.5" cy="16" r="1.1" fill="#7f1d1d"/>
   <!-- Massive Tusks protruding upwards -->
-  <polygon points="26,22 28,15 30,22" fill="#fef08a"/>
-  <polygon points="34,22 36,15 38,22" fill="#fef08a"/>
-  <path d="M28 22 Q32 25 36 22" stroke="#1c1917" stroke-width="2" fill="none"/>
+  <polygon points="25,22 27,13 29,22" fill="#fef08a"/>
+  <polygon points="35,22 37,13 39,22" fill="#fef08a"/>
+  <!-- Iron Jaw / Chin Guard -->
+  <path d="M26 21 L32 25 L38 21 L35 24 L29 24 Z" fill="#18181b"/>
+  <path d="M27 21 Q32 23 37 21" stroke="#1c1917" stroke-width="1.5" fill="none"/>
 
   <!-- Left Hand: Serrated Meat Cleaver -->
   <g transform="translate(6, 26)">
@@ -61,12 +68,14 @@
   </g>
 
   <!-- Right Hand: Giant Spiked Cleaver / Axe -->
-  <g transform="translate(48, 18)">
-    <line x1="4" y1="6" x2="4" y2="34" stroke="#451a03" stroke-width="3"/>
+  <g transform="translate(48, 16)">
+    <line x1="4" y1="6" x2="4" y2="36" stroke="#451a03" stroke-width="3"/>
     <!-- Massive Cleaver Axe Blade -->
-    <path d="M4 8 L14 4 L16 28 L4 24 Z" fill="#64748b"/>
-    <path d="M5 9 L13 6 L15 26 L5 23 Z" fill="#cbd5e1"/>
+    <path d="M4 8 L14 4 L16 30 L4 25 Z" fill="#64748b"/>
+    <path d="M5 9 L13 6 L15 28 L5 24 Z" fill="#cbd5e1"/>
     <!-- Blood groove / runic notch -->
-    <line x1="8" y1="12" x2="10" y2="22" stroke="#b91c1c" stroke-width="2"/>
+    <line x1="8" y1="12" x2="10" y2="24" stroke="#b91c1c" stroke-width="2"/>
+    <!-- Top Spike -->
+    <polygon points="3,6 4,1 5,6" fill="#cbd5e1"/>
   </g>
 </svg>

@@ -129,11 +129,18 @@ func setup(p_name: String, p_is_player: bool, p_max_hp: int, p_texture: Texture2
 	has_shield = (p_type == "shieldbearer")
 	idle_seed = randf_range(0.0, 100.0)
 	base_sprite_scale = Vector2.ONE
+	if unit_type == "brawler":
+		base_sprite_scale = Vector2(1.18, 1.18)
+	elif unit_type == "shieldbearer":
+		base_sprite_scale = Vector2(1.08, 1.08)
+	elif unit_type == "grunt" and "Goblin" in unit_name:
+		base_sprite_scale = Vector2(0.92, 0.92)
 	
 	# Sprite
 	sprite = Sprite2D.new()
 	sprite.texture = p_texture
 	sprite.centered = true
+	sprite.scale = base_sprite_scale
 	add_child(sprite)
 	
 	# Overhead Intent Plate (Enemies) - Compact shoulder badge off to the side
@@ -571,6 +578,11 @@ func animate_death_collapse() -> Tween:
 	return tween
 
 func animate_move_to(target_world_pos: Vector2, duration: float = 0.35) -> Tween:
+	if sprite:
+		if target_world_pos.x < position.x - 2.0:
+			sprite.flip_h = true
+		elif target_world_pos.x > position.x + 2.0:
+			sprite.flip_h = false
 	var tween = create_tween()
 	is_moving = true
 	var mid_pos = (position + target_world_pos) * 0.5 + Vector2(0, -14)
@@ -583,6 +595,11 @@ func animate_move_to(target_world_pos: Vector2, duration: float = 0.35) -> Tween
 	return tween
 
 func animate_attack_thrust(target_world_pos: Vector2, duration: float = 0.35) -> Tween:
+	if sprite:
+		if target_world_pos.x < position.x - 2.0:
+			sprite.flip_h = true
+		elif target_world_pos.x > position.x + 2.0:
+			sprite.flip_h = false
 	var original_pos = position
 	var thrust_dir = (target_world_pos - original_pos).normalized() * 26.0
 	var tween = create_tween()
