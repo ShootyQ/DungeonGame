@@ -17,8 +17,26 @@ var int_bonus: int = 0
 var trait_id: String = "" # "honed_edge", "serrated", "titans_grip", "vampiric", "ember_core", "phalanx_guard"
 var trait_name: String = ""
 var trait_desc: String = ""
+var estate_perk_id: String = ""
+var estate_perk_desc: String = ""
+var gold_value: int = 25
 var die: DieData = null
 var face_data: Dictionary = {}
+
+func get_sell_value() -> int:
+	if item_type == "face":
+		var dmg = face_data.get("damage", 1)
+		var eff = face_data.get("effect", "")
+		return maxi(12, dmg * 7 + (18 if eff != "" else 0))
+	elif item_type == "weapon":
+		return 50 + (str_bonus + dex_bonus + int_bonus) * 15 + (30 if trait_id != "" else 0)
+	elif item_type == "trophy":
+		return 100
+	elif item_type == "armor" or item_type == "shield":
+		return 35 + armor_bonus * 12 + hp_bonus * 4
+	elif item_type == "jewelry":
+		return 45 + hp_bonus * 5 + (str_bonus + dex_bonus + int_bonus) * 15
+	return 25
 
 func duplicate_item() -> ItemData:
 	var it = ItemData.new()
@@ -38,6 +56,9 @@ func duplicate_item() -> ItemData:
 	it.trait_id = self.trait_id
 	it.trait_name = self.trait_name
 	it.trait_desc = self.trait_desc
+	it.estate_perk_id = self.estate_perk_id
+	it.estate_perk_desc = self.estate_perk_desc
+	it.gold_value = self.gold_value
 	if self.die:
 		it.die = self.die.duplicate_die()
 	it.face_data = self.face_data.duplicate(true)
@@ -59,6 +80,8 @@ func get_stat_summary() -> String:
 		parts.append("+%d INT" % int_bonus)
 	if trait_name != "":
 		parts.append("Trait: %s" % trait_name)
+	if estate_perk_desc != "":
+		parts.append("Perk: %s" % estate_perk_desc)
 	if hands == 2:
 		parts.append("2-Handed")
 	elif hands == 1 and item_type == "weapon":
@@ -361,8 +384,8 @@ static func generate_random_weapon(floor_depth: int = 1) -> ItemData:
 
 	# Generate 6 procedural faces for this weapon chassis
 	it.die = DieData.new()
-	it.die.die_name = it.name
-	it.die.color_code = "#f59e0b"
+	it.die.name = it.name
+	it.die.icon_path = it.icon_path
 	it.die.faces = []
 	for slot_idx in range(6):
 		var face = DieData.generate_random_face(floor_depth)
@@ -371,6 +394,16 @@ static func generate_random_weapon(floor_depth: int = 1) -> ItemData:
 
 	return it
 
+static func get_available_chassis_traits() -> Array[Dictionary]:
+	return [
+		{"id": "honed_edge", "name": "Honed Edge", "desc": "+1 DMG to all socketed faces"},
+		{"id": "serrated", "name": "Serrated Crossguard", "desc": "All attacks inflict +1 Bleed"},
+		{"id": "titans_grip", "name": "Titan's Grip", "desc": "Faces with 5+ DMG knock back targets"},
+		{"id": "vampiric", "name": "Vampiric Thirst", "desc": "Critical strikes restore +2 HP"},
+		{"id": "ember_core", "name": "Ember Core", "desc": "All attacks ignite targets for +1 Burn"},
+		{"id": "phalanx_guard", "name": "Phalanx Guard", "desc": "+2 Guard Armor after every attack"}
+	]
+
 # Collectible Estate / Mansion Trophies
 static func create_estate_trophy(p_id: String, p_name: String, p_desc: String) -> ItemData:
 	var it = ItemData.new()
@@ -378,6 +411,33 @@ static func create_estate_trophy(p_id: String, p_name: String, p_desc: String) -
 	it.name = p_name
 	it.slot = "trophy"
 	it.item_type = "trophy"
-	it.icon_path = "res://assets/items/item_crown_victory.svg"
-	it.desc = p_desc + " (Collectible House Decor for your future Estate/Mansion!)"
+	it.gold_value = 100
+	
+	match p_id:
+		"trophy_goblin_idol":
+			it.icon_path = "res://assets/items/item_crown_victory.svg"
+			it.estate_perk_id = "gold_find"
+			it.estate_perk_desc = "+25% Dungeon Gold Find"
+		"trophy_gargoyle":
+			it.icon_path = "res://assets/items/item_shield_starter.svg"
+			it.estate_perk_id = "estate_armor"
+			it.estate_perk_desc = "+2 Base Armor"
+		"trophy_dragon_seal":
+			it.icon_path = "res://assets/items/item_ring_ruby.svg"
+			it.estate_perk_id = "estate_crit"
+			it.estate_perk_desc = "+5% Critical Hit Chance"
+		"trophy_chalice":
+			it.icon_path = "res://assets/items/item_amulet_life.svg"
+			it.estate_perk_id = "estate_hp"
+			it.estate_perk_desc = "+15 Max HP"
+		"trophy_obsidian_relic":
+			it.icon_path = "res://assets/items/item_wand_pyro.svg"
+			it.estate_perk_id = "estate_dmg"
+			it.estate_perk_desc = "+2 Flat Bonus DMG"
+		_:
+			it.icon_path = "res://assets/items/item_crown_victory.svg"
+			it.estate_perk_id = "prestige"
+			it.estate_perk_desc = "+10 Estate Prestige"
+			
+	it.desc = "%s. Estate Perk: %s (Furnish onto an Estate Pedestal in your Manor to activate)." % [p_desc, it.estate_perk_desc]
 	return it

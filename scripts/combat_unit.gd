@@ -26,6 +26,19 @@ var level: int = 1
 var current_exp: int = 0
 var exp_to_level: int = 100
 var unspent_stat_points: int = 0
+var gold: int = 100
+
+func add_gold(amount: int) -> void:
+	gold = maxi(0, gold + amount)
+
+func can_afford(amount: int) -> bool:
+	return gold >= amount
+
+func spend_gold(amount: int) -> bool:
+	if can_afford(amount):
+		gold -= amount
+		return true
+	return false
 
 func get_total_str() -> int:
 	return stat_str + bonus_str

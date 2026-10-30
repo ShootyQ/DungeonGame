@@ -188,6 +188,21 @@ var exp_chambers_label: Label
 var breached_rooms: Array[int] = []
 var cleared_rooms: Array[int] = []
 
+# Step 4: Gold Economy, Town Blacksmith & Estate Manor
+var exp_gold_label: Label
+var char_gold_label: Label
+var current_backpack_view: String = "hero"
+var hero_view_container: HBoxContainer
+var blacksmith_view_container: VBoxContainer
+var estate_view_container: VBoxContainer
+var view_tab_buttons: Dictionary = {}
+
+var blacksmith_face_wares: Array[ItemData] = []
+var blacksmith_weapon_wares: Array[ItemData] = []
+
+var estate_pedestals_unlocked: int = 4
+var estate_trophy_slots: Array = [null, null, null, null, null, null]
+
 # Cached Die Textures for Animations
 var cached_die_textures: Array[Texture2D] = []
 
@@ -206,6 +221,7 @@ func _ready() -> void:
 	_setup_lighting_and_sconces()
 	_setup_hud()
 	_setup_backpack_ui()
+	_generate_blacksmith_wares()
 	_setup_audio_ui()
 	_setup_main_menu_ui()
 	_enter_exploration_mode()
@@ -686,6 +702,12 @@ func _setup_hud() -> void:
 	exp_hp_bar.add_theme_stylebox_override("fill", hp_fill)
 	hp_hbox.add_child(exp_hp_bar)
 
+	exp_gold_label = Label.new()
+	exp_gold_label.text = "🪙 100 Gold"
+	exp_gold_label.add_theme_font_size_override("font_size", 12)
+	exp_gold_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
+	hp_hbox.add_child(exp_gold_label)
+
 	# Center: Dungeon Objective & Chambers Progress
 	var obj_vbox = VBoxContainer.new()
 	obj_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -988,34 +1010,58 @@ func _setup_backpack_ui() -> void:
 	
 	# Top Modal Header Row
 	var header_hbox = HBoxContainer.new()
+	header_hbox.add_theme_constant_override("separation", 10)
 	main_vbox.add_child(header_hbox)
 	
 	var title = Label.new()
-	title.text = "🛡️ HERO CHARACTER SHEET & ARMORY"
-	title.add_theme_font_size_override("font_size", 18)
+	title.text = "🏰 STRONGHOLD"
+	title.add_theme_font_size_override("font_size", 16)
 	title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.2))
 	header_hbox.add_child(title)
 	
-	var hint = Label.new()
-	hint.text = "  [Press B, I or ESC to close]"
-	hint.add_theme_font_size_override("font_size", 12)
-	hint.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75))
-	header_hbox.add_child(hint)
+	var nav_hbox = HBoxContainer.new()
+	nav_hbox.add_theme_constant_override("separation", 6)
+	header_hbox.add_child(nav_hbox)
+
+	var hero_tab_btn = Button.new()
+	hero_tab_btn.text = "🎒 Hero & Armory"
+	hero_tab_btn.pressed.connect(func(): _switch_backpack_view("hero"))
+	nav_hbox.add_child(hero_tab_btn)
+	view_tab_buttons["hero"] = hero_tab_btn
+
+	var smith_tab_btn = Button.new()
+	smith_tab_btn.text = "🔨 Town Blacksmith"
+	smith_tab_btn.pressed.connect(func(): _switch_backpack_view("blacksmith"))
+	nav_hbox.add_child(smith_tab_btn)
+	view_tab_buttons["blacksmith"] = smith_tab_btn
+
+	var estate_tab_btn = Button.new()
+	estate_tab_btn.text = "🏛️ Estate Manor"
+	estate_tab_btn.pressed.connect(func(): _switch_backpack_view("estate"))
+	nav_hbox.add_child(estate_tab_btn)
+	view_tab_buttons["estate"] = estate_tab_btn
 	
 	var header_spacer = Control.new()
 	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_hbox.add_child(header_spacer)
+
+	char_gold_label = Label.new()
+	char_gold_label.text = "🪙 100 Gold"
+	char_gold_label.add_theme_font_size_override("font_size", 13)
+	char_gold_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
+	header_hbox.add_child(char_gold_label)
 	
 	var close_btn = Button.new()
 	close_btn.text = "✕ Close"
 	close_btn.pressed.connect(_toggle_backpack)
 	header_hbox.add_child(close_btn)
 	
-	# Body: 2 Main Columns
+	# Body: 2 Main Columns for Hero View
 	var body_hbox = HBoxContainer.new()
 	body_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body_hbox.add_theme_constant_override("separation", 16)
 	main_vbox.add_child(body_hbox)
+	hero_view_container = body_hbox
 	
 	# =========================================================
 	# LEFT PANE: PAPER DOLL & ATTRIBUTES (Width ~450px)
@@ -1322,6 +1368,16 @@ func _setup_backpack_ui() -> void:
 	relics_container.visible = false
 	main_vbox.add_child(relics_container)
 
+	blacksmith_view_container = VBoxContainer.new()
+	blacksmith_view_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	blacksmith_view_container.visible = false
+	main_vbox.add_child(blacksmith_view_container)
+	
+	estate_view_container = VBoxContainer.new()
+	estate_view_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	estate_view_container.visible = false
+	main_vbox.add_child(estate_view_container)
+
 func _setup_audio_system() -> void:
 	dice_tumble_sounds.clear()
 	for i in range(1, 4):
@@ -1484,6 +1540,72 @@ func play_loot_pickup_sfx() -> void:
 func play_backpack_equip_sfx() -> void:
 	if sfx_backpack_equip:
 		play_sfx(sfx_backpack_equip, randf_range(0.96, 1.04), 1.0)
+
+func play_gold_sfx() -> void:
+	if sfx_loot_pickup:
+		play_sfx(sfx_loot_pickup, randf_range(1.35, 1.48), 2.5)
+
+func play_smith_hammer_sfx() -> void:
+	if sfx_hammer_slam:
+		play_sfx(sfx_hammer_slam, randf_range(1.10, 1.22), 3.0)
+
+func get_estate_gold_mult() -> float:
+	var mult = 1.0
+	for t in estate_trophy_slots:
+		if t is ItemData and t.estate_perk_id == "gold_find":
+			mult += 0.25
+	return mult
+
+func get_estate_armor_bonus() -> int:
+	var b = 0
+	for t in estate_trophy_slots:
+		if t is ItemData and t.estate_perk_id == "estate_armor":
+			b += 2
+	return b
+
+func get_estate_crit_bonus() -> float:
+	var b = 0.0
+	for t in estate_trophy_slots:
+		if t is ItemData and t.estate_perk_id == "estate_crit":
+			b += 0.05
+	return b
+
+func get_estate_hp_bonus() -> int:
+	var b = 0
+	for t in estate_trophy_slots:
+		if t is ItemData and t.estate_perk_id == "estate_hp":
+			b += 15
+	return b
+
+func get_estate_dmg_bonus() -> int:
+	var b = 0
+	for t in estate_trophy_slots:
+		if t is ItemData and t.estate_perk_id == "estate_dmg":
+			b += 2
+	return b
+
+func _update_gold_ui() -> void:
+	if not player:
+		return
+	if is_instance_valid(char_gold_label):
+		char_gold_label.text = "🪙 %d Gold" % player.gold
+	if is_instance_valid(exp_gold_label):
+		exp_gold_label.text = "🪙 %d Gold" % player.gold
+
+func _generate_blacksmith_wares() -> void:
+	blacksmith_face_wares.clear()
+	blacksmith_weapon_wares.clear()
+	
+	for i in range(3):
+		var face = DieData.generate_random_face(2 + i)
+		var it = ItemData.create_face_item(face)
+		it.gold_value = 35 + i * 25
+		blacksmith_face_wares.append(it)
+		
+	for i in range(2):
+		var wp = ItemData.generate_random_weapon(2 + i)
+		wp.gold_value = 110 + i * 40
+		blacksmith_weapon_wares.append(wp)
 
 func set_music_volume(val: float) -> void:
 	music_volume = clamp(val, 0.0, 1.0)
@@ -1959,11 +2081,13 @@ func _toggle_backpack() -> void:
 	backpack_modal.visible = is_backpack_open
 	if is_backpack_open:
 		play_dice_tumble_sfx()
-		_render_backpack_ui()
+		_update_gold_ui()
+		_switch_backpack_view(current_backpack_view)
 
 func _render_backpack_ui() -> void:
 	if not player:
 		return
+	_update_gold_ui()
 		
 	# 1. Update Hero stats & Attributes
 	if is_instance_valid(char_level_label):
@@ -1985,9 +2109,10 @@ func _render_backpack_ui() -> void:
 		char_str_label.text = str_txt
 
 	if is_instance_valid(char_dex_label):
-		var dex_txt = "🏃 DEX: %d (Crit: %.1f%%)" % [player.get_total_dex(), player.get_crit_chance() * 100.0]
+		var tot_crit = (player.get_crit_chance() + get_estate_crit_bonus()) * 100.0
+		var dex_txt = "🏃 DEX: %d (Crit: %.1f%%)" % [player.get_total_dex(), tot_crit]
 		if player.bonus_dex > 0:
-			dex_txt = "🏃 DEX: %d (%d+%d) • Crit: %.1f%%" % [player.get_total_dex(), player.stat_dex, player.bonus_dex, player.get_crit_chance() * 100.0]
+			dex_txt = "🏃 DEX: %d (%d+%d) • Crit: %.1f%%" % [player.get_total_dex(), player.stat_dex, player.bonus_dex, tot_crit]
 		char_dex_label.text = dex_txt
 
 	if is_instance_valid(char_int_label):
@@ -2280,6 +2405,14 @@ func _render_active_weapon_dice_rack() -> void:
 		d_lbl.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4) if dmg > 0 else Color(0.6, 0.6, 0.6))
 		cvbox.add_child(d_lbl)
 		
+		var ext_btn = Button.new()
+		ext_btn.text = "Extract (25g)"
+		ext_btn.add_theme_font_size_override("font_size", 9)
+		ext_btn.tooltip_text = "Pay Town Blacksmith 25g to extract this face into Stash"
+		var face_slot_i = i
+		ext_btn.pressed.connect(func(): _extract_face_from_active_weapon(face_slot_i))
+		cvbox.add_child(ext_btn)
+		
 		if is_loaded:
 			var act_tag = Label.new()
 			act_tag.text = "▶ READY"
@@ -2397,13 +2530,21 @@ func _render_backpack_inventory_cards() -> void:
 			action_btn.text = "🔧 Socket"
 			action_btn.pressed.connect(func(): _prompt_socket_face(it))
 		elif it.item_type == "trophy":
-			action_btn.text = "🏛️ Stored"
-			action_btn.disabled = true
-			action_btn.tooltip_text = "Collectible Estate Decor. Ready to furnish your future mansion!"
+			action_btn.text = "🏛️ Manor"
+			action_btn.tooltip_text = "Mount onto an Estate Pedestal in your Manor to activate: " + it.estate_perk_desc
+			action_btn.pressed.connect(func(): _switch_backpack_view("estate"))
 		else:
 			action_btn.text = "⚔️ Equip"
 			action_btn.pressed.connect(func(): _equip_item_from_inventory(it))
 		hbox.add_child(action_btn)
+
+		var sell_btn = Button.new()
+		var s_val = it.get_sell_value()
+		sell_btn.text = "💰 %dg" % s_val
+		sell_btn.tooltip_text = "Sell %s to Town Merchant for %d Gold" % [it.name, s_val]
+		var it_to_sell = it
+		sell_btn.pressed.connect(func(): _sell_inventory_item(it_to_sell))
+		hbox.add_child(sell_btn)
 
 func _prompt_socket_face(face_item: ItemData) -> void:
 	if not socket_prompt_bar:
@@ -2565,7 +2706,7 @@ func _recalculate_gear_stats() -> void:
 
 	var str_hp = maxi(0, player.get_total_str() - 10) * 5
 	var old_max = player.max_hp
-	var new_max = BASE_HP + (player.level - 1) * 5 + gear_hp + str_hp
+	var new_max = BASE_HP + (player.level - 1) * 5 + gear_hp + str_hp + get_estate_hp_bonus()
 	var hp_delta = new_max - old_max
 	
 	player.max_hp = new_max
@@ -2574,8 +2715,8 @@ func _recalculate_gear_stats() -> void:
 	else:
 		player.current_hp = mini(player.max_hp, player.current_hp)
 	
-	player.armor = total_armor
-	player.dmg_bonus = total_dmg + player.get_stat_dmg_bonus()
+	player.armor = total_armor + get_estate_armor_bonus()
+	player.dmg_bonus = total_dmg + player.get_stat_dmg_bonus() + get_estate_dmg_bonus()
 	
 	# Update active weapon in hand_1
 	var main_w: ItemData = equipped_gear.get("hand_1", null)
@@ -2600,6 +2741,682 @@ func _recalculate_gear_stats() -> void:
 
 func _recalculate_equipped_stats() -> void:
 	_recalculate_gear_stats()
+
+func _switch_backpack_view(view_name: String) -> void:
+	current_backpack_view = view_name
+	if is_instance_valid(hero_view_container):
+		hero_view_container.visible = (view_name == "hero")
+	if is_instance_valid(blacksmith_view_container):
+		blacksmith_view_container.visible = (view_name == "blacksmith")
+	if is_instance_valid(estate_view_container):
+		estate_view_container.visible = (view_name == "estate")
+
+	for k in view_tab_buttons.keys():
+		var btn: Button = view_tab_buttons[k]
+		if is_instance_valid(btn):
+			if k == view_name:
+				btn.modulate = Color(1.2, 1.1, 0.3)
+			else:
+				btn.modulate = Color(0.8, 0.85, 0.9)
+
+	match view_name:
+		"hero":
+			_render_backpack_ui()
+		"blacksmith":
+			_render_blacksmith_ui()
+		"estate":
+			_render_estate_ui()
+
+func _extract_face_from_active_weapon(slot_idx: int) -> void:
+	if not player or not player.die or slot_idx < 0 or slot_idx >= player.die.faces.size():
+		return
+	if not player.can_afford(25):
+		_show_floating_text(player.position, "NOT ENOUGH GOLD (Need 25g)", Color(0.95, 0.4, 0.4))
+		_log("[color=#ef4444]❌ Cannot extract face: you need 25 Gold (Current: %d)![/color]" % player.gold)
+		return
+
+	player.spend_gold(25)
+	var face: Dictionary = player.die.faces[slot_idx]
+	var loose_item = ItemData.create_face_item(face)
+	inventory_items.append(loose_item)
+
+	var blank_face: Dictionary = {
+		"roll": slot_idx + 1,
+		"damage": 1,
+		"title": "BASIC STRIKE",
+		"icon": "res://assets/ui/die_face_1.svg",
+		"effect": ""
+	}
+	player.die.faces[slot_idx] = blank_face
+
+	play_smith_hammer_sfx()
+	_update_gold_ui()
+	_sync_equipped_weapon_to_backpack()
+	_log("[color=#22c55e]🔨 Blacksmith extracted [b]%s[/b] from Slot %d into your stash for 25g! (Remaining: %d Gold)[/color]" % [loose_item.name, slot_idx + 1, player.gold])
+	_show_floating_text(player.position, "EXTRACTED: %s (-25g)" % loose_item.name, Color(0.38, 0.74, 0.97))
+	
+	if current_backpack_view == "hero":
+		_render_backpack_ui()
+	elif current_backpack_view == "blacksmith":
+		_render_blacksmith_ui()
+	_update_hud_display()
+
+func _sell_inventory_item(item: ItemData) -> void:
+	if not player:
+		return
+	var val = item.get_sell_value()
+	inventory_items.erase(item)
+	player.add_gold(val)
+	play_gold_sfx()
+	_log("[color=#eab308]💰 Sold [b]%s[/b] to Merchant for %d Gold (Total: %d Gold)![/color]" % [item.name, val, player.gold])
+	_show_floating_text(player.position, "+%d Gold 🪙" % val, Color(1.0, 0.84, 0.0))
+	_update_gold_ui()
+	if current_backpack_view == "hero":
+		_render_backpack_inventory_cards()
+	elif current_backpack_view == "blacksmith":
+		_render_blacksmith_ui()
+
+func _render_blacksmith_ui() -> void:
+	if not blacksmith_view_container or not player:
+		return
+	for c in blacksmith_view_container.get_children():
+		blacksmith_view_container.remove_child(c)
+		c.queue_free()
+
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	blacksmith_view_container.add_child(scroll)
+
+	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 12)
+	scroll.add_child(vbox)
+
+	# 1. Header Banner
+	var head_panel = PanelContainer.new()
+	var hp_style = StyleBoxFlat.new()
+	hp_style.bg_color = Color(0.10, 0.08, 0.06, 0.95)
+	hp_style.border_color = Color(0.92, 0.55, 0.20)
+	hp_style.set_border_width_all(1)
+	hp_style.set_corner_radius_all(6)
+	hp_style.content_margin_left = 12
+	hp_style.content_margin_right = 12
+	hp_style.content_margin_top = 8
+	hp_style.content_margin_bottom = 8
+	head_panel.add_theme_stylebox_override("panel", hp_style)
+	vbox.add_child(head_panel)
+
+	var hvbox = VBoxContainer.new()
+	hvbox.add_theme_constant_override("separation", 4)
+	head_panel.add_child(hvbox)
+
+	var stitle = Label.new()
+	stitle.text = "🔨 MASTER SMITH GARRICK'S FORGE & REFORGING ANVIL"
+	stitle.add_theme_font_size_override("font_size", 16)
+	stitle.add_theme_color_override("font_color", Color(0.98, 0.72, 0.22))
+	hvbox.add_child(stitle)
+
+	var sdesc = Label.new()
+	sdesc.text = "Extract socketed faces safely into your inventory (25g), reforge weapon chassis traits (75g), hone blade edges (+1 DMG for 50g), or acquire forged stock!"
+	sdesc.add_theme_font_size_override("font_size", 11)
+	sdesc.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
+	hvbox.add_child(sdesc)
+
+	# 2. Active Weapon Station
+	var forge_panel = PanelContainer.new()
+	var fp_style = StyleBoxFlat.new()
+	fp_style.bg_color = Color(0.08, 0.10, 0.15, 0.95)
+	fp_style.border_color = Color(0.3, 0.45, 0.65)
+	fp_style.set_border_width_all(1)
+	fp_style.set_corner_radius_all(8)
+	fp_style.content_margin_left = 14
+	fp_style.content_margin_right = 14
+	fp_style.content_margin_top = 10
+	fp_style.content_margin_bottom = 10
+	forge_panel.add_theme_stylebox_override("panel", fp_style)
+	vbox.add_child(forge_panel)
+
+	var fvbox = VBoxContainer.new()
+	fvbox.add_theme_constant_override("separation", 10)
+	forge_panel.add_child(fvbox)
+
+	var cur_w: ItemData = equipped_gear.get("hand_1", null)
+	var w_name = cur_w.name if cur_w else "Iron Starter Sword"
+	var t_title = cur_w.trait_name if (cur_w and cur_w.trait_name != "") else "None (Unforged)"
+	var t_desc = cur_w.trait_desc if (cur_w and cur_w.trait_desc != "") else "Visit Garrick to temper a chassis trait onto this base."
+
+	var w_head_hbox = HBoxContainer.new()
+	w_head_hbox.add_theme_constant_override("separation", 12)
+	fvbox.add_child(w_head_hbox)
+
+	var w_icon = TextureRect.new()
+	w_icon.texture = load(cur_w.icon_path if cur_w else "res://assets/items/item_sword_starter.svg")
+	w_icon.custom_minimum_size = Vector2(40, 40)
+	w_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	w_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	w_head_hbox.add_child(w_icon)
+
+	var w_info_vbox = VBoxContainer.new()
+	w_info_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	w_head_hbox.add_child(w_info_vbox)
+
+	var w_title_lbl = Label.new()
+	w_title_lbl.text = "⚔️ Active Weapon: %s  |  Trait: %s" % [w_name, t_title]
+	w_title_lbl.add_theme_font_size_override("font_size", 14)
+	w_title_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+	w_info_vbox.add_child(w_title_lbl)
+
+	var w_desc_lbl = Label.new()
+	w_desc_lbl.text = "Trait Effect: %s" % t_desc
+	w_desc_lbl.add_theme_font_size_override("font_size", 11)
+	w_desc_lbl.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+	w_info_vbox.add_child(w_desc_lbl)
+
+	var forge_btn_hbox = HBoxContainer.new()
+	forge_btn_hbox.add_theme_constant_override("separation", 8)
+	w_head_hbox.add_child(forge_btn_hbox)
+
+	var temper_btn = Button.new()
+	temper_btn.text = "🔥 Temper Trait (75g)"
+	temper_btn.tooltip_text = "Pay Garrick 75g to reforge or infuse a new passive trait onto your active weapon!"
+	temper_btn.pressed.connect(_temper_active_weapon_trait)
+	forge_btn_hbox.add_child(temper_btn)
+
+	var hone_btn = Button.new()
+	hone_btn.text = "⚔️ Hone Edge (+1 DMG) (50g)"
+	hone_btn.tooltip_text = "Pay Garrick 50g to permanently sharpen this weapon (+1 flat damage bonus)!"
+	hone_btn.pressed.connect(_hone_active_weapon)
+	forge_btn_hbox.add_child(hone_btn)
+
+	# 6 Sockets Extraction Rack
+	var sock_lbl = Label.new()
+	sock_lbl.text = "🔧 Weapon Sockets & Extraction Service (Click 'Extract' to unsocket any face into Stash for 25g):"
+	sock_lbl.add_theme_font_size_override("font_size", 12)
+	sock_lbl.add_theme_color_override("font_color", Color(0.95, 0.82, 0.2))
+	fvbox.add_child(sock_lbl)
+
+	var sock_hbox = HBoxContainer.new()
+	sock_hbox.add_theme_constant_override("separation", 8)
+	fvbox.add_child(sock_hbox)
+
+	if player and player.die:
+		for i in range(mini(6, player.die.faces.size())):
+			var face = player.die.faces[i]
+			var scard = PanelContainer.new()
+			scard.custom_minimum_size = Vector2(130, 110)
+			scard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var sc_style = StyleBoxFlat.new()
+			sc_style.bg_color = Color(0.06, 0.08, 0.12, 0.9)
+			sc_style.border_color = Color(0.25, 0.35, 0.5)
+			sc_style.set_border_width_all(1)
+			sc_style.set_corner_radius_all(6)
+			sc_style.content_margin_left = 6
+			sc_style.content_margin_right = 6
+			sc_style.content_margin_top = 4
+			sc_style.content_margin_bottom = 4
+			scard.add_theme_stylebox_override("panel", sc_style)
+			sock_hbox.add_child(scard)
+
+			var scvbox = VBoxContainer.new()
+			scvbox.alignment = BoxContainer.ALIGNMENT_CENTER
+			scvbox.add_theme_constant_override("separation", 2)
+			scard.add_child(scvbox)
+
+			var s_num = Label.new()
+			s_num.text = "SLOT %d" % (i + 1)
+			s_num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			s_num.add_theme_font_size_override("font_size", 10)
+			s_num.add_theme_color_override("font_color", Color(0.38, 0.74, 0.97))
+			scvbox.add_child(s_num)
+
+			var s_icon = TextureRect.new()
+			s_icon.texture = load(face.get("icon", "res://assets/ui/die_face_1.svg"))
+			s_icon.custom_minimum_size = Vector2(28, 28)
+			s_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			s_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			scvbox.add_child(s_icon)
+
+			var s_title = Label.new()
+			s_title.text = face.get("title", "STRIKE")
+			s_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			s_title.add_theme_font_size_override("font_size", 10)
+			s_title.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+			scvbox.add_child(s_title)
+
+			var s_dmg = Label.new()
+			s_dmg.text = "%d DMG" % face.get("damage", 1)
+			s_dmg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			s_dmg.add_theme_font_size_override("font_size", 10)
+			s_dmg.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4))
+			scvbox.add_child(s_dmg)
+
+			var ext_btn = Button.new()
+			ext_btn.text = "Extract (25g)"
+			ext_btn.add_theme_font_size_override("font_size", 9)
+			var cur_slot_idx = i
+			ext_btn.pressed.connect(func(): _extract_face_from_active_weapon(cur_slot_idx))
+			scvbox.add_child(ext_btn)
+
+	# 3. Blacksmith Store (Crafted Faces & Weapons)
+	var store_head_hbox = HBoxContainer.new()
+	vbox.add_child(store_head_hbox)
+
+	var store_lbl = Label.new()
+	store_lbl.text = "🛒 GARRICK'S FORGED INVENTORY"
+	store_lbl.add_theme_font_size_override("font_size", 13)
+	store_lbl.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
+	store_head_hbox.add_child(store_lbl)
+
+	var s_spacer = Control.new()
+	s_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	store_head_hbox.add_child(s_spacer)
+
+	var restock_btn = Button.new()
+	restock_btn.text = "🔄 Restock Stock (15g)"
+	restock_btn.pressed.connect(func():
+		if player and player.can_afford(15):
+			player.spend_gold(15)
+			play_smith_hammer_sfx()
+			_generate_blacksmith_wares()
+			_update_gold_ui()
+			_render_blacksmith_ui()
+			_log("[color=#eab308]🔄 Garrick refreshed his smithing wares for 15g![/color]")
+		else:
+			_show_floating_text(player.position, "NOT ENOUGH GOLD", Color(0.95, 0.4, 0.4))
+	)
+	store_head_hbox.add_child(restock_btn)
+
+	var wares_hbox = HBoxContainer.new()
+	wares_hbox.add_theme_constant_override("separation", 10)
+	vbox.add_child(wares_hbox)
+
+	for face_item in blacksmith_face_wares:
+		var wcard = PanelContainer.new()
+		wcard.custom_minimum_size = Vector2(150, 80)
+		wcard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var wc_style = StyleBoxFlat.new()
+		wc_style.bg_color = Color(0.08, 0.10, 0.15, 0.9)
+		wc_style.border_color = Color(0.98, 0.82, 0.2)
+		wc_style.set_border_width_all(1)
+		wc_style.set_corner_radius_all(6)
+		wc_style.content_margin_left = 6
+		wc_style.content_margin_right = 6
+		wc_style.content_margin_top = 4
+		wc_style.content_margin_bottom = 4
+		wcard.add_theme_stylebox_override("panel", wc_style)
+		wares_hbox.add_child(wcard)
+
+		var wcvbox = VBoxContainer.new()
+		wcvbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		wcard.add_child(wcvbox)
+
+		var w_name_l = Label.new()
+		w_name_l.text = face_item.name
+		w_name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		w_name_l.add_theme_font_size_override("font_size", 11)
+		w_name_l.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+		wcvbox.add_child(w_name_l)
+
+		var eff_str = ("(" + face_item.face_data.get("effect", "") + ")") if face_item.face_data.get("effect", "") != "" else ""
+		var w_stat_l = Label.new()
+		w_stat_l.text = "%d DMG %s" % [face_item.dmg_bonus, eff_str]
+		w_stat_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		w_stat_l.add_theme_font_size_override("font_size", 10)
+		w_stat_l.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4))
+		wcvbox.add_child(w_stat_l)
+
+		var buy_btn = Button.new()
+		buy_btn.text = "Buy (%dg)" % face_item.gold_value
+		var f_ref = face_item
+		buy_btn.pressed.connect(func():
+			if player and player.can_afford(f_ref.gold_value):
+				player.spend_gold(f_ref.gold_value)
+				blacksmith_face_wares.erase(f_ref)
+				inventory_items.append(f_ref)
+				play_gold_sfx()
+				_log("[color=#22c55e]🛒 Purchased [b]%s[/b] for %d Gold![/color]" % [f_ref.name, f_ref.gold_value])
+				_show_floating_text(player.position, "BOUGHT: %s" % f_ref.name, Color(0.38, 0.74, 0.97))
+				_update_gold_ui()
+				_render_blacksmith_ui()
+			else:
+				_show_floating_text(player.position, "NOT ENOUGH GOLD", Color(0.95, 0.4, 0.4))
+		)
+		wcvbox.add_child(buy_btn)
+
+	for wp_item in blacksmith_weapon_wares:
+		var wcard = PanelContainer.new()
+		wcard.custom_minimum_size = Vector2(170, 80)
+		wcard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var wc_style = StyleBoxFlat.new()
+		wc_style.bg_color = Color(0.08, 0.10, 0.15, 0.9)
+		wc_style.border_color = Color(0.38, 0.74, 0.97)
+		wc_style.set_border_width_all(1)
+		wc_style.set_corner_radius_all(6)
+		wc_style.content_margin_left = 6
+		wc_style.content_margin_right = 6
+		wc_style.content_margin_top = 4
+		wc_style.content_margin_bottom = 4
+		wcard.add_theme_stylebox_override("panel", wc_style)
+		wares_hbox.add_child(wcard)
+
+		var wcvbox = VBoxContainer.new()
+		wcvbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		wcard.add_child(wcvbox)
+
+		var w_name_l = Label.new()
+		w_name_l.text = wp_item.name
+		w_name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		w_name_l.add_theme_font_size_override("font_size", 11)
+		w_name_l.add_theme_color_override("font_color", Color(0.95, 0.95, 0.98))
+		wcvbox.add_child(w_name_l)
+
+		var w_stat_l = Label.new()
+		w_stat_l.text = "Trait: %s" % wp_item.trait_name
+		w_stat_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		w_stat_l.add_theme_font_size_override("font_size", 10)
+		w_stat_l.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+		wcvbox.add_child(w_stat_l)
+
+		var buy_btn = Button.new()
+		buy_btn.text = "Buy (%dg)" % wp_item.gold_value
+		var w_ref = wp_item
+		buy_btn.pressed.connect(func():
+			if player and player.can_afford(w_ref.gold_value):
+				player.spend_gold(w_ref.gold_value)
+				blacksmith_weapon_wares.erase(w_ref)
+				inventory_items.append(w_ref)
+				play_gold_sfx()
+				_log("[color=#22c55e]🛒 Purchased [b]%s[/b] for %d Gold![/color]" % [w_ref.name, w_ref.gold_value])
+				_show_floating_text(player.position, "BOUGHT: %s" % w_ref.name, Color(0.38, 0.74, 0.97))
+				_update_gold_ui()
+				_render_blacksmith_ui()
+			else:
+				_show_floating_text(player.position, "NOT ENOUGH GOLD", Color(0.95, 0.4, 0.4))
+		)
+		wcvbox.add_child(buy_btn)
+
+func _temper_active_weapon_trait() -> void:
+	if not player:
+		return
+	var main_w: ItemData = equipped_gear.get("hand_1", null)
+	if not main_w:
+		_show_floating_text(player.position, "NO WEAPON EQUIPPED", Color(0.95, 0.4, 0.4))
+		return
+	if not player.can_afford(75):
+		_show_floating_text(player.position, "NEED 75 GOLD", Color(0.95, 0.4, 0.4))
+		_log("[color=#ef4444]❌ Cannot temper weapon: you need 75 Gold![/color]")
+		return
+
+	player.spend_gold(75)
+	var available = ItemData.get_available_chassis_traits()
+	var pick = available.pick_random()
+	for _attempt in range(5):
+		if pick["id"] != main_w.trait_id:
+			break
+		pick = available.pick_random()
+
+	main_w.trait_id = pick["id"]
+	main_w.trait_name = pick["name"]
+	main_w.trait_desc = pick["desc"]
+
+	play_smith_hammer_sfx()
+	_update_gold_ui()
+	_recalculate_equipped_stats()
+	_log("[color=#22c55e]🔥 Garrick tempered [b]%s[/b] with new Trait: [b]%s[/b] (%s) for 75g![/color]" % [main_w.name, main_w.trait_name, main_w.trait_desc])
+	_show_floating_text(player.position, "TEMPERED: %s" % main_w.trait_name, Color(0.98, 0.85, 0.2))
+	_render_blacksmith_ui()
+
+func _hone_active_weapon() -> void:
+	if not player:
+		return
+	var main_w: ItemData = equipped_gear.get("hand_1", null)
+	if not main_w:
+		_show_floating_text(player.position, "NO WEAPON EQUIPPED", Color(0.95, 0.4, 0.4))
+		return
+	if not player.can_afford(50):
+		_show_floating_text(player.position, "NEED 50 GOLD", Color(0.95, 0.4, 0.4))
+		_log("[color=#ef4444]❌ Cannot hone weapon: you need 50 Gold![/color]")
+		return
+
+	player.spend_gold(50)
+	main_w.dmg_bonus += 1
+	play_smith_hammer_sfx()
+	_update_gold_ui()
+	_recalculate_equipped_stats()
+	_log("[color=#22c55e]⚔️ Garrick honed the edge of [b]%s[/b]! (+1 Bonus DMG, Total: +%d) for 50g![/color]" % [main_w.name, main_w.dmg_bonus])
+	_show_floating_text(player.position, "+1 WEAPON DMG!", Color(0.2, 0.9, 0.4))
+	_render_blacksmith_ui()
+
+func _render_estate_ui() -> void:
+	if not estate_view_container or not player:
+		return
+	for c in estate_view_container.get_children():
+		estate_view_container.remove_child(c)
+		c.queue_free()
+
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	estate_view_container.add_child(scroll)
+
+	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 14)
+	scroll.add_child(vbox)
+
+	# 1. Manor Header
+	var m_head = PanelContainer.new()
+	var mh_style = StyleBoxFlat.new()
+	mh_style.bg_color = Color(0.08, 0.07, 0.14, 0.95)
+	mh_style.border_color = Color(0.8, 0.6, 0.95)
+	mh_style.set_border_width_all(1)
+	mh_style.set_corner_radius_all(8)
+	mh_style.content_margin_left = 14
+	mh_style.content_margin_right = 14
+	mh_style.content_margin_top = 8
+	mh_style.content_margin_bottom = 8
+	m_head.add_theme_stylebox_override("panel", mh_style)
+	vbox.add_child(m_head)
+
+	var mhvbox = VBoxContainer.new()
+	mhvbox.add_theme_constant_override("separation", 4)
+	m_head.add_child(mhvbox)
+
+	var m_title = Label.new()
+	m_title.text = "🏛️ RAVENLOFT MANOR - ESTATE TROPHY GALLERY"
+	m_title.add_theme_font_size_override("font_size", 16)
+	m_title.add_theme_color_override("font_color", Color(0.88, 0.75, 1.0))
+	mhvbox.add_child(m_title)
+
+	var m_desc = Label.new()
+	m_desc.text = "Mount rare trophies recovered from the dungeon onto marble pedestals in your manor hall. Every mounted collectible activates passive Estate Perks for your hero!"
+	m_desc.add_theme_font_size_override("font_size", 11)
+	m_desc.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
+	mhvbox.add_child(m_desc)
+
+	# 2. Active Perks Banner
+	var perks_panel = PanelContainer.new()
+	var pp_style = StyleBoxFlat.new()
+	pp_style.bg_color = Color(0.05, 0.07, 0.12, 0.95)
+	pp_style.border_color = Color(0.35, 0.75, 0.95)
+	pp_style.set_border_width_all(1)
+	pp_style.set_corner_radius_all(6)
+	pp_style.content_margin_left = 12
+	pp_style.content_margin_right = 12
+	pp_style.content_margin_top = 6
+	pp_style.content_margin_bottom = 6
+	perks_panel.add_theme_stylebox_override("panel", pp_style)
+	vbox.add_child(perks_panel)
+
+	var p_vbox = VBoxContainer.new()
+	p_vbox.add_theme_constant_override("separation", 3)
+	perks_panel.add_child(p_vbox)
+
+	var p_title = Label.new()
+	p_title.text = "✨ ACTIVE ESTATE PERKS"
+	p_title.add_theme_font_size_override("font_size", 12)
+	p_title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+	p_vbox.add_child(p_title)
+
+	var active_parts: Array[String] = []
+	if get_estate_gold_mult() > 1.0:
+		active_parts.append("🪙 Gold Find: +%.0f%%" % ((get_estate_gold_mult() - 1.0) * 100.0))
+	if get_estate_armor_bonus() > 0:
+		active_parts.append("🛡️ Armor: +%d" % get_estate_armor_bonus())
+	if get_estate_crit_bonus() > 0.0:
+		active_parts.append("⚡ Crit Chance: +%.0f%%" % (get_estate_crit_bonus() * 100.0))
+	if get_estate_hp_bonus() > 0:
+		active_parts.append("❤️ Max HP: +%d" % get_estate_hp_bonus())
+	if get_estate_dmg_bonus() > 0:
+		active_parts.append("⚔️ Flat DMG: +%d" % get_estate_dmg_bonus())
+
+	var p_text = " • ".join(active_parts) if not active_parts.is_empty() else "No trophies currently placed. Mount trophies from your stash to activate estate perks!"
+	var p_lbl = Label.new()
+	p_lbl.text = p_text
+	p_lbl.add_theme_font_size_override("font_size", 11)
+	p_lbl.add_theme_color_override("font_color", Color(0.38, 0.85, 0.55) if not active_parts.is_empty() else Color(0.65, 0.70, 0.80))
+	p_vbox.add_child(p_lbl)
+
+	# 3. Pedestals Grid (6 slots)
+	var ped_grid = GridContainer.new()
+	ped_grid.columns = 3
+	ped_grid.add_theme_constant_override("h_separation", 14)
+	ped_grid.add_theme_constant_override("v_separation", 14)
+	vbox.add_child(ped_grid)
+
+	for i in range(6):
+		var p_card = PanelContainer.new()
+		p_card.custom_minimum_size = Vector2(280, 130)
+		p_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var pc_style = StyleBoxFlat.new()
+		pc_style.set_corner_radius_all(8)
+		pc_style.set_border_width_all(1)
+		pc_style.content_margin_left = 10
+		pc_style.content_margin_right = 10
+		pc_style.content_margin_top = 8
+		pc_style.content_margin_bottom = 8
+
+		var is_unlocked = (i < estate_pedestals_unlocked)
+		var trophy: ItemData = estate_trophy_slots[i] if (i < estate_trophy_slots.size()) else null
+
+		if not is_unlocked:
+			pc_style.bg_color = Color(0.04, 0.05, 0.08, 0.8)
+			pc_style.border_color = Color(0.2, 0.25, 0.35)
+		elif trophy != null:
+			pc_style.bg_color = Color(0.12, 0.10, 0.20, 0.95)
+			pc_style.border_color = Color(0.92, 0.72, 0.25)
+		else:
+			pc_style.bg_color = Color(0.06, 0.08, 0.13, 0.9)
+			pc_style.border_color = Color(0.3, 0.45, 0.6)
+		p_card.add_theme_stylebox_override("panel", pc_style)
+		ped_grid.add_child(p_card)
+
+		var pcvbox = VBoxContainer.new()
+		pcvbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		pcvbox.add_theme_constant_override("separation", 4)
+		p_card.add_child(pcvbox)
+
+		if not is_unlocked:
+			var unlock_cost = 150 if i == 4 else 300
+			var lock_lbl = Label.new()
+			lock_lbl.text = "🔒 PEDESTAL %d (LOCKED)" % (i + 1)
+			lock_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lock_lbl.add_theme_font_size_override("font_size", 12)
+			lock_lbl.add_theme_color_override("font_color", Color(0.65, 0.68, 0.75))
+			pcvbox.add_child(lock_lbl)
+
+			var lock_sub = Label.new()
+			lock_sub.text = "Expand your estate gallery"
+			lock_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lock_sub.add_theme_font_size_override("font_size", 10)
+			lock_sub.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
+			pcvbox.add_child(lock_sub)
+
+			var unlock_btn = Button.new()
+			unlock_btn.text = "🔓 Unlock Pedestal (%dg)" % unlock_cost
+			var cur_cost = unlock_cost
+			unlock_btn.pressed.connect(func():
+				if player and player.can_afford(cur_cost):
+					player.spend_gold(cur_cost)
+					estate_pedestals_unlocked += 1
+					play_smith_hammer_sfx()
+					_update_gold_ui()
+					_log("[color=#22c55e]🏛️ Expanded Estate Gallery! Pedestal %d unlocked for %dg![/color]" % [estate_pedestals_unlocked, cur_cost])
+					_show_floating_text(player.position, "PEDESTAL UNLOCKED!", Color(0.88, 0.75, 1.0))
+					_render_estate_ui()
+				else:
+					_show_floating_text(player.position, "NOT ENOUGH GOLD", Color(0.95, 0.4, 0.4))
+			)
+			pcvbox.add_child(unlock_btn)
+		elif trophy != null:
+			var t_head_hbox = HBoxContainer.new()
+			t_head_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+			t_head_hbox.add_theme_constant_override("separation", 8)
+			pcvbox.add_child(t_head_hbox)
+
+			var t_icon = TextureRect.new()
+			t_icon.texture = load(trophy.icon_path)
+			t_icon.custom_minimum_size = Vector2(32, 32)
+			t_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			t_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			t_head_hbox.add_child(t_icon)
+
+			var t_name_l = Label.new()
+			t_name_l.text = trophy.name
+			t_name_l.add_theme_font_size_override("font_size", 12)
+			t_name_l.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+			t_head_hbox.add_child(t_name_l)
+
+			var t_perk_l = Label.new()
+			t_perk_l.text = "Perk: %s" % trophy.estate_perk_desc
+			t_perk_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			t_perk_l.add_theme_font_size_override("font_size", 10)
+			t_perk_l.add_theme_color_override("font_color", Color(0.38, 0.85, 0.55))
+			pcvbox.add_child(t_perk_l)
+
+			var ret_btn = Button.new()
+			ret_btn.text = "📦 Retrieve to Stash"
+			var ped_idx = i
+			ret_btn.pressed.connect(func():
+				inventory_items.append(estate_trophy_slots[ped_idx])
+				estate_trophy_slots[ped_idx] = null
+				play_backpack_equip_sfx()
+				_recalculate_equipped_stats()
+				_log("[color=#38bdf8]📦 Retrieved [b]%s[/b] to your Stash.[/color]" % trophy.name)
+				_render_estate_ui()
+			)
+			pcvbox.add_child(ret_btn)
+		else:
+			var empty_l = Label.new()
+			empty_l.text = "PEDESTAL %d (EMPTY)" % (i + 1)
+			empty_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			empty_l.add_theme_font_size_override("font_size", 12)
+			empty_l.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+			pcvbox.add_child(empty_l)
+
+			var place_btn = Button.new()
+			place_btn.text = "+ Mount Trophy"
+			var ped_idx = i
+			place_btn.pressed.connect(func(): _prompt_mount_trophy(ped_idx))
+			pcvbox.add_child(place_btn)
+
+func _prompt_mount_trophy(pedestal_idx: int) -> void:
+	var trophies_in_stash: Array[ItemData] = []
+	for it in inventory_items:
+		if it.item_type == "trophy":
+			trophies_in_stash.append(it)
+	if trophies_in_stash.is_empty():
+		_show_floating_text(player.position, "NO TROPHIES IN STASH", Color(0.95, 0.4, 0.4))
+		_log("[color=#94a3b8]🏛️ No estate trophies found in stash. Slay bosses and open dungeon chests to uncover rare collectibles![/color]")
+		return
+
+	var chosen = trophies_in_stash[0]
+	inventory_items.erase(chosen)
+	estate_trophy_slots[pedestal_idx] = chosen
+	play_gold_sfx()
+	_recalculate_equipped_stats()
+	_log("[color=#22c55e]🏛️ Mounted [b]%s[/b] onto Pedestal %d! Active Perk: [b]%s[/b][/color]" % [chosen.name, pedestal_idx + 1, chosen.estate_perk_desc])
+	_show_floating_text(player.position, "MOUNTED: %s" % chosen.name, Color(0.88, 0.75, 1.0))
+	_render_estate_ui()
 
 func _equip_weapon_from_backpack(weapon: DieData) -> void:
 	# Legacy adapter: find or create item and equip to hand_1
@@ -2882,6 +3699,16 @@ func _open_chest(chest: Dictionary) -> void:
 		_add_relic("Crown of the Dungeon Master", "👑 Legendary victory relic! All chambers purged.")
 		_log("[color=#22c55e][b]👑 RELIC OF VICTORY: You claimed the Dungeon Crown! All chambers conquered![/b][/color]")
 	else:
+		# Gold Cache from Chest
+		var base_gold = randi_range(35, 75)
+		var final_gold = int(float(base_gold) * get_estate_gold_mult())
+		if player:
+			player.add_gold(final_gold)
+			play_gold_sfx()
+			_show_floating_text(grid_to_world(chest["pos"]) + Vector2(0, -28), "+%d Gold 🪙" % final_gold, Color(1.0, 0.84, 0.0))
+			_log("[color=#eab308]💰 Chest contained [b]%d Gold[/b] (Total: %d Gold)![/color]" % [final_gold, player.gold])
+			_update_gold_ui()
+
 		var r_loot = randf()
 		if r_loot < 0.25:
 			# Rare Weapon Chassis Drop with Unique Trait
@@ -2890,18 +3717,19 @@ func _open_chest(chest: Dictionary) -> void:
 			_log("[color=#38bdf8]⚔️ WEAPON DROP: Found [b]%s[/b]! Chassis Trait: [b]%s[/b] (%s). Equip via Backpack [B].[/color]" % [weapon_item.name, weapon_item.trait_name, weapon_item.trait_desc])
 			_show_floating_text(grid_to_world(chest["pos"]), "⚔️ %s" % weapon_item.name, Color(0.38, 0.74, 0.97))
 		elif r_loot < 0.40:
-			# Rare Estate Collectible Trophy for future housing!
+			# Rare Estate Collectible Trophy with Perk for Manor!
 			var trophies = [
-				{"id": "trophy_gargoyle", "name": "Abyssal Gargoyle Sconce", "desc": "Hand-carved obsidian gargoyle bracket with eternal blue flame."},
-				{"id": "trophy_banner", "name": "Phalanx Battle Standard", "desc": "Tattered heraldic standard of the ancient Iron Phalanx legion."},
-				{"id": "trophy_urn", "name": "Pyromancer's Ember Urn", "desc": "Smoldering ceremonial censer radiating welcoming hearth warmth."},
-				{"id": "trophy_throne", "name": "Gilded Skull of the Warlord", "desc": "Polished runic skull trophy taken from the deep dungeon throne."}
+				{"id": "trophy_goblin_idol", "name": "Golden Goblin Idol", "desc": "Gilded idol of greed recovered from goblin depths"},
+				{"id": "trophy_gargoyle", "name": "Gargoyle Stone Sconce", "desc": "Heavy carved stone bust from cathedral rafters"},
+				{"id": "trophy_dragon_seal", "name": "Dragon King's Seal", "desc": "Wax signet imbued with draconic precision"},
+				{"id": "trophy_chalice", "name": "Ancient King's Chalice", "desc": "Ceremonial cup said to prolong mortal vitality"},
+				{"id": "trophy_obsidian_relic", "name": "Cursed Obsidian Relic", "desc": "Jagged volcanic shard humming with destructive malice"}
 			]
 			var t_cfg = trophies.pick_random()
 			var trophy_item = ItemData.create_estate_trophy(t_cfg["id"], t_cfg["name"], t_cfg["desc"])
 			inventory_items.append(trophy_item)
-			_log("[color=#eab308]🏆 ESTATE TROPHY: Claimed [b]%s[/b]! Collectible decor stored for your future house/estate.[/color]" % trophy_item.name)
-			_show_floating_text(grid_to_world(chest["pos"]), "🏆 %s" % trophy_item.name, Color(0.98, 0.82, 0.2))
+			_log("[color=#eab308]🏛️ ESTATE TROPHY: Claimed [b]%s[/b]! Mount in your Manor [B] to activate: %s![/color]" % [trophy_item.name, trophy_item.estate_perk_desc])
+			_show_floating_text(grid_to_world(chest["pos"]), "🏛️ %s" % trophy_item.name, Color(0.98, 0.82, 0.2))
 		else:
 			# Procedural Die Face Loot Drop
 			var drop_face = DieData.generate_random_face(current_combat_room_id)
@@ -3747,9 +4575,9 @@ func _resolve_pulse() -> void:
 		elif chassis_trait == "titans_grip" and dmg >= 5:
 			is_knockback = true
 
-		# Critical Hit calculation based on DEX
+		# Critical Hit calculation based on DEX and Estate Perks
 		var is_crit = false
-		if dmg > 0 and randf() < player.get_crit_chance():
+		if dmg > 0 and randf() < (player.get_crit_chance() + get_estate_crit_bonus()):
 			is_crit = true
 			dmg = int(float(dmg) * 1.5) + 2
 			_show_floating_text(player.position, "CRITICAL HIT!", Color(1.0, 0.45, 0.2))
@@ -4479,6 +5307,24 @@ func _on_enemy_died(enemy: CombatUnit) -> void:
 		exp_gained = 150
 
 	if player:
+		# Award Gold based on monster strength and estate multipliers
+		var base_gold = 10
+		match enemy.unit_type:
+			"grunt": base_gold = randi_range(8, 16)
+			"charger": base_gold = randi_range(14, 24)
+			"shieldbearer": base_gold = randi_range(18, 30)
+			"pyromancer": base_gold = randi_range(22, 34)
+			"brawler": base_gold = randi_range(30, 50)
+		if "BOSS" in enemy.unit_name.to_upper() or "WARLORD" in enemy.unit_name.to_upper():
+			base_gold = randi_range(75, 125)
+
+		var final_gold = int(float(base_gold) * get_estate_gold_mult())
+		player.add_gold(final_gold)
+		play_gold_sfx()
+		_log("[color=#eab308]💰 %s dropped %d Gold (Total: %d Gold)![/color]" % [enemy.unit_name, final_gold, player.gold])
+		_show_floating_text(enemy.position + Vector2(0, -42), "+%d Gold 🪙" % final_gold, Color(1.0, 0.84, 0.0))
+		_update_gold_ui()
+
 		var leveled_up = player.gain_exp(exp_gained)
 		_log("[color=#38bdf8]+%d EXP earned from %s![/color]" % [exp_gained, enemy.unit_name])
 		_show_floating_text(enemy.position + Vector2(0, -22), "+%d EXP" % exp_gained, Color(0.38, 0.74, 0.97))
