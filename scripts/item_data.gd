@@ -339,7 +339,7 @@ static func create_face_item(face: Dictionary) -> ItemData:
 	it.name = "%d DMG - %s" % [face.get("damage", 1), face.get("title", "Die Face")]
 	it.slot = "face"
 	it.item_type = "face"
-	it.icon_path = face.get("icon", "res://assets/ui/die_face_1.svg")
+	it.icon_path = "res://assets/items/item_die_face.svg"
 	it.desc = face.get("desc", "%d Damage" % face.get("damage", 1))
 	it.dmg_bonus = face.get("damage", 1)
 	it.face_data = face.duplicate(true)

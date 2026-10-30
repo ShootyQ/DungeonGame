@@ -2673,25 +2673,25 @@ func _render_backpack_inventory_cards() -> void:
 
 	for it in filtered_items:
 		var slot_btn = Button.new()
-		slot_btn.custom_minimum_size = Vector2(46, 46)
+		slot_btn.custom_minimum_size = Vector2(50, 50)
 		slot_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		slot_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 		var b_style = StyleBoxFlat.new()
-		b_style.set_corner_radius_all(4)
-		b_style.content_margin_left = 3
-		b_style.content_margin_right = 3
-		b_style.content_margin_top = 3
-		b_style.content_margin_bottom = 3
+		b_style.set_corner_radius_all(6)
+		b_style.content_margin_left = 4
+		b_style.content_margin_right = 4
+		b_style.content_margin_top = 4
+		b_style.content_margin_bottom = 4
 
 		if it == selected_stash_item:
-			b_style.bg_color = Color(0.22, 0.18, 0.08, 0.95)
+			b_style.bg_color = Color(0.24, 0.19, 0.08, 0.95)
 			b_style.border_color = Color(0.98, 0.82, 0.2)
 			b_style.set_border_width_all(2)
 		elif it.item_type == "face":
-			b_style.bg_color = Color(0.14, 0.12, 0.06, 0.90)
-			b_style.border_color = Color(0.95, 0.75, 0.2)
-			b_style.set_border_width_all(1)
+			b_style.bg_color = Color(0.12, 0.10, 0.20, 0.95)
+			b_style.border_color = Color(0.98, 0.82, 0.2)
+			b_style.set_border_width_all(1.5)
 		elif it.item_type == "trophy":
 			b_style.bg_color = Color(0.16, 0.08, 0.20, 0.90)
 			b_style.border_color = Color(0.75, 0.35, 0.95)
@@ -2705,10 +2705,10 @@ func _render_backpack_inventory_cards() -> void:
 		slot_btn.add_theme_stylebox_override("hover", b_style)
 		slot_btn.add_theme_stylebox_override("pressed", b_style)
 
-		# Inner Icon
+		# Inner Icon - centered and properly fitted
 		var icon = TextureRect.new()
 		icon.texture = load(it.icon_path)
-		icon.custom_minimum_size = Vector2(36, 36)
+		icon.custom_minimum_size = Vector2(40, 40)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2718,18 +2718,32 @@ func _render_backpack_inventory_cards() -> void:
 		if it.hands == 2:
 			var tag_lbl = Label.new()
 			tag_lbl.text = "2H"
-			tag_lbl.add_theme_font_size_override("font_size", 8)
+			tag_lbl.add_theme_font_size_override("font_size", 9)
 			tag_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-			tag_lbl.position = Vector2(24, 28)
+			tag_lbl.position = Vector2(28, 30)
 			slot_btn.add_child(tag_lbl)
 		elif it.item_type == "face":
 			var dmg_val = it.face_data.get("damage", 1)
+			var tag_panel = PanelContainer.new()
+			var tp_style = StyleBoxFlat.new()
+			tp_style.bg_color = Color(0.06, 0.08, 0.12, 0.95)
+			tp_style.border_color = Color(0.98, 0.82, 0.2)
+			tp_style.set_border_width_all(1)
+			tp_style.set_corner_radius_all(3)
+			tp_style.content_margin_left = 3
+			tp_style.content_margin_right = 3
+			tp_style.content_margin_top = 0
+			tp_style.content_margin_bottom = 0
+			tag_panel.add_theme_stylebox_override("panel", tp_style)
+			tag_panel.position = Vector2(22, 28)
+			tag_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 			var tag_lbl = Label.new()
 			tag_lbl.text = "%d" % dmg_val
 			tag_lbl.add_theme_font_size_override("font_size", 9)
-			tag_lbl.add_theme_color_override("font_color", Color(0.3, 0.9, 0.45))
-			tag_lbl.position = Vector2(26, 26)
-			slot_btn.add_child(tag_lbl)
+			tag_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+			tag_panel.add_child(tag_lbl)
+			slot_btn.add_child(tag_panel)
 
 		var cur_item = it
 		slot_btn.mouse_entered.connect(func():

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Isometric Beveled Die Cube / Ingot Frame -->
+  <defs>
+    <radialGradient id="dieGoldGlow" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="60%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#78350f"/>
+    </radialGradient>
+    <linearGradient id="topFace" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <linearGradient id="frontFace" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0c4a6e"/>
+    </linearGradient>
+    <linearGradient id="sideFace" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#075985"/>
+      <stop offset="100%" stop-color="#082f49"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shadow below die -->
+  <ellipse cx="32" cy="56" rx="22" ry="6" fill="#020617" opacity="0.65"/>
+
+  <!-- Ornate Golden Rune Socket Backplate -->
+  <polygon points="32,6 56,19 56,45 32,58 8,45 8,19" fill="#1e1b4b" stroke="url(#dieGoldGlow)" stroke-width="2.5" stroke-linejoin="round"/>
+  
+  <!-- 3D Isometric Die Faces -->
+  <!-- Top Face -->
+  <polygon points="32,10 52,21 32,32 12,21" fill="url(#topFace)" stroke="#fef08a" stroke-width="1.2"/>
+  <!-- Left/Front Face -->
+  <polygon points="12,21 32,32 32,52 12,41" fill="url(#frontFace)" stroke="#fef08a" stroke-width="1.2"/>
+  <!-- Right Face -->
+  <polygon points="32,32 52,21 52,41 32,52" fill="url(#sideFace)" stroke="#fef08a" stroke-width="1.2"/>
+
+  <!-- Glowing Die Pips (Dots on visible sides) -->
+  <!-- Top Face Pips (Diamond pattern) -->
+  <circle cx="32" cy="21" r="2.2" fill="#ffffff" stroke="#38bdf8" stroke-width="0.8"/>
+  <circle cx="24" cy="18" r="1.6" fill="#f8fafc"/>
+  <circle cx="40" cy="24" r="1.6" fill="#f8fafc"/>
+
+  <!-- Front Face Rune (Cross Swords / Strike Icon) -->
+  <g transform="translate(22, 33)">
+    <line x1="2" y1="2" x2="16" y2="16" stroke="#fef08a" stroke-width="2" stroke-linecap="round"/>
+    <line x1="16" y1="2" x2="2" y2="16" stroke="#fef08a" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="9" cy="9" r="1.5" fill="#ef4444"/>
+  </g>
+
+  <!-- Golden Corner Brackets -->
+  <polygon points="32,6 34,10 30,10" fill="#fbbf24"/>
+  <polygon points="56,19 53,23 51,19" fill="#fbbf24"/>
+  <polygon points="8,19 13,19 11,23" fill="#fbbf24"/>
+  <polygon points="32,58 34,54 30,54" fill="#fbbf24"/>
+</svg>
